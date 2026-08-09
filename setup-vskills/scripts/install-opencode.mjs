@@ -48,6 +48,31 @@ async function atomicInstall(source, target, backupRoot) {
 
 const backupRoot = path.join(configRoot, '.vskills-backup');
 const results = [];
+const retiredProfiles = new Map([
+  ['command/council.md', `---
+description: Run independent multi-model research, debate, voting, or scoped review.
+agent: goals
+---
+
+Load the \`council\` skill and run the appropriate council protocol for
+$ARGUMENTS. Keep goals as the sole orchestrator and forbid subagents from
+delegating further. If no objective is supplied, ask for one before spawning
+the council.
+`],
+]);
+for (const [relativePath, expected] of retiredProfiles) {
+  const target = path.join(configRoot, relativePath);
+  const current = await readFile(target, 'utf8').catch((error) => {
+    if (error.code === 'ENOENT') return null;
+    throw error;
+  });
+  if (current === expected) {
+    const retiredRoot = path.join(backupRoot, 'retired');
+    await mkdir(retiredRoot, { recursive: true });
+    await rename(target, path.join(retiredRoot, `${relativePath.replaceAll('/', '-')}-${timestamp()}`));
+    results.push({ path: relativePath, status: 'retired' });
+  }
+}
 for (const kind of ['agent', 'command']) {
   const sourceDir = path.join(sourceRoot, kind);
   const files = (await readdir(sourceDir)).filter((name) => name.endsWith('.md')).sort();

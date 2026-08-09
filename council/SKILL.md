@@ -6,9 +6,10 @@ description: Run independent multi-model research, evidence-based debate, voting
 
 # Council
 
-Council is a protocol run by the `goals` primary, not a nested orchestrator.
-Members are flat `task: deny` subagents with filesystem, shell, skill, web, and
-MCP access. The configured roster is:
+Council is a protocol run either by the selectable `council` primary for
+standalone work or by the `goals` primary inside a goal run. Members are flat
+`task: deny` subagents with read-only filesystem, skill, web, and MCP access.
+The configured roster is:
 
 - `council-grok`: `opencode-go/grok-4.5`
 - `council-kimi`: `openrouter/moonshotai/kimi-k3`
@@ -16,7 +17,7 @@ MCP access. The configured roster is:
 - `council-sol`: `openai/gpt-5.6-sol`
 - `council-glm`: `opencode-go/glm-5.2`
 
-The goals orchestrator performs its own independent pass alongside all five,
+The active primary performs its own independent pass alongside all five,
 making six perspectives for contested research. Never pre-solve the question
 and ask members to ratify an answer.
 

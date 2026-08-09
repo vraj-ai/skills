@@ -35,9 +35,11 @@ Install the canonical agent and command files tracked under `opencode/`:
 node setup-vskills/scripts/install-opencode.mjs
 ```
 
-This installs `goals` as the sole primary, the contributor/council/adversary
-subagents, and `/goal` under `~/.config/opencode/`. It is idempotent. A differing
-existing file is moved to `~/.config/opencode/.vskills-backup/` before replace.
+This installs selectable `goals` and read-only `council` primaries, the
+contributor/council/adversary subagents, and `/goal` under
+`~/.config/opencode/`. Goals remains the sole delivery/backlog authority inside
+a goal run. Installation is idempotent. A differing existing file is moved to
+`~/.config/opencode/.vskills-backup/` before replace.
 It does not modify `opencode.json` or provider credentials.
 
 ## Step 2 — Regenerate CONTEXT.md

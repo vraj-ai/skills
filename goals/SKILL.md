@@ -7,8 +7,8 @@ dependencies: [council, parallel, council-adversary]
 
 # Goals
 
-`goals` is the only primary orchestrator and the only writer of
-`CONTEXT/goals/<slug>/backlog.jsonl`. It composes `parallel` for code and
+Within a goal run, `goals` is the only delivery orchestrator and the only
+writer of `CONTEXT/goals/<slug>/backlog.jsonl`. It composes `parallel` for code and
 `council` for contested research and review. Subagents emit evidence; they
 never mutate the backlog.
 

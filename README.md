@@ -83,7 +83,7 @@ and continues. Raw model logs never enter orchestrator context.
 ### Council is independent
 
 The configured council is Grok 4.5, Kimi K3, Qwen 3.8 Max, GPT-5.6 Sol, and
-GLM 5.2, plus goals' own independent pass. Round 1 gives every member the full
+GLM 5.2, plus the active primary's independent pass. Round 1 gives every member the full
 task verbatim in one parallel spawn. Later rounds give each member the other
 reports and a neutral conflict index. Evidence resolves disagreements; a vote
 is only the three-round fallback. Phase B is the one exception: exactly two
@@ -331,7 +331,7 @@ goals/            autonomous plan driver, atomic backlog, milestone gates
 council/          independent research, debate, T0/T1 review protocol
 parallel/         worktree build farm + CLI runner + compact results contract
 council-adversary/read-only T0/T2/T3 teardown
-opencode/         canonical global agent + /goal command definitions
+opencode/         canonical global primary/subagent + /goal definitions
 legacy-workflow/  preserved legacy-planner/coder/debugger/reviewer skills
 
 push-handoff/     verified, explicitly authorized commit/push closeout
@@ -349,15 +349,20 @@ mattpocock/       mirrored library (github.com/mattpocock/skills)
 <br>
 
 OpenCode loads the canonical definitions under `opencode/agent/` globally from
-`~/.config/opencode/agent/`. `goals` is the only primary. Every other pipeline
-agent is `mode: subagent` with `task: deny`, so the tree is always one level:
+`~/.config/opencode/agent/`. Shift-Tab can select either `goals` for delivery or
+`council` for standalone research/review. Goals remains the only writer and
+merger in a goal run. Every child is `mode: subagent` with `task: deny`, so the
+tree is always one level:
 
 ```text
-goals -> {contributor, council members, council-adversary}
+goals   -> {contributor, council members, council-adversary}
+council -> {council members, council-adversary}
 ```
 
 | Agent | Model |
 |---|---|
+| `goals` | current selected model, delivery primary |
+| `council` | current selected model, read-only primary |
 | `contributor` | `opencode-go/glm-5.2` |
 | `council-grok` | `opencode-go/grok-4.5` |
 | `council-kimi` | `openrouter/moonshotai/kimi-k3` |
@@ -366,8 +371,8 @@ goals -> {contributor, council members, council-adversary}
 | `council-glm` | `opencode-go/glm-5.2` (research only for GLM-authored code) |
 | `council-adversary` | `opencode-go/grok-4.5`, read-only |
 
-Members have filesystem, shell, web, skill, external-directory, and inherited
-MCP access. They inspect source material themselves instead of receiving a
+Members have read-only filesystem, web, skill, and inherited MCP access. They
+inspect source material themselves instead of receiving a
 pre-solved answer. The CLI path launches fresh `opencode run --dir <worktree>`
 processes; if no binary exists, goals uses parallel Task calls against the same
 worktrees and emits the same result contract.

@@ -21,6 +21,11 @@ test('OpenCode profile pins the selected models and a one-level spawn tree', asy
   const goals = await fs.readFile(path.join(repo, 'opencode', 'agent', 'goals.md'), 'utf8');
   assert.match(goals, /mode: primary/);
   assert.match(goals, /task: allow/);
+  const council = await fs.readFile(path.join(repo, 'opencode', 'agent', 'council.md'), 'utf8');
+  assert.match(council, /mode: primary/);
+  assert.match(council, /task: allow/);
+  assert.match(council, /edit: deny/);
+  assert.match(council, /bash: deny/);
 
   for (const [file, model] of Object.entries(models)) {
     const content = await fs.readFile(path.join(repo, 'opencode', 'agent', file), 'utf8');
@@ -54,9 +59,9 @@ test('workflow skills preserve the required phase and result contracts', async (
   }
 });
 
-test('OpenCode profile exposes goal and council commands through goals', async () => {
-  for (const command of ['goal.md', 'council.md']) {
-    const content = await fs.readFile(path.join(repo, 'opencode', 'command', command), 'utf8');
-    assert.match(content, /agent: goals/);
-  }
+test('OpenCode profile exposes goal as a command and council as a selectable primary', async () => {
+  const goal = await fs.readFile(path.join(repo, 'opencode', 'command', 'goal.md'), 'utf8');
+  assert.match(goal, /agent: goals/);
+  await assert.doesNotReject(fs.access(path.join(repo, 'opencode', 'agent', 'council.md')));
+  await assert.rejects(fs.access(path.join(repo, 'opencode', 'command', 'council.md')));
 });
