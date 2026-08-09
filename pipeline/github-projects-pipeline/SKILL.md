@@ -1,7 +1,7 @@
 ---
 name: github-projects-pipeline
-version: 1.0.0
-description: The stage protocol for GitHub Projects — GitHub Projects is the workflow authority, GitHub issues are durable tickets, and work moves Planned → Agent Ready → Coding → Debugger Ready → Debugging → Review Ready → Reviewing → Done through separate stage-parent sessions. Use when creating, claiming, moving, or reviewing pipeline work on a GitHub Project, and load it before planner/coder/debugger/reviewer.
+version: 1.1.0
+description: Stage protocol for the preserved legacy GitHub Projects workflow, where Project Status is authoritative and work crosses separate planner, coder, debugger, and reviewer sessions. Use only with legacy-planner, legacy-coder, legacy-debugger, or legacy-reviewer.
 ---
 
 # github-projects-pipeline — stage protocol
@@ -14,7 +14,7 @@ code evidence. There is no second tracker to mirror.
 ## Stage-parent session profile
 
 GPT-5.6 Luna is the overall coordinator; it may dispatch Opus 5 in Claude Code for
-`/planner` after the planning decisions are known. `/coder`, `/debugger`, and `/reviewer`
+`/legacy-planner` after the planning decisions are known. `/legacy-coder`, `/legacy-debugger`, and `/legacy-reviewer`
 normally run as independent top-level stage-parent sessions. The workflow uses the
 GitHub Project item, GitHub issue/PR artifacts, and handoffs to bridge those sessions.
 A native child launched from another session is not a stage parent and must not spawn
@@ -22,15 +22,15 @@ nested children.
 
 | Stage | Parent session | Harness / route | Effort |
 |---|---|---|---|
-| `/planner` | Opus 5, Luna-dispatched or visible | Claude Code with Claude subscription | medium/high |
-| `/coder` | Kimi K3 | Pi via OpenRouter; optional Kimi K2.7 Code helpers | high |
-| `/debugger` | GPT-5.6 Luna | Codex with Codex subscription | **max** |
-| `/reviewer` | Grok 4.5 | Pi via OpenRouter | high/xhigh |
+| `/legacy-planner` | Opus 5, Luna-dispatched or visible | Claude Code with Claude subscription | medium/high |
+| `/legacy-coder` | Kimi K3 | Pi via OpenRouter; optional Kimi K2.7 Code helpers | high |
+| `/legacy-debugger` | GPT-5.6 Luna | Codex with Codex subscription | **max** |
+| `/legacy-reviewer` | Grok 4.5 | Pi via OpenRouter | high/xhigh |
 
 Do not route a Claude subscription through Pi. Do not confuse the native Codex route
 (`codex`, `gpt-5.6-luna`) with Pi/OpenRouter (`pi`,
 `openrouter/openai/gpt-5.6-luna`). `max` is reasoning effort, not a model name.
-A headless Opus child must receive `/planner` decisions in advance because it cannot
+A headless Opus child must receive `/legacy-planner` decisions in advance because it cannot
 ask the human; use a visible Claude session for an interactive grill.
 
 In this environment, super.engineering owns managed worktrees, target/base branches,
@@ -129,7 +129,7 @@ Planned → Agent Ready → Coding → Debugger Ready → Debugging → Review R
 Issue open/closed state is **not** the pipeline stage. The Project `Status` field is.
 If built-in automation is enabled, inspect it before relying on it: GitHub enables
 workflows that set `Done` when an issue closes or a pull request merges. Disable or
-change those workflows if only `/reviewer` may set `Done`.
+change those workflows if only `/legacy-reviewer` may set `Done`.
 
 ## 3. Who may move what
 
@@ -297,11 +297,11 @@ Before ending any pipeline run:
 - [ ] Issue comment contains real evidence and the project readback
 - [ ] No label is being treated as workflow state
 - [ ] Commit trailer uses #<issue-number> or OWNER/REPO#<number>
-- [ ] Only /reviewer moved a ticket to Done
+- [ ] Only /legacy-reviewer moved a ticket to Done
 ```
 
 ## Related
 
-`planner` · `coder` · `debugger` · `reviewer` · `profile-gated-delivery` ·
+`legacy-planner` · `legacy-coder` · `legacy-debugger` · `legacy-reviewer` · `profile-gated-delivery` ·
 `specialist-profiles` · `state-driven-pipeline-recovery` ·
 `subagent-batch-implementation`

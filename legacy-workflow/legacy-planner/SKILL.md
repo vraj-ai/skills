@@ -1,10 +1,14 @@
 ---
-name: planner
+name: legacy-planner
 version: 1.1.0
-description: Planning chain and the first stage of the fleet loop (planner plan → coder build → debugger debug → reviewer review) — first size the effort and decide whether it needs a /wayfinder investigation pass before it can be grilled, then grill it against the project's docs, lock its invariants (latency budgets, failure modes, security boundaries), then run /adversarial-loop (plan mode, pipeline operating mode) — orchestrator plus a fixed model trio each turn the grilled decisions into a competing spec + ticket breakdown, cross-critiqued to sign-off, highest-rated wins — and publish it to Agent Ready, then write and push a handoff. Runs a sizing gate → grill-with-docs → lock-invariants → adversarial-loop(plan) → publish → handoff → push-handoff in sequence. Use when the user runs /planner, wants to take a new effort/idea/feature/ADR all the way from grilling through a spec, tickets, and a pushed handoff in one pass, or needs to repair a ticket that /reviewer bounced back as unbuildable.
+description: Legacy planning stage from the former planner-coder-debugger-reviewer fleet, preserved for explicit opt-in use. Use only when the user invokes /legacy-planner or deliberately requests the old GitHub Projects stage workflow instead of goals.
+dependencies: [multi-agent-review]
 ---
 
-# /planner — Planning chain (idea → spec → tickets → pushed handoff)
+# /legacy-planner — Former planning chain
+
+This is the preserved legacy workflow. The active autonomous pipeline is
+`goals`; do not auto-trigger this skill for ordinary planning requests.
 
 Orchestrate the planning skills **in order**, carrying context forward through
 each, with an explicit invariants gate before the spec. This is the repeatable
@@ -18,7 +22,7 @@ run by a **different model** so that no stage ever reviews its own work:
 
 ```
 Planned → Agent Ready → Coding → Debugger Ready → Debugging → Review Ready → Reviewing → Done
-   └ /planner ─┘  └──── /coder ────┘   └──── /debugger ────┘   └──── /reviewer ────┘
+   └ /legacy-planner ─┘  └──── /legacy-coder ────┘   └──── /legacy-debugger ────┘   └──── /legacy-reviewer ────┘
 ```
 
 ### Stage-parent session
@@ -26,7 +30,7 @@ Planned → Agent Ready → Coding → Debugger Ready → Debugging → Review R
 The default planner is Opus 5 in the Claude Code harness using the Claude
 subscription. GPT-5.6 Luna may dispatch it as a headless child after all planning
 decisions are supplied, or the human may run it in a visible Claude Code session.
-Because the grill is interactive, a headless child cannot ask the user. `/planner` may
+Because the grill is interactive, a headless child cannot ask the user. `/legacy-planner` may
 use one-level helpers only when it is the independent top-level stage parent; a
 native child launched from another session must not spawn nested children.
 
@@ -43,13 +47,13 @@ invariants, and write tickets into the project's local tracker (`tickets.md`) or
 the handoff; say which mode you're in. Never skip planning work because a project
 field could not be written.
 
-`/planner` **opens** the loop. Everything downstream — the gate `/coder` builds
-against, the invariants `/debugger` attacks, the criteria `/reviewer` reviews — comes
+`/legacy-planner` **opens** the loop. Everything downstream — the gate `/legacy-coder` builds
+against, the invariants `/legacy-debugger` attacks, the criteria `/legacy-reviewer` reviews — comes
 from the tickets you write here. A vague ticket doesn't fail at planning time; it
 fails three stages later as a ticket that bounces forever because no one can tell
 whether it's satisfied. Write for those three readers.
 
-`/reviewer` can also send work **back** here: a ticket it judges unbuildable (contra-
+`/legacy-reviewer` can also send work **back** here: a ticket it judges unbuildable (contra-
 dictory criteria, no runnable `Verification-command`, an unsatisfiable invariant)
 returns to **Planned** with its reason. When you pick up such a ticket, repair the
 ticket itself — re-grill the ambiguous decision if you must — and return it to
@@ -57,7 +61,7 @@ ticket itself — re-grill the ambiguous decision if you must — and return it 
 
 ### Draining the queue — repairing bounced tickets
 
-Planning an effort is one run. But `/reviewer` also routes unbuildable tickets back
+Planning an effort is one run. But `/legacy-reviewer` also routes unbuildable tickets back
 to **`Planned`**, and those form a queue you can drain: if the user asks you to
 fix the bounced tickets, handle them **one at a time** — repair the ticket, return
 it to `Agent Ready`, then re-query the board and take the next. Re-query rather
@@ -102,10 +106,10 @@ Look at the effort you just confirmed and the docs you just read, then judge:
 
   > "This looks bigger than one grilling session — I'd run `/wayfinder` first to
   > map it into investigation tickets, resolve those until the path is clear, then
-  > run `/planner` on each resulting chunk. Want me to do that instead?"
+  > run `/legacy-planner` on each resulting chunk. Want me to do that instead?"
 
   Say *why* (which of the above signals tripped). If the user agrees, hand off to
-  `/wayfinder` and stop the chain here — you'll re-enter `/planner` per resolved
+  `/wayfinder` and stop the chain here — you'll re-enter `/legacy-planner` per resolved
   chunk once the map exists. If the user would rather grill anyway (e.g. they only
   want to plan one slice of it now), narrow the subject to that slice and continue.
 
@@ -132,10 +136,10 @@ call, ask the user rather than silently picking.
    - **Security / permission boundaries** — authz rules, trust edges, what data is
      exposed to whom, and the blast radius if a boundary is crossed.
    This is the "adult in the room" step: without it the plan optimizes for "finish,"
-   not "safe." Carry these invariants forward so the `/adversarial-loop` plan step
-   below honors them and so **`/debugger`'s red-team pass has concrete targets to
-   attack** and so `/reviewer` has something falsifiable to review against.
-3. **`/adversarial-loop`** (`plan` mode, pipeline operating mode) — the
+   not "safe." Carry these invariants forward so the `/multi-agent-review` plan step
+   below honors them and so **`/legacy-debugger`'s red-team pass has concrete targets to
+   attack** and so `/legacy-reviewer` has something falsifiable to review against.
+3. **`/multi-agent-review`** (`plan` mode, pipeline operating mode) — the
    orchestrator (this stage-parent session) plus its fixed default trio each,
    independently in their own worktree, turn the grilled decisions **and the
    locked invariants** into a spec (invariants stated as explicit acceptance
@@ -146,14 +150,14 @@ call, ask the user rather than silently picking.
    ticket restates the relevant budget/failure-mode/boundary in its acceptance
    criteria. **Each ticket must also ship a machine-checkable done-condition —
    a `Verification-command`** (e.g. `npm test -- <ticket>.spec && tsc
-   --noEmit`) that exits 0 exactly when the ticket is complete — so `/coder`
-   has a concrete gate to loop its `/adversarial-loop` `build`-mode pass
+   --noEmit`) that exits 0 exactly when the ticket is complete — so `/legacy-coder`
+   has a concrete gate to loop its `/multi-agent-review` `build`-mode pass
    against instead of judging "done" by eye.
 
    Relay rounds until unanimous sign-off or the 6-round cap, then auto-pick
    the highest-rated spec + ticket set. Rate on: invariants honored
    explicitly, dependency order sound, and **acceptance criteria a blind
-   reviewer can check** — `/reviewer` judges a ticket's diff *without* reading
+   reviewer can check** — `/legacy-reviewer` judges a ticket's diff *without* reading
    the author's handoff or rationale, so each criterion must be checkable from
    code and tests alone. "Handles errors gracefully" gives the reviewer
    nothing to verify and guarantees a bounce; "on provider 5xx, retries twice
@@ -169,7 +173,7 @@ call, ask the user rather than silently picking.
    through `gh project`, then read the item back. A ticket with unsatisfied
    blockers **stays in `Planned`**; that queue is exactly the set of work that
    isn't claimable yet, and putting blocked tickets in `Agent Ready` makes
-   `/coder` pick up work it can't finish.
+   `/legacy-coder` pick up work it can't finish.
    **On GitHub Projects, publish for real, always** — creating a local ticket file
    is not publishing. Create each GitHub issue, add it to the configured project, set
    its Project `Status` to `Planned` or `Agent Ready` after checking blockers, and
@@ -191,7 +195,7 @@ call, ask the user rather than silently picking.
 6. **`push-handoff`** — **always run this last.** Read and follow the
    **`push-handoff`** skill (`~/.claude/skills/push-handoff/SKILL.md`): stage the
    handoff doc + all planning artifacts (spec, tickets, CONTEXT updates), commit,
-   and push to the configured remote. **`/planner` is not complete until push
+   and push to the configured remote. **`/legacy-planner` is not complete until push
    succeeds** (or you report an auth blocker with the skill's recovery steps).
    Never commit secrets.
 
@@ -206,13 +210,13 @@ call, ask the user rather than silently picking.
   invariants**, the tickets reflect the spec, the handoff points at the tickets.
 - **Don't skip the invariants gate.** If the grill couldn't pin down a latency
   budget, failure mode, or security boundary, that's an open decision — resolve it
-  with the user before Step 3's `/adversarial-loop` plan run, don't let the spec
+  with the user before Step 3's `/multi-agent-review` plan run, don't let the spec
   paper over it.
 - Stop and surface to the user if grilling reveals the effort needs a new ADR, or
   if the ticket granularity isn't approved at Step 4 — don't push half-baked
   artifacts.
-- **Plan for `/coder`'s gated loop.** Every ticket ships a runnable
-  `Verification-command` (its machine-checkable done-condition) so `/coder` can
+- **Plan for `/legacy-coder`'s gated loop.** Every ticket ships a runnable
+  `Verification-command` (its machine-checkable done-condition) so `/legacy-coder` can
   loop maker→checker against a real gate, not a judgment call. A ticket with no
   runnable done-condition isn't ready — resolve it before publishing.
 - Defer project-specific conventions (tracker format, repo, labels, doc paths) to

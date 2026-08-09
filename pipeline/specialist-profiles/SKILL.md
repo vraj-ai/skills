@@ -1,10 +1,10 @@
 ---
 name: specialist-profiles
-version: 1.0.0
-description: Create and verify the planner, coder, debugger, and reviewer role agents so the same personality does not plan vaguely, ship halfway, then rubber-stamp itself — each role gets a distinct queue, entry skill, allowed state transitions, harness/model profile, and hard prohibitions. Use when setting up role separation, when writing or fixing agent definitions under .claude/agents, when roles are behaving identically, or when you need maker≠checker enforced structurally rather than by good intentions.
+version: 1.1.0
+description: Create and verify role agents for the preserved legacy planner-coder-debugger-reviewer workflow. Use only when maintaining the legacy four-stage profile rather than the active goals/council/parallel OpenCode profile.
 ---
 
-# specialist-profiles — planner / coder / debugger / reviewer
+# specialist-profiles — legacy four-stage agents
 
 ## Stage-parent model
 
@@ -28,10 +28,10 @@ corresponding top-level harness sessions:
 
 | Agent | Queue | Entry skills | May move |
 |---|---|---|---|
-| `planner` | Planned | `github-projects-pipeline` → `planner` (+ `batch-grill-me`) | creates GitHub issues in Planned; promotes unblocked project items to Agent Ready |
-| `coder` | Agent Ready (incl. scope/test bounce returns) | `github-projects-pipeline` → `coder` (+ `ticket-implementation-tdd`) | Agent Ready → Coding → Debugger Ready |
-| `debugger` | Debugger Ready (incl. correctness bounce returns) | `github-projects-pipeline` → `debugger` (+ `invariant-evidence-review`) | Debugger Ready → Debugging → Review Ready |
-| `reviewer` | Review Ready | `github-projects-pipeline` → `reviewer` (+ review rubric) | Review Ready → Reviewing → Done or classified bounce |
+| `legacy-planner` | Planned | `github-projects-pipeline` → `legacy-planner` (+ `batch-grill-me`) | creates GitHub issues in Planned; promotes unblocked project items to Agent Ready |
+| `legacy-coder` | Agent Ready (incl. scope/test bounce returns) | `github-projects-pipeline` → `legacy-coder` (+ `ticket-implementation-tdd`) | Agent Ready → Coding → Debugger Ready |
+| `legacy-debugger` | Debugger Ready (incl. correctness bounce returns) | `github-projects-pipeline` → `legacy-debugger` (+ `invariant-evidence-review`) | Debugger Ready → Debugging → Review Ready |
+| `legacy-reviewer` | Review Ready | `github-projects-pipeline` → `legacy-reviewer` (+ review rubric) | Review Ready → Reviewing → Done or classified bounce |
 
 ## The shared core every role inherits
 
@@ -58,7 +58,7 @@ All three carry the same non-negotiables. Role text **narrows**, never relaxes:
 
 ```markdown
 ---
-name: coder
+name: legacy-coder
 description: <when the orchestrator should pick this role>
 ---
 <identity — one paragraph>
@@ -96,4 +96,4 @@ If any role does the others' job, its identity text isn't doing work. Rewrite it
 
 ## Related
 
-`profile-gated-delivery` · `github-projects-pipeline` · `planner` · `coder` · `debugger`
+`profile-gated-delivery` · `github-projects-pipeline` · `legacy-planner` · `legacy-coder` · `legacy-debugger`

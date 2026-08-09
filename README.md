@@ -2,7 +2,7 @@
 
 Agent skills for running software work as a **factory** rather than a conversation — plus `vskills`, a zero-dependency installer that puts them on your machine.
 
-A skill is a file an agent loads on demand that says *how to do one job properly*. This repo holds two kinds: a four-stage delivery pipeline where no agent is ever allowed to review its own work, and a library of standalone skills for the jobs around it.
+A skill is a file an agent loads on demand that says *how to do one job properly*. This repo holds an autonomous goals pipeline, its council and worktree machinery, a preserved legacy four-stage workflow, and standalone skills for the jobs around them.
 
 ```
 npx github:VrajGupta/skills init
@@ -19,9 +19,9 @@ You already can prompt an agent to "build this feature and test it." It usually 
 | Agent says "done", the tests were never run | "Done" is a feeling, judged by the same model that wants to be finished | Done is a **locked command that must exit 0**, run *after* the final edit |
 | Agent reviews its own code and approves it | The misreading that produced the bug produces a confident review of the bug | The reviewer is a **different model in a different context**, and never reads the author's rationale |
 | A ticket bounces between build and fix forever | Nobody is allowed to say "this ticket is unbuildable" | Three failed reviews **escalate to a human** instead of looping |
-| Second session has no idea what the first did | Chat history is not a handoff | State lives on the **board**; evidence lives on the **issue** |
-| Parallel agents overwrite each other | No one drew the boundaries | Explicit **file lanes**, and the parent re-runs every gate itself |
-| "I fixed the edge cases" (it did not) | Happy path is green, so the suite says yes | A dedicated stage attacks **only** the corners the happy path never touches |
+| Second session has no idea what the first did | Chat history is not a handoff | Resume from **backlog + handoff + producer digests + git**, never chat |
+| Parallel agents overwrite each other | They share one checkout | One item gets one **branch + worktree**, so edits cannot collide by construction |
+| "I fixed the edge cases" (it did not) | Happy path is green, so the suite says yes | Two per-item reviewers plus milestone and whole-diff gates attack the claim |
 
 The thread running through all of it: **a claim is not evidence.** Nearly every rule in this repo exists to convert some claim into something checkable.
 
@@ -34,9 +34,9 @@ The thread running through all of it: **a claim is not evidence.** Nearly every 
 
 Not "the agent should double-check its work" — that fails, because the same context that made the mistake evaluates the mistake. Instead:
 
-- The **coder** builds it and is explicitly forbidden from judging it.
-- The **debugger** attacks it on a different model, may fix anything, but may not close it.
-- The **reviewer** judges it blind on a *third* model — diff, ticket, and invariants only. It never reads the handoff, because a confident narrative from the author is the strongest single contaminant of a review. It is also the only stage permitted to mark anything `Done`.
+- The fixed **GLM contributor** builds in an isolated worktree and cannot judge its own code.
+- Two different-model **council members** review each item before merge.
+- A rotating milestone reviewer checks integration only, and a read-only adversary tears down the final cumulative diff before completion.
 
 Everything else is plumbing around that one property.
 
@@ -48,136 +48,68 @@ Everything else is plumbing around that one property.
 
 ```mermaid
 flowchart LR
-    P[Planned] --> AR[Agent Ready] --> C[Coding] --> DR[Debugger Ready]
-    DR --> D[Debugging] --> RR[Review Ready] --> R[Reviewing] --> Done
+    Plan[Plan doc] --> B[Phase B backlog sanity]
+    B --> Loop[Ready items]
+    Loop --> P[Parallel worktrees]
+    P --> T0[2x T0 item review]
+    T0 --> M[Merge passing items]
+    M --> T1[T1 milestone gate]
+    T1 -->|next milestone| Loop
+    T1 --> T2[T2 success-criteria sweep]
+    T2 --> T3[T3 adversary]
+    T3 --> Done[Verified complete]
 
     style Done fill:#1a7f37,color:#fff
 ```
 
-| Stage | Skill | Owns | May set `Done`? |
-|---|---|---|---|
-| Plan | `/planner` | Grill → invariants → spec → tickets | No |
-| Build | `/coder` | One ticket, test-first, against a gate | No |
-| Harden | `/debugger` | Attack the corners, fix test-first | No |
-| Judge | `/reviewer` | Blind verdict, route by failure kind | **Yes — only this one** |
+`/goal CONTEXT/architecture.md` starts one long-lived, resumable primary. It is
+the only writer of `backlog.jsonl` and the only process that merges branches or
+mirrors state to GitHub issue labels.
 
-Each stage runs in its own top-level session on a **different model**, so no stage inherits the previous one's blind spots. The GitHub Project item, the issue, git, and the handoff are what connect them — never chat history.
+| Mechanism | Owns |
+|---|---|
+| `goals` | Phase R resume, 3-7 thematic milestones, backlog, checkpoints, T1/T2/T3 |
+| `parallel` | Up to three ready code items in isolated worktrees, fixed GLM contributor, T0, merge/results contract |
+| `council` | Independent research, evidence debate, Phase B sanity, T0/T1 reviews |
+| `council-adversary` | Read-only optional T0/T2 teardown and mandatory T3 whole-diff verdict |
 
-<details>
-<summary><b>/planner</b> — turn a fuzzy idea into tickets a stranger could build</summary>
+### Resume is state, not memory
 
-<br>
+Every fresh goals session runs Phase R first. `backlog.jsonl` means resume,
+never reparse. It acquires `lock.d`, reads the slim handoff, reconciles stale
+work from `results.json`, item digests, and branch ancestry, recomputes ready,
+and continues. Raw model logs never enter orchestrator context.
 
-**Use it when:** you have a feature, ADR, or "we should probably…" and no tickets yet.
+### Council is independent
 
-**What it does:**
+The configured council is Grok 4.5, Kimi K3, Qwen 3.8 Max, GPT-5.6 Sol, and
+GLM 5.2, plus the active primary's independent pass. Round 1 gives every member the full
+task verbatim in one parallel spawn. Later rounds give each member the other
+reports and a neutral conflict index. Evidence resolves disagreements; a vote
+is only the three-round fallback. Phase B is the one exception: exactly two
+members, one round, no debate or vote.
 
-1. **Sizes the effort.** Too big or too foggy to even name the open questions? It recommends `/wayfinder` to map the territory first, rather than grilling fog.
-2. **Grills you.** Interactively challenges the plan against your project's existing docs and decisions until every load-bearing fork is settled.
-3. **Locks invariants** — the step most plans skip. Concrete latency budgets (`p95 < 300ms`, not "fast"), failure-mode contracts for every dependency, and security/permission boundaries. These become the targets `/debugger` attacks and the criteria `/reviewer` grades.
-4. **Writes a spec and breaks it into dependency-ordered vertical slices via `/adversarial-loop`** (`plan` mode) — the orchestrator plus a fixed model trio each independently turn the locked decisions into a competing spec + ticket breakdown, cross-critique to sign-off, and the highest-rated one publishes.
-5. **Publishes real tickets** — each with acceptance criteria a *blind* reviewer can check, and a runnable `Verification-command`.
+### Parallel is the workhorse
 
-**Why it helps:** a vague ticket does not fail at planning time. It fails three stages later as a ticket that bounces forever because nobody can tell whether it's satisfied. This stage writes for those three future readers.
+Each item gets `goals/<slug>/<id>` and its own worktree. GLM 5.2 builds
+test-first and commits there. Grok and Kimi independently review that one diff;
+no verdict means no merge. Green peers merge even when another item fails,
+unless `STRICT_BATCH=1`. Goals ingests only compact JSON results and digests.
 
-**Uses:** `grill-with-docs` → `/adversarial-loop` (`plan` mode) → `handoff` → `push-handoff`
+### Gates get wider
 
-</details>
+T0 checks one item with two non-maker reviewers. T1 first runs mechanical
+integration checks, then one rotating reviewer checks milestone composition
+only; the pipeline pauses after a passing T1 for human continuation. T2 sweeps
+the whole plan's success criteria. T3 is a mandatory read-only adversarial pass
+over the cumulative merged diff. P0/P1 findings must drain before completion.
 
-<details>
-<summary><b>/coder</b> — build exactly one ticket, honestly</summary>
+### Legacy workflow
 
-<br>
-
-**Use it when:** there's a ticket in `Agent Ready` and you want it built.
-
-**What it does:**
-
-1. Picks the **lowest-numbered unblocked ticket** (preferring one the reviewer bounced back — that work is half-built and blocking a close).
-2. Moves *only that ticket* to `Coding`, so the board answers "what is an agent touching right now."
-3. **Locks the gate** — one command that must exit 0 — before writing any code.
-4. Builds via `/adversarial-loop` (`build` mode) — the orchestrator plus a fixed model trio each implement test-first, at the highest meaningful seam with external dependencies faked, in their own isolated worktree; cross-critique to sign-off, then the highest-rated diff wins.
-5. **Self-checks narrowly:** every acceptance criterion named against the line and test that satisfies it; every invariant given a test that would go red if it broke.
-6. Moves to `Debugger Ready` and writes an honest handoff — including what is stubbed.
-
-**Why it helps:** it is deliberately *not* the checker. It cannot talk the reviewer into a pass, because the reviewer never reads its handoff. That removes the incentive to write defensively and replaces it with the only thing that works: a green gate and an honest report.
-
-**"Build all of them"** drains the queue **serially** — one ticket in `Coding` at a time, re-querying the board each lap. Parallel is available but requires explicit authorization and provably disjoint file lanes.
-
-</details>
-
-<details>
-<summary><b>/debugger</b> — the skeptic</summary>
-
-<br>
-
-**Use it when:** something is in `Debugger Ready`, or you want an audit of code nobody filed bugs against.
-
-Runs the audit via `/adversarial-loop` (`harden` mode) — the orchestrator plus a
-fixed model trio each independently run the pinned loop below, in their own
-isolated worktree branched off the ticket's diff; a bug one participant's pass
-finds and another's doesn't gets surfaced in cross-critique and fixed
-everywhere, then the highest-rated fix set wins.
-
-**Four nets**, stated in full before a single fix:
-
-1. **Failing tests** — what is already red
-2. **Static errors** — typechecker and linter
-3. **Invariant violations** — does the *code* actually honor each budget, failure contract, and trust boundary? Real reading, not a grep.
-4. **Weak tests** — invariants with no covering test, tautological or over-mocked tests that assert nothing. *A missing test for an invariant is itself a bug.*
-
-**Then it red-teams the corners** — the pass `/coder` deliberately skipped, and it does **not** re-run the happy path:
-
-- Weird inputs: empty, null, zero, negative, oversized, malformed, unicode, duplicate, injection-shaped, timezone boundaries
-- Failure modes: each dependency down, slow, rate-limited, returning garbage — *"a `try/catch` that logs and continues is usually a broken failure mode wearing the costume of a handled one"*
-- Sequences: races, retry after partial success, the same webhook twice, a crash between the write and the publish
-- Boundaries: wrong user, forged token, another tenant's identifier
-
-It may fix anything it finds. It may **not** close anything — it just became an author.
-
-**Bootstraps a per-repo auditor agent** (`.claude/agents/debugger-<slug>.md`) pinned to your stack, test globs, gate command, and invariant docs. Created once, reused verbatim after.
-
-</details>
-
-<details>
-<summary><b>/reviewer</b> — the gate, and the only stage that says no</summary>
-
-<br>
-
-**Use it when:** something is in `Review Ready`.
-
-**Reads exactly three things:** the diff, the ticket, the invariant docs.
-
-**Refuses to read:** the handoff, the PR description, commit-message justifications, any agent transcript explaining *why* the code is correct.
-
-> Once you have read "this is safe because we validate upstream," you will look for that validation and see it, whether or not it is there.
-
-**Cheap checks first.** Gate red → immediate fail, no judgment pass. Deterministic checks are cheaper and more reliable than a model; let them do their half.
-
-**Then six dimensions** — ticket fidelity, invariant integrity, test honesty, corner behavior, domain fit, craft. The first four can block. The last two only advise unless you can name a concrete future failure, *because a reviewer empowered to block on taste will block forever and the fleet will learn to route around it.*
-
-**Every finding must be falsifiable:** `file:line` + the input that triggers it + the wrong behavior. "Error handling could be more robust" is not a finding — it cannot be argued with, so it cannot be fixed, so it bounces the ticket forever.
-
-**Routes by failure kind**, not into one default lane:
-
-```mermaid
-flowchart TD
-    V{Verdict}
-    V -->|PASS| Done
-    V -->|wrong: bug, broken invariant| DR[Debugger Ready]
-    V -->|missing: no test, unimplemented criterion| AR[Agent Ready]
-    V -->|unbuildable ticket| PL[Planned]
-    V -->|3rd bounce| H[Human escalation]
-
-    style Done fill:#1a7f37,color:#fff
-    style H fill:#9a6700,color:#fff
-```
-
-That fourth row is the one most setups forget, and it is the origin of most infinite loops: a ticket that *cannot* be satisfied bounced forever between builder and fixer, each doing competent work on an impossible task.
-
-It also **never fixes what it grades.** The moment the judge starts authoring, there is no independent judge left anywhere in the loop.
-
-</details>
+The previous `/planner -> /coder -> /debugger -> /reviewer` GitHub Projects
+pipeline remains available only as `/legacy-planner`, `/legacy-coder`,
+`/legacy-debugger`, and `/legacy-reviewer` under `legacy-workflow/`. Its former
+`adversarial-loop` mechanism is now `multi-agent-review`.
 
 ---
 
@@ -188,14 +120,14 @@ This is the discipline you would apply to code that pages you at 3am, applied to
 | Standard | How it's held |
 |---|---|
 | **Nothing ships unverified** | Every ticket carries a `Verification-command` that must exit 0, run *after* the final edit — not before, not "probably still passing" |
-| **Independent sign-off** | The reviewer is a different model in a different context, reads only diff + ticket + invariants, and is the sole stage permitted to mark `Done` |
-| **Non-functionals are contracts** | Latency budgets, failure-mode behavior, and trust boundaries are locked *before* the spec, then attacked in a dedicated stage and graded against |
-| **Failures terminate** | Three failed reviews escalate to a human instead of ping-ponging a ticket that cannot be satisfied |
-| **State is auditable** | The board holds status, the issue holds evidence with verbatim gate output and commit SHA — reconstructable months later without chat logs |
-| **Concurrency is bounded** | Parallel agents get explicit file lanes, may not commit, and the parent re-runs every gate itself |
+| **Independent sign-off** | The GLM maker is excluded from T0-T3 judgment; the final adversary is read-only |
+| **Non-functionals are contracts** | Acceptance and invariant docs travel into every item, milestone gate, and final teardown |
+| **Failures terminate** | Attempts are capped at two per source id; blockers escalate instead of creating recursive retries |
+| **State is auditable** | Backlog, handoff, producer digests, branch ancestry, and structured review records reconstruct the run without chat |
+| **Concurrency is bounded** | `MAX_BATCH` defaults to 3 and caps at 4; every item gets a separate branch and worktree |
 | **Deploys are proven** | `push-handoff` refuses to claim success without reading the remote SHA back, never force-pushes, and scans the diff for secrets |
 
-The tooling holds the same bar. `vskills` ships **zero runtime dependencies** and **35 tests** covering install, drift detection, dependency resolution, symlink safety, and the npx entrypoint. Copies stage into a temp dir and swap in via `rename`, so an interrupted install cannot leave a half-written skill. Content is hashed, so a skill you hand-edited is detected as drifted and left alone rather than silently overwritten. Destructive overwrites are backed up first. The guarantees are written down and held to in [`docs/invariants.md`](docs/invariants.md).
+The tooling holds the same bar. `vskills` ships **zero runtime dependencies** with tests covering install, drift detection, dependency resolution, symlink safety, and the npx entrypoint. Copies stage into a temp dir and swap in via `rename`, so an interrupted install cannot leave a half-written skill. Content is hashed, so a skill you hand-edited is detected as drifted and left alone rather than silently overwritten. Destructive overwrites are backed up first. The guarantees are written down and held to in [`docs/invariants.md`](docs/invariants.md).
 
 <details>
 <summary><b>What each mechanism buys, and what it costs</b></summary>
@@ -209,10 +141,10 @@ No mechanism here is free. Each row is the honest trade.
 | Locked `Verification-command` run after the final edit | "Done" claimed on tests that were never run | Nothing — this one is strictly free |
 | Blind review on a different model | Self-approved bugs. The single largest win. | A second model's tokens |
 | Invariants locked *before* the spec | Plans optimized for "finish" instead of "safe" | One interactive planning session |
-| Dedicated corner-attack stage | Edge cases nobody considered at build time | A whole extra stage |
-| Bounce budget → human at 3 | Infinite build/fix loops on impossible tickets | An occasional human interrupt |
-| Board state + evidence on the issue | Session two re-deriving session one | Discipline about tracker writes |
-| File lanes for parallel work | Agents silently overwriting each other | Drawing boundaries up front |
+| T0 + T1 + T3 widening review | Local and composed defects missed by one scope | Several fresh-model passes |
+| Attempt cap → human escalation | Infinite build/fix loops on impossible items | An occasional human interrupt |
+| Atomic backlog + producer digests | Session two re-deriving session one | Checkpoint discipline |
+| One worktree per item | Agents silently overwriting each other | Worktree lifecycle overhead |
 
 Overall you are trading **tokens and time-to-first-"done"** for **defects that never reach you**. That trade is excellent on a payments integration or an auth boundary, and poor on a script you are deleting tomorrow.
 
@@ -230,7 +162,7 @@ Overall you are trading **tokens and time-to-first-"done"** for **defects that n
 Knowing where a tool stops is part of what makes it trustworthy inside its range.
 
 - **Throwaway scripts, spikes, prototypes.** Use `/prototype`. The pipeline's overhead buys nothing when the code is going in the bin.
-- **One-line fixes.** Four stages for a typo is theater.
+- **One-line fixes.** A multi-tier goal run for a typo is theater.
 - **Exploratory work where you don't know the question yet.** Use `/wayfinder` to map it first, or `/research`. Grilling fog produces confident nonsense.
 - **Solo hacking where you *are* the checker and you're actually going to read it.** The pipeline's value is proportional to how little you plan to read.
 - **No test suite at all.** The gate is the backbone. Without one, every "done" is a judgment call again and most of the machinery is inert.
@@ -243,13 +175,13 @@ Knowing where a tool stops is part of what makes it trustworthy inside its range
 
 | I want to… | Use |
 |---|---|
-| Take an idea all the way to tickets | `/planner` |
-| Build the next ready ticket | `/coder` |
-| Find bugs in code an agent wrote | `/debugger` |
-| Decide if work can close | `/reviewer` |
+| Drive a plan through milestones to verified completion | `/goal CONTEXT/architecture.md` |
+| Research a genuinely contested decision | `council` |
+| Build several ready items safely | `parallel` through `goals` |
+| Tear down a converged diff without fixing it | `council-adversary` |
 | Run a blind loop against a real quality bar | `/gauntlet-loop` |
 | Run *any* task until a checker says done | `/loop-engineer` |
-| Have several models attempt + cross-examine the same task | `/adversarial-loop` |
+| Have several models attempt + cross-examine the same task | `/multi-agent-review` |
 | Stress-test a plan before building | `/grilling`, `/grill-me` |
 | Map work too big to hold in one session | `/wayfinder` |
 | Debug something genuinely hard | `/diagnosing-bugs` |
@@ -272,16 +204,20 @@ Knowing where a tool stops is part of what makes it trustworthy inside its range
 
 <br>
 
-`planner` / `coder` / `debugger` / `reviewer` are the chains you *run*. `pipeline/` is the machinery around them.
+`goals` is the active chain. `council`, `parallel`, and `council-adversary` are the machinery it composes; `pipeline/` contains additional reusable delivery disciplines.
 
 | Skill | Use when |
 |---|---|
-| `github-projects-pipeline` | The stage protocol. Project `Status` is canonical; issues hold tickets and evidence. Load before any stage. |
+| `goals` | Sole backlog writer and resumable autonomous plan driver |
+| `council` | Independent research/debate and scoped T0/T1 review protocol |
+| `parallel` | Worktree build farm, two-reviewer T0 gate, partial-success integration |
+| `council-adversary` | Read-only optional T0/T2 and mandatory T3 teardown |
+| `github-projects-pipeline` | Legacy/reusable GitHub Projects stage protocol |
 | `profile-gated-delivery` | Run an effort end to end with an evidence gate between every stage |
 | `specialist-profiles` | Build and verify the four role agents so maker ≠ checker is structural, not aspirational |
 | `state-driven-pipeline-recovery` | The pipeline is thrashing, or a worker reports success while nothing changed |
 | `controlled-ticket-delivery` | Budget caps, live migrations, restricted git or tracker access |
-| `ticket-implementation-tdd` | The detailed one-ticket TDD loop each `/adversarial-loop` participant runs inside `/coder` |
+| `ticket-implementation-tdd` | Detailed one-ticket TDD discipline for standalone or legacy workflows |
 | `provider-integration-tdd` | Queues, signed webhooks, idempotent billing, owned artifacts — where failures are replay and ordering, not logic |
 | `invariant-evidence-review` | Is this invariant actually enforced and measured, or just asserted in a comment? |
 | `codebase-audit` | Audit a whole system: sweep by layer, rank by blast radius, emit tickets |
@@ -304,7 +240,7 @@ The load-bearing rule across all of them: **done is a locked verification comman
 |---|---|
 | `loop-engineer` | Wrap any task in a closed maker→checker loop with an explicit done-condition |
 | `gauntlet-loop` | Generate or run a blind maker→critic loop against a real quality bar for one-shot, UI, writing, and implementation work |
-| `adversarial-loop` | Same coding task, orchestrator + 3 model/provider subagents in isolated worktrees, rounds of cross-critique until unanimous sign-off or a 6-round cap, every final diff rated side by side — no auto-merge |
+| `multi-agent-review` | Same task, several model/provider agents in isolated worktrees, relayed cross-critique, final artifacts rated side by side |
 | `push-handoff` | Commit and push under explicit authority, and **prove** it by reading the remote SHA back |
 | `setup-obsidian` | Turn a docs folder into a retrieval graph — router, generated indexes, state file |
 | `setup-vskills` | Set this repo up on a new machine |
@@ -391,51 +327,57 @@ bin/vskills.js    the vskills CLI entrypoint
 src/              vskills implementation
 test/             vskills test suite (node --test)
 
-planner/          plan    — grill → invariants → spec → tickets → handoff
-coder/            build   — next ticket → TDD → self-check → handoff
-debugger/         harden  — four-net audit → red-team the corners → fix
-reviewer/         judge   — blind verdict → PASS/FAIL → route or escalate
+goals/            autonomous plan driver, atomic backlog, milestone gates
+council/          independent research, debate, T0/T1 review protocol
+parallel/         worktree build farm + CLI runner + compact results contract
+council-adversary/read-only T0/T2/T3 teardown
+opencode/         canonical global primary/subagent + /goal definitions
+legacy-workflow/  preserved legacy-planner/coder/debugger/reviewer skills
 
 push-handoff/     verified, explicitly authorized commit/push closeout
 loop-engineer/    closed maker→checker loop runner
 gauntlet-loop/    blind maker→critic loop for one-shot and UI work
-adversarial-loop/ multi-model worktree loop — cross-critique to sign-off, rate, you pick
+multi-agent-review/ standalone multi-model worktree comparison loop
 pipeline/         the machinery: stage protocol, roles, worktree safety,
                   batch delivery, audit, recovery
 mattpocock/       mirrored library (github.com/mattpocock/skills)
 ```
 
 <details>
-<summary><b>Running the stages on different models</b></summary>
+<summary><b>Global OpenCode agent profile</b></summary>
 
 <br>
 
-The pipeline is serial. Each stage runs as an independent top-level session; a stage may coordinate one level of helpers, and a helper may never spawn helpers of its own.
+OpenCode loads the canonical definitions under `opencode/agent/` globally from
+`~/.config/opencode/agent/`. Shift-Tab can select either `goals` for delivery or
+`council` for standalone research/review. Goals remains the only writer and
+merger in a goal run. Every child is `mode: subagent` with `task: deny`, so the
+tree is always one level:
 
-| Stage | Default parent | Harness | Effort |
-|---|---|---|---|
-| `/planner` | Opus 5 | Claude Code | medium/high |
-| `/coder` | Kimi K3 | Pi via OpenRouter | high |
-| `/debugger` | GPT-5.6 Luna | Codex | **max** |
-| `/reviewer` | Grok 4.5 | Pi via OpenRouter | high/xhigh |
+```text
+goals   -> {contributor, council members, council-adversary}
+council -> {council members, council-adversary}
+```
 
-`/planner`, `/coder`, and `/debugger` each build/harden/plan via `/adversarial-loop`
-in **pipeline operating mode**: the stage's default parent above is the
-orchestrator, plus a **fixed default trio** — the first 3 distinct models, in
-priority order `Kimi K3, GLM 5.2, GPT-5.6 Sol, Grok 4.5, Fable 5, Opus 5,
-Sonnet 5`, excluding the orchestrator's own model — cross-critiqued to
-unanimous sign-off or a 6-round cap, highest-rated result wins automatically
-(no human picks mid-run; every participant's rating lands in the handoff).
-`/reviewer` stays a single blind judge — it is deliberately **not** run through
-`/adversarial-loop`, since the whole point of that stage is one unreviewed-by-
-itself verdict, not a competing panel.
+| Agent | Model |
+|---|---|
+| `goals` | current selected model, delivery primary |
+| `council` | current selected model, read-only primary |
+| `contributor` | `opencode-go/glm-5.2` |
+| `council-grok` | `opencode-go/grok-4.5` |
+| `council-kimi` | `openrouter/moonshotai/kimi-k3` |
+| `council-qwen` | `openrouter/qwen/qwen3.8-max` |
+| `council-sol` | `openai/gpt-5.6-sol` |
+| `council-glm` | `opencode-go/glm-5.2` (research only for GLM-authored code) |
+| `council-adversary` | `opencode-go/grok-4.5`, read-only |
 
-These are defaults, and a project's own CONTEXT may override them — [`VrajGupta/Pi-Setup`](https://github.com/VrajGupta/Pi-Setup) is a working harness that launches these four stages and pins its own model per stage. **What is not negotiable** is that the reviewer is a different model and context from whoever produced the diff. If that can't be confirmed, the verdict must say so rather than quietly proceeding.
+Members have read-only filesystem, web, skill, and inherited MCP access. They
+inspect source material themselves instead of receiving a
+pre-solved answer. The CLI path launches fresh `opencode run --dir <worktree>`
+processes; if no binary exists, goals uses parallel Task calls against the same
+worktrees and emits the same result contract.
 
-The board item, issue, git artifacts, and handoff bridge the sessions — never chat history. `max` is a reasoning setting, not part of a model name. A headless planner cannot conduct the interactive grill; use a visible session or supply every decision in advance.
-
-**Runtime.** super.engineering is the managed-workspace authority for worktrees, target/base branches, sessions, and reviews. Herdr is an optional local terminal multiplexer giving you visible, persistent agent panes, and it can host the separate stage-parent processes. The two coexist — super.engineering owns the workspace, Herdr provides process visibility — but Herdr replaces neither GitHub Projects nor git, and should not independently mutate a super.engineering-managed worktree.
-
-**No GitHub Project?** Every stage still runs in full — grill, build, attack, judge — recording state in a local tracker or the handoff instead. A missing label is a bookkeeping gap; a skipped test is a defect that ships. The stage protocol, including the no-project fallback, is in [`pipeline/github-projects-pipeline`](pipeline/github-projects-pipeline/SKILL.md).
+OpenCode loads configuration once. Quit and restart it after changing an agent,
+skill, command, or config file.
 
 </details>

@@ -1,14 +1,18 @@
 ---
-name: coder
+name: legacy-coder
 version: 1.2.0
-description: Implementation chain and the build stage of the fleet loop (planner plan → coder build → debugger debug → reviewer review) — read the project's docs, pick the next unblocked ticket from Agent Ready, move it to Coding, build it via /adversarial-loop (build mode, pipeline operating mode — orchestrator plus a fixed model trio, cross-critiqued to sign-off, highest-rated diff wins) against a machine-checkable gate, self-check the obvious corners, then hand the ticket to Debugger Ready and write and push a handoff. Runs adversarial-loop(build) → self-check → handoff → push-handoff. Use when the user runs /coder, wants to pick up and implement the next ready ticket, or needs to build a ticket that /reviewer bounced back for a missing acceptance criterion or a missing test. Also use it when the user says to pick up "all the issues" in Agent Ready — it discovers the queue from the board and drains it one ticket at a time.
+description: Legacy coding stage from the former planner-coder-debugger-reviewer fleet, preserved for explicit opt-in use. Use only when the user invokes /legacy-coder or deliberately requests the old GitHub Projects stage workflow instead of goals.
+dependencies: [multi-agent-review]
 ---
 
-# /coder — Implementation chain (next ticket → TDD → pushed handoff)
+# /legacy-coder — Former implementation chain
+
+This is the preserved legacy workflow. The active autonomous pipeline is
+`goals`; do not auto-trigger this skill for ordinary implementation requests.
 
 Orchestrate the build-and-hand-off loop: figure out what to work on from the
 docs, implement it test-first against a machine-checkable gate, self-check the
-obvious corners, then pass it down the line. This is the counterpart to `/planner`
+obvious corners, then pass it down the line. This is the counterpart to `/legacy-planner`
 (which produces the tickets — and the invariants — this skill consumes).
 
 ## Your place in the fleet loop
@@ -18,14 +22,14 @@ run by a **different model** so that no stage ever reviews its own work:
 
 ```
 Planned → Agent Ready → Coding → Debugger Ready → Debugging → Review Ready → Reviewing → Done
-   └ /planner ─┘  └──── /coder ────┘   └──── /debugger ────┘   └──── /reviewer ────┘
+   └ /legacy-planner ─┘  └──── /legacy-coder ────┘   └──── /legacy-debugger ────┘   └──── /legacy-reviewer ────┘
 ```
 
 ### Stage-parent session
 
 The default coder is Kimi K3 in a separate top-level Pi session through OpenRouter,
 with high reasoning. It may use Kimi K2.7 Code helpers only when Kimi K3 is the
-independent stage parent. If `/coder` was launched as a native child of another
+independent stage parent. If `/legacy-coder` was launched as a native child of another
 session, it must work directly and cannot create nested children. The GitHub
 Project item, GitHub issue, git/PR artifacts, and handoff bridge this session to the
 other stage parents.
@@ -44,15 +48,15 @@ same gate, self-check the same way, and record where it ended up in the handoff.
 Say which mode you're in. A missing label is a bookkeeping gap; a skipped test is
 a defect that ships.
 
-You are the **maker**, and deliberately not the checker. `/debugger` will attack what
-you build and `/reviewer` will judge whether it may close — both on different models,
+You are the **maker**, and deliberately not the checker. `/legacy-debugger` will attack what
+you build and `/legacy-reviewer` will judge whether it may close — both on different models,
 precisely so they don't inherit your blind spots. That division is the reason to
 build honestly rather than defensively: you cannot talk the judge into a pass (it
 never reads your handoff), and hiding a stub only wastes a downstream stage's
 budget rediscovering it. Your job is a green gate and an honest report of what
 isn't finished.
 
-You may also be handed a ticket **bounced back from `/reviewer`** — routed to Agent
+You may also be handed a ticket **bounced back from `/legacy-reviewer`** — routed to Agent
 Ready because an acceptance criterion was unimplemented or an invariant had no
 covering test. Read the review comment on the ticket first: it names the exact
 defect and the bounce count. Fix *that*, not the whole ticket again.
@@ -71,7 +75,7 @@ Read, in roughly this order (use whatever the repo actually has):
 4. The relevant **spec / plans** and **ADRs** for the ticket's area.
 
 **Selection rule:** pick the **lowest-numbered ticket in Agent Ready whose every
-Blocked-by ticket is done.** Prefer a ticket carrying a `/reviewer` review comment
+Blocked-by ticket is done.** Prefer a ticket carrying a `/legacy-reviewer` review comment
 (a bounce) over a fresh one — bounced work is already half-built and blocking a
 close. **Move that one project item to `Coding` before you write any code** —
 update the Project `Status` field and read it back — so
@@ -99,7 +103,7 @@ again from Step 1 for the next.
 Two habits make this loop reliable:
 
 - **Re-query the board between tickets, never cache the list.** The frontier
-  changes as you go: finishing ticket 12 may unblock ticket 15, and `/reviewer` may
+  changes as you go: finishing ticket 12 may unblock ticket 15, and `/legacy-reviewer` may
   have bounced something back into `Agent Ready` while you built. Ask the tracker
   again each lap and re-apply the selection rule to fresh data.
 - **One ticket in `Coding` at any moment.** Move it in when you start, out when
@@ -125,13 +129,13 @@ item moved per ticket, and you still never set `Done`.
 ## Step 2 — Lock the gate, then build it test-first
 
 **First, lock the done-condition gate.** Translate the ticket's acceptance criteria
-+ the `/planner` invariants into **one command that must exit 0** — e.g. `npm test --
-<ticket>.spec && tsc --noEmit && <lint/design-check>`. If `/planner` shipped the
++ the `/legacy-planner` invariants into **one command that must exit 0** — e.g. `npm test --
+<ticket>.spec && tsc --noEmit && <lint/design-check>`. If `/legacy-planner` shipped the
 ticket with a **Verification-command**, use that. "Done" is this command passing,
 not a judgment call. Set an iteration **budget** (default 5); on exhaustion, stop
 and report the blocking failure rather than thrashing.
 
-5. **`/adversarial-loop`** (`build` mode, pipeline operating mode) — implement the
+5. **`/multi-agent-review`** (`build` mode, pipeline operating mode) — implement the
    chosen ticket through the orchestrator (this stage-parent session) plus its
    fixed default trio, each independently satisfying the ticket's acceptance
    criteria test-first (`~/.claude/skills/tdd/SKILL.md` red-green discipline,
@@ -149,14 +153,14 @@ and report the blocking failure rather than thrashing.
 ## Step 3 — Self-check, then hand the ticket down the line
 
 6. **Self-check (cheap, scoped — not a full red-team).** The deep adversarial
-   pass belongs to `/debugger` and the verdict belongs to `/reviewer`, both on different
+   pass belongs to `/legacy-debugger` and the verdict belongs to `/legacy-reviewer`, both on different
    models. Duplicating that work here wastes your budget on findings a fresh pair
    of eyes will make anyway, and — worse — a checker running in your own context
    inherits your blind spots and issues a confident all-clear. So keep this pass
    narrow and mechanical, covering only what's embarrassing to pass downstream:
    - **Every acceptance criterion, enumerated.** Walk them one at a time and name
      the line of code and the test that satisfies each. Missing one is the single
-     most common reason `/reviewer` bounces a ticket back to you.
+     most common reason `/legacy-reviewer` bounces a ticket back to you.
    - **Every named invariant has a test that would go red if it broke.** Not "the
      suite is green" — a specific test per invariant. An invariant with no
      covering test is an unfinished ticket, not a follow-up.
@@ -167,7 +171,7 @@ and report the blocking failure rather than thrashing.
 
    Fix what this finds **test-first**, and re-run the gate after each fix so a
    corner-fix can't silently regress a neighbor. Do **not** start refactoring —
-   `/debugger` owns that pass, and a refactor riding along inside a feature diff
+   `/legacy-debugger` owns that pass, and a refactor riding along inside a feature diff
    makes the diff harder for it to review.
 
 7. **Move the project item to `Debugger Ready`** — update and read back the
@@ -185,12 +189,12 @@ and report the blocking failure rather than thrashing.
    copy): what was built, which ticket it moved to Debugger Ready, the green-gate
    state, **what the self-check covered and what it found**, honest follow-ups
    (anything stubbed/in-memory/not-yet-wired), and the **next** ready ticket.
-   Write this for the *human* and for `/debugger` — `/reviewer` will never read it, by
+   Write this for the *human* and for `/legacy-debugger` — `/legacy-reviewer` will never read it, by
    design, so nothing here can substitute for a criterion actually being met.
 9. **`push-handoff`** — **always run this last.** Read and follow the
    **`push-handoff`** skill (`~/.claude/skills/push-handoff/SKILL.md`): stage the
    handoff doc + all changed code/CONTEXT artifacts, commit, and push to the
-   configured remote. **`/coder` is not complete until push succeeds** (or you
+   configured remote. **`/legacy-coder` is not complete until push succeeds** (or you
    report an auth blocker with the skill's recovery steps). Never commit secrets.
 
 ## Rules
@@ -204,10 +208,10 @@ and report the blocking failure rather than thrashing.
   `~/.claude/skills/github-projects-pipeline/SKILL.md`.
 - **One ticket moves, not the queue.** Only the ticket you're actually building
   enters `Coding`; everything else stays idle where it is.
-- **You never mark anything Done.** Only `/reviewer` closes tickets. A green suite is
+- **You never mark anything Done.** Only `/legacy-reviewer` closes tickets. A green suite is
   evidence, not a verdict.
-- **Don't red-team or refactor your own diff.** Those passes belong to `/debugger`
-  and `/reviewer`, on other models, for a reason — a checker in your context shares
+- **Don't red-team or refactor your own diff.** Those passes belong to `/legacy-debugger`
+  and `/legacy-reviewer`, on other models, for a reason — a checker in your context shares
   your blind spots. Keep the Step 3 self-check narrow.
 - Implement **one ticket per run** unless the user asks for more — thin slices
   keep handoffs clean and reviewable. When they do ask for more, drain the queue
