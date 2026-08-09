@@ -1,16 +1,17 @@
 ---
-name: adversarial-loop
-description: Run the same task through the orchestrator plus 3 model/provider subagents in isolated git worktrees, relay each round's output and critique hub-and-spoke, and stop on unanimous sign-off or a 6-round cap. Supports three modes — build (a ticket's implementation), harden (attack + fix an existing diff), plan (a spec + tickets) — and is the mechanism behind /coder, /debugger, and /planner's own build/fix/spec steps, not just a standalone tool. In pipeline operating mode it auto-picks the highest-rated result for unattended queue-draining; in interactive mode it asks you to pick. Use when the user says adversarial-loop, wants a task independently attempted by several models and cross-examined, wants competing implementations/fixes/specs judged before choosing one, or when /coder, /debugger, or /planner need to build/harden/plan a ticket through this mechanism.
+name: multi-agent-review
+version: 1.0.0
+description: Run one task through several model/provider agents in isolated worktrees, relay cross-critiques, and compare the final artifacts. Use when the user invokes /multi-agent-review, wants competing implementations/plans/fixes, or explicitly runs the preserved legacy fleet's multi-model mechanism.
 ---
 
-# Adversarial Loop
+# Multi-Agent Review
 
 Same task, several models, no one merges anyone else's work. Every participant
 works in its own worktree; the orchestrator only relays and, at the end, rates.
 
 This skill is invoked two ways: **directly** by a human (interactive operating
-mode), or **as the build/harden/plan mechanism inside `/coder`, `/debugger`, and
-`/planner`** (pipeline operating mode). The round mechanics (Steps 2-4) are
+mode), or by the preserved `legacy-coder`, `legacy-debugger`, and
+`legacy-planner` workflow. The round mechanics (Steps 2-4) are
 identical either way — only how participants are picked (Step 1) and how the
 result is resolved (Step 5) differ.
 
@@ -18,23 +19,23 @@ result is resolved (Step 5) differ.
 
 | Mode | Used by | Task | Artifact |
 |---|---|---|---|
-| `build` (default) | `/coder` Step 2 | Implement the ticket's acceptance criteria test-first | A code diff, gated by the ticket's `Verification-command` |
-| `harden` | `/debugger` Steps 1-2 | Run the four-nets audit + red-team pass against the ticket's landed diff, fix everything found, test-first | A fix diff on top of the existing branch, same gate |
-| `plan` | `/planner` chain steps 3-4 | Turn the already-**grilled** decisions + locked invariants into a spec and dependency-ordered tickets | A spec + ticket set per participant, no code gate |
+| `build` (default) | `/legacy-coder` Step 2 | Implement the ticket's acceptance criteria test-first | A code diff, gated by the ticket's `Verification-command` |
+| `harden` | `/legacy-debugger` Steps 1-2 | Run the four-nets audit + red-team pass against the ticket's landed diff, fix everything found, test-first | A fix diff on top of the existing branch, same gate |
+| `plan` | `/legacy-planner` chain steps 3-4 | Turn the already-**grilled** decisions + locked invariants into a spec and dependency-ordered tickets | A spec + ticket set per participant, no code gate |
 
 `plan` mode never runs the interactive grill itself (`grill-with-docs` stays a
 single human conversation — you can't parallelize asking the user a question).
-It starts only after `/planner`'s Step 1 (grill) and Step 2 (lock invariants)
+It starts only after `/legacy-planner`'s Step 1 (grill) and Step 2 (lock invariants)
 are already done; participants compete on turning those locked decisions into
 a spec/tickets, not on what the decisions should be.
 
 ## Operating mode — interactive vs pipeline
 
-- **Interactive** (default when a human runs `/adversarial-loop` directly):
+- **Interactive** (default when a human runs `/multi-agent-review` directly):
   Step 1 asks the user, via `AskUserQuestion`, which model/provider fills each
   of the 3 slots, every run. Step 5 presents every final result side by side,
   rated, and asks the user which to keep.
-- **Pipeline** (used when `/coder`/`/debugger`/`/planner` invoke this as their
+- **Pipeline** (used when `/legacy-coder`/`/legacy-debugger`/`/legacy-planner` invoke this as their
   own step, e.g. while draining a ticket queue unattended): Step 1 uses a
   **fixed default trio** instead of asking — the first 3 distinct models, in
   this priority order, that are not the current orchestrator's own model:
@@ -58,7 +59,7 @@ new models ship — this is the one place to update):
   models default here).
 
 In pipeline mode, the orchestrator is that stage's own model (e.g. Kimi K3 for
-`/coder`, GPT-5.6 Luna for `/debugger`, Opus 5 for `/planner` per this repo's
+`/legacy-coder`, GPT-5.6 Luna for `/legacy-debugger`, Opus 5 for `/legacy-planner` per this repo's
 `CONTEXT.md` profile) — check it against the same list.
 
 ## Step 1 — Pick the 3 subagent slots
@@ -83,7 +84,7 @@ For each chosen model, decide how it will actually run:
 One worktree per participant, including the orchestrator's own attempt when it
 has one — every entrant needs to be symmetric so the final results are fairly
 comparable. See `superpowers:using-git-worktrees` for the mechanics; branch
-names like `adversarial-loop/<slot>-<model-slug>` off the current HEAD (in
+  names like `multi-agent-review/<slot>-<model-slug>` off the current HEAD (in
 `harden` mode, off the ticket's already-landed branch, not a fresh one).
 
 ## Step 3 — Round 1: independent attempts
@@ -148,5 +149,6 @@ asked to keep them for reference.
 `shared-worktree-delegation` (lane/gatekeeper mechanics this borrows from),
 `superpowers:using-git-worktrees` (worktree setup), `push-handoff` (once the
 chosen diff is merged and ready to ship), `grilling` (for scoping the task
-brief itself before a run, if it's still fuzzy), `coder`/`debugger`/`planner`
-(the three pipeline stages that invoke this in pipeline mode).
+brief itself before a run, if it's still fuzzy), `legacy-coder`,
+`legacy-debugger`, and `legacy-planner` (the preserved stages that invoke this
+in pipeline mode).

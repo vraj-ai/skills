@@ -1,34 +1,38 @@
 ---
-name: debugger
+name: legacy-debugger
 version: 1.2.0
-description: Debugging and hardening chain — the third fleet stage (planner plan → coder build → debugger debug → reviewer review). Takes a ticket from Debugger Ready, moves it to Debugging, and hardens what /coder built via /adversarial-loop (harden mode, pipeline operating mode) — orchestrator plus a fixed model trio each attack weird inputs, failure modes, boundaries, invariants, and test quality in their own worktree, cross-critique to sign-off, highest-rated fix set wins — before moving it to Review Ready. Runs as the GPT-5.6 Luna Codex stage parent by default. Also supports sweep mode over a directory. Creates or reuses a personalized auditor agent whose pins seed every adversarial-loop participant. Use when the user runs /debugger, wants agent-written code attacked before it can close, needs a ticket hardened, or wants an autonomous audit. Also use it to harden all issues in Debugger Ready; it discovers the queue from the board and drains it one ticket at a time.
+description: Legacy debugging stage from the former planner-coder-debugger-reviewer fleet, preserved for explicit opt-in use. Use only when the user invokes /legacy-debugger or deliberately requests the old GitHub Projects stage workflow instead of goals.
+dependencies: [multi-agent-review]
 ---
 
-# /debugger — Debugging chain (Debugger Ready → attacked → Review Ready)
+# /legacy-debugger — Former debugging chain
 
-The **skeptic** of the fleet. Where `/planner` plans and `/coder` builds, `/debugger`
+This is the preserved legacy workflow. The active autonomous pipeline is
+`goals`; do not auto-trigger this skill for ordinary debugging requests.
+
+The **skeptic** of the fleet. Where `/legacy-planner` plans and `/legacy-coder` builds, `/legacy-debugger`
 deliberately tries to break what was built — on a different model from the one that
 wrote it, which is the whole point: the misreading that produced a bug also produces a
 confident review of that bug, and only an outside context breaks that correlation.
 It makes sure the repo has a **personalized auditor agent** (creating it if absent,
 reusing it if present), then runs that agent as a **systematic debugger**: read the
 context, hunt bugs through four nets, fix them test-first, move the ticket on. It
-**composes** `/planner` and `/coder` rather than reinventing them — bugs are framed with
-`/planner`'s ticket format (invariant + `Verification-command`) and fixed with `/coder`'s
+**composes** `/legacy-planner` and `/legacy-coder` rather than reinventing them — bugs are framed with
+`/legacy-planner`'s ticket format (invariant + `Verification-command`) and fixed with `/legacy-coder`'s
 test-first loop. The ticket trail is the audit log.
 
 ## Your place in the fleet loop
 
 ```
 Planned → Agent Ready → Coding → Debugger Ready → Debugging → Review Ready → Reviewing → Done
-   └ /planner ─┘  └──── /coder ────┘   └──── /debugger ────┘   └──── /reviewer ────┘
+   └ /legacy-planner ─┘  └──── /legacy-coder ────┘   └──── /legacy-debugger ────┘   └──── /legacy-reviewer ────┘
 ```
 
 ### Stage-parent session
 
 The default debugger is GPT-5.6 Luna in a separate top-level Codex session using
 **maximum reasoning effort**. It may use auditor helpers inside that independent
-stage-parent session when the harness supports them. If `/debugger` was launched as a
+stage-parent session when the harness supports them. If `/legacy-debugger` was launched as a
 native child, it must perform the audit directly and must not spawn nested children.
 The debugger model must remain different from the Kimi maker and from the Grok
 reviewer.
@@ -48,7 +52,7 @@ handoff. Say which mode you're in. The audit is the value here; the label is onl
 the receipt.
 
 You are the **hardener**, not the judge. You may fix anything you find — that's the
-difference between you and `/reviewer`, which only ever writes findings down. But you do
+difference between you and `/legacy-reviewer`, which only ever writes findings down. But you do
 **not** close tickets: when you're satisfied, the ticket moves to **Review Ready** and
 an independent reviewer on yet another model decides whether it may close. Don't review
 your own repairs; you just became an author of them.
@@ -57,7 +61,7 @@ Two modes, same machinery:
 
 - **Ticket mode (the default).** A ticket sits in `Debugger Ready` — take the
   lowest-numbered one, move it to `Debugging`, attack *its* diff, fix what breaks,
-  move it to `Review Ready`. Prefer tickets `/reviewer` bounced back as correctness
+  move it to `Review Ready`. Prefer tickets `/legacy-reviewer` bounced back as correctness
   failures: read the review comment, which names the exact defect and the bounce count.
 - **Sweep mode.** No ticket named, or the user points at a directory — hunt the whole
   scope for bugs nobody filed. Fixes that are small and in-scope get made directly;
@@ -65,7 +69,7 @@ Two modes, same machinery:
   needs grilling) rather than smuggled into an unrelated diff.
 
 > **The global stage-parent profile is the default; a project's CONTEXT may override it.**
-> The default `/debugger` parent is GPT-5.6 Luna in the Codex harness at maximum
+> The default `/legacy-debugger` parent is GPT-5.6 Luna in the Codex harness at maximum
 > reasoning. What *is* non-negotiable is that the debugger is not the same model or
 > context that wrote the code. If you cannot confirm that, say so.
 
@@ -89,13 +93,13 @@ One ticket per run is the default. When the user asks for the whole queue ("hard
 everything in Debugger Ready"), repeat this skill **end-to-end, serially**: claim
 one ticket, run Steps 1–3 on it, land it in `Review Ready`, then start again from
 `Before you start` for the next. Do not claim the batch and do not merge several
-tickets' repairs into one undifferentiated diff — `/reviewer` reviews per ticket, and a
+tickets' repairs into one undifferentiated diff — `/legacy-reviewer` reviews per ticket, and a
 diff spanning five tickets is one it cannot attribute.
 
 Two habits make this loop reliable:
 
-- **Re-query the board between tickets, never cache the list.** `/coder` may push
-  new work into `Debugger Ready` while you're mid-audit, and `/reviewer` may bounce a
+- **Re-query the board between tickets, never cache the list.** `/legacy-coder` may push
+  new work into `Debugger Ready` while you're mid-audit, and `/legacy-reviewer` may bounce a
   correctness failure back into it — those belong in the loop.
 - **One ticket in `Debugging` at any moment.** Step 0's agent bootstrap happens
   once for the whole run, not once per ticket; only Steps 1–3 repeat.
@@ -112,18 +116,18 @@ preconditions bind: disjoint lanes proven, baseline green recorded, one commit p
 ticket, and you re-run every worker's gate yourself. Repairs still never review
 themselves, and every ticket still lands in `Review Ready`, never `Done`.
 
-## Step 0 — Ensure the personalized agent (idempotent; mini /planner + /coder)
+## Step 0 — Ensure the personalized agent (idempotent; mini /legacy-planner + /legacy-coder)
 
-Check for **`.claude/agents/debugger-<slug>.md`** (`<slug>` = the repo / project name). This auditor belongs to the independent debugger stage-parent session; it is not permission for a native child of another session to create a grandchild:
+Check for **`.claude/agents/legacy-debugger-<slug>.md`** (`<slug>` = the repo / project name). This auditor belongs to the independent debugger stage-parent session; it is not permission for a native child of another session to create a grandchild:
 
 - **It exists** → **reuse it verbatim.** Do not recreate or regenerate it — that's the
   whole point of idempotent. Skip to Step 1. (If its pins are genuinely stale, *edit*
   the file, don't overwrite it wholesale.)
-- **It's missing** → **create it now, in this same run**, via a mini `/planner` + `/coder`:
-  - **mini `/planner` (plan):** inspect the repo and lock what the agent reviews — stack,
+- **It's missing** → **create it now, in this same run**, via a mini `/legacy-planner` + `/legacy-coder`:
+  - **mini `/legacy-planner` (plan):** inspect the repo and lock what the agent reviews — stack,
     test framework, test globs, gate-command shape, the CONTEXT/invariant docs to
-    attack, and the tracker + `/planner` ticket format.
-  - **mini `/coder` (build):** write `.claude/agents/debugger-<slug>.md` from
+    attack, and the tracker + `/legacy-planner` ticket format.
+  - **mini `/legacy-coder` (build):** write `.claude/agents/legacy-debugger-<slug>.md` from
     `AGENT-TEMPLATE.md` (in this skill folder) with those pins. It's the personalized,
     git-committable **maker**.
 
@@ -136,7 +140,7 @@ don't fake it — run the pinned loop yourself in this session, or hand the four
 to `feature-dev:code-reviewer` with the pins written into its prompt, and say in the
 handoff that the agent was not persisted.
 
-## Step 1 — Harden via `/adversarial-loop` (`harden` mode, pipeline operating mode)
+## Step 1 — Harden via `/multi-agent-review` (`harden` mode, pipeline operating mode)
 
 In ticket mode, move **that one project item** to **`Debugging`** first — update
 and read back the Project `Status` field — so the board shows it's in flight. Move
@@ -144,11 +148,11 @@ nothing else: if seven tickets sit in `Debugger Ready` and you're
 debugging one, six stay put. A column full of tickets nobody is working destroys the
 only thing an in-flight column is for.
 
-Then run `/adversarial-loop` (`harden` mode, pipeline operating mode): the
+Then run `/multi-agent-review` (`harden` mode, pipeline operating mode): the
 orchestrator (this stage-parent session) plus its fixed default trio each
 independently execute the `debugger-<slug>` auditor's pinned loop below — same
 pins, same task — in their own isolated worktree, branched off the ticket's
-already-landed diff. If this `/debugger` run is itself a native child, it
+already-landed diff. If this `/legacy-debugger` run is itself a native child, it
 executes the pinned loop directly, as the orchestrator's own attempt, and must
 not spawn a nested auditor of its own.
 
@@ -165,7 +169,7 @@ Every participant's pinned loop:
    - **weak / uncovered tests** — invariants with no real covering test, and
      tautological / over-mocked tests that assert nothing. A missing test for an
      invariant is itself a bug — the fix is to write it.
-4. **Red-team the corners** (the pass `/coder` deliberately didn't run) — what's
+4. **Red-team the corners** (the pass `/legacy-coder` deliberately didn't run) — what's
    *latently* wrong, the corners agent-written code fails in, which a green
    happy-path suite says nothing about. Do **not** re-run the happy path; the
    suite already covers it, and re-verifying it is how a debugger spends its
@@ -181,10 +185,10 @@ Every participant's pinned loop:
    - **Sequences & crash-safety** — two calls racing, retry after partial success, the
      same webhook twice (idempotency), a crash between the write and the publish.
    - **Permission & boundary edges** — wrong user, missing/expired/forged token, privilege
-     escalation, another tenant's identifier, the trust edges the `/planner` invariants drew.
+     escalation, another tenant's identifier, the trust edges the `/legacy-planner` invariants drew.
      On row-level-security projects, confirm the query runs under the constrained role and
      not a service client that bypasses the policy.
-5. **Per bug — frame then fix:** frame it as a `/planner` ticket (name the violated
+5. **Per bug — frame then fix:** frame it as a `/legacy-planner` ticket (name the violated
    invariant + write the `Verification-command` gate), record it in the tracker as the
    audit trail, then fix it **test-first** (red→green only) until the gate exits 0.
    **Budget 5** attempts per bug; on exhaustion, record it as an unfixed follow-up
@@ -197,7 +201,7 @@ raising every entrant's floor, not just cross-examining one already-known fix.
 **After each fix, re-run the gate command**, so a corner-fix can't silently
 regress a neighbor. Then auto-pick the highest-rated worktree; its fixes,
 merged onto the ticket's branch, are the hardened result. This is also where
-**refactoring** happens (`/coder` defers it here on purpose, so feature diffs
+**refactoring** happens (`/legacy-coder` defers it here on purpose, so feature diffs
 stay reviewable): the winning participant fixes the smells it finds —
 mysterious names, duplicated code, feature envy, data clumps, primitive
 obsession, repeated switches, divergent change, speculative generality,
@@ -212,10 +216,10 @@ losing attempts missed too, not only what shipped.
 When the gate is green and the corners are covered, move the project item to
 **`Review Ready`** — update and read back the Project `Status` field — and stop.
 Leaving it parked in `Debugging` after you finish is the same failure as never moving
-it: the column stops meaning "live right now." Do not review your own work and do not close it — `/reviewer` decides
+it: the column stops meaning "live right now." Do not review your own work and do not close it — `/legacy-reviewer` decides
 that, blind, on another model, and it will read the diff without your explanation of
 it. Anything you left unfixed goes **on the ticket** as a named follow-up, not only in
-the handoff: `/reviewer` never reads handoffs, so an undisclosed gap simply reappears as a
+the handoff: `/legacy-reviewer` never reads handoffs, so an undisclosed gap simply reappears as a
 bounce.
 
 In sweep mode there may be no single ticket to move. File what you found instead —
@@ -235,16 +239,16 @@ reach it** and out again as you finish, never claiming the batch up front.
 2. **`push-handoff`** — **always run this last.** Read and follow the `push-handoff`
    skill (`~/.claude/skills/push-handoff/SKILL.md`): stage the changed code + ticket
    trail + agent file + handoff, commit, push a **feature branch**, open/update a **PR
-   into main**. **`/debugger` is not complete until push succeeds** (or you report an auth
+   into main**. **`/legacy-debugger` is not complete until push succeeds** (or you report an auth
    blocker with the skill's recovery steps). Never commit secrets, never merge the PR.
 
 ## Rules
 
 - **Idempotent bootstrap, one invocation.** Create the personalized agent once (via
-  mini `/planner` + `/coder`) only if it's missing; reuse it verbatim if it exists; never
-  regenerate. Bootstrap **and** run happen in the same `/debugger` — no stop-and-rerun.
+  mini `/legacy-planner` + `/legacy-coder`) only if it's missing; reuse it verbatim if it exists; never
+  regenerate. Bootstrap **and** run happen in the same `/legacy-debugger` — no stop-and-rerun.
 - **The gate is "done," not a judgment call.** A bug is fixed when its
-  `Verification-command` exits 0 — same discipline as `/coder`.
+  `Verification-command` exits 0 — same discipline as `/legacy-coder`.
 - **Move the project item**: `Debugger Ready` → `Debugging` when you start →
   `Review Ready` when the gate is green, updating and reading back the Project
   `Status` every time — and **only for the ticket you're working**, never the queue.
@@ -253,14 +257,14 @@ reach it** and out again as you finish, never claiming the batch up front.
   ticket, re-query the board between laps, never more than one ticket in
   `Debugging` at a time.
 - **Never review your own fixes.** You repaired this code, so you are its author now —
-  `/reviewer` judges it, blind and on another model. Move the ticket to `Review Ready`;
+  `/legacy-reviewer` judges it, blind and on another model. Move the ticket to `Review Ready`;
   never to `Done`.
-- **Disclose unfixed gaps on the ticket, not just in the handoff.** `/reviewer` never
+- **Disclose unfixed gaps on the ticket, not just in the handoff.** `/legacy-reviewer` never
   reads handoffs by design, so an undisclosed gap comes straight back as a bounce.
 - **Attack corners, don't re-run the happy path.** The suite already covers it;
   re-verifying it burns the budget that should go to the failure modes.
-- **Compose, don't reinvent.** Frame bugs with `/planner`'s ticket format and fix them
-  through the same `/adversarial-loop` (`harden` mode) that `/coder` runs in `build`
+- **Compose, don't reinvent.** Frame bugs with `/legacy-planner`'s ticket format and fix them
+  through the same `/multi-agent-review` (`harden` mode) that `/legacy-coder` runs in `build`
   mode; the existing services / ADRs are the source of truth. The
   ticket trail is the audit log, not a second planning system.
 - End with a short summary: whether the agent was created or reused, bugs found (by

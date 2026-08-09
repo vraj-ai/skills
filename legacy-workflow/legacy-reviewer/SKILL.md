@@ -1,13 +1,16 @@
 ---
-name: reviewer
+name: legacy-reviewer
 version: 1.2.0
-description: Review chain and gate to Done — the independent judge at the end of the fleet loop (planner plan → coder build → debugger debug → reviewer review). Claims a GitHub Project item from Review Ready, moves it to Reviewing, reads ONLY the diff plus the GitHub issue and its invariants (never the author's handoff or rationale), runs the cheap deterministic gate first, then judges pass/fail against a rubric, and routes the outcome — pass sets the Project Status to Done, fail sends it back to Debugger Ready (correctness), Agent Ready (scope/test gaps), or Planned (bad ticket), with a bounce counter that escalates to a human. Use when the user runs /reviewer, wants a ticket or diff reviewed before it can be closed, asks whether work is good enough to ship, wants an independent second opinion on agent-written code, or wants to know why a ticket keeps bouncing. Also use it when the user asks to review the Review Ready queue or "all the issues" — it finds them on the board and drains them one at a time.
+description: Legacy review stage from the former planner-coder-debugger-reviewer fleet, preserved for explicit opt-in use. Use only when the user invokes /legacy-reviewer or deliberately requests the old GitHub Projects stage workflow instead of goals.
 ---
 
-# /reviewer — Review chain (Review Ready → judged → Done or bounced back)
+# /legacy-reviewer — Former review chain
 
-The **gate** of the fleet. `/planner` frames the work, `/coder` builds it, `/debugger`
-debugs and hunts for what nobody filed, and `/reviewer` decides whether any of it is
+This is the preserved legacy workflow. The active autonomous pipeline is
+`goals`; do not auto-trigger this skill for ordinary review requests.
+
+The **gate** of the fleet. `/legacy-planner` frames the work, `/legacy-coder` builds it, `/legacy-debugger`
+debugs and hunts for what nobody filed, and `/legacy-reviewer` decides whether any of it is
 allowed to close. It is the only skill in the fleet with the authority to move a
 ticket to **Done**, and the only one whose job is to say *no*.
 
@@ -19,7 +22,7 @@ that correlation. Protect that independence above all else; everything in this
 skill exists to keep the judgment uncontaminated.
 
 > **The global stage-parent profile is the default; a project's CONTEXT may override it.**
-> The default `/reviewer` parent is Grok 4.5 in the Pi harness through OpenRouter. What
+> The default `/legacy-reviewer` parent is Grok 4.5 in the Pi harness through OpenRouter. What
 > *is* non-negotiable is that the reviewer is a **different context and a different
 > model than the one that produced the diff** — if you cannot confirm that, say so
 > in the verdict rather than quietly reviewing anyway.
@@ -28,7 +31,7 @@ skill exists to keep the judgment uncontaminated.
 
 ```
 Planned → Agent Ready → Coding → Debugger Ready → Debugging → Review Ready → Reviewing → Done
-   └ /planner ─┘  └──── /coder ────┘   └──── /debugger ────┘   └──── /reviewer ────┘
+   └ /legacy-planner ─┘  └──── /legacy-coder ────┘   └──── /legacy-debugger ────┘   └──── /legacy-reviewer ────┘
 ```
 
 ### Stage-parent session
@@ -36,7 +39,7 @@ Planned → Agent Ready → Coding → Debugger Ready → Debugging → Review R
 The default reviewer is Grok 4.5 in a separate top-level Pi session through OpenRouter.
 It must be a fresh, independent context from both the Kimi maker and the Codex
 debugger. If helpers are used, give every helper only the ticket, diff, gate, and
-invariant docs; never pass the coder/debugger handoff or author rationale before the
+invariant docs; never pass the coder/legacy-debugger handoff or author rationale before the
 verdict. A native child launched from another session must not spawn nested children.
 
 **Your board moves:** claim from **`Review Ready`** → **`Reviewing`** before you
@@ -79,7 +82,7 @@ from `Before you start` for the next. The board should never show more than one
 ticket in `Reviewing` because of you.
 
 **The fan-out exception does not reach this stage.** `parallel-subagent-implementation`
-exists so `/coder` and `/debugger` can widen when the user authorizes it. Reviewing is
+exists so `/legacy-coder` and `/legacy-debugger` can widen when the user authorizes it. Reviewing is
 different in kind: the verdict is the product, and a helper that judges on your
 behalf becomes the judge — the one role this skill exists to keep independent and
 uncontaminated. Helpers may fetch a diff or run the gate; only you weigh the rubric
@@ -88,7 +91,7 @@ and route the ticket. No authorization changes that.
 Two habits make this loop reliable:
 
 - **Re-query the queue between tickets, never cache it.** The list you fetched at
-  the start is already stale — `/debugger` may have pushed new work into `Reviewing
+  the start is already stale — `/legacy-debugger` may have pushed new work into `Reviewing
   Ready` while you reviewed, and a ticket you bounced could have come back. Ask the
   tracker again each lap and take the lowest-numbered ticket that is still there.
 - **Route each ticket before touching the next.** A verdict that hasn't moved its
@@ -111,7 +114,7 @@ Then gather exactly three things, and deliberately nothing else:
 1. **The diff** — the changes attributable to this ticket (its branch/PR, or the
    commit range since it entered Coding).
 2. **The ticket** — What-to-build, Acceptance-criteria, the named invariants, and
-   the `Verification-command` that `/planner` shipped with it.
+   the `Verification-command` that `/legacy-planner` shipped with it.
 3. **The project's CONTEXT / invariant docs** — glossary, ADRs, the invariants
    the effort locked. Enter through the **retrieval router** (`ROUTER.md`) if the
    repo has one, and review against the *live* decision — an index line marked
@@ -120,7 +123,7 @@ Then gather exactly three things, and deliberately nothing else:
 
 ### What you must NOT read
 
-Do not read the `/coder` or `/debugger` **handoff doc**, the author's PR
+Do not read the `/legacy-coder` or `/legacy-debugger` **handoff doc**, the author's PR
 description, its commit messages' justifications, its self-assessment, or any
 sub-agent transcript explaining *why* the code is correct.
 
@@ -146,7 +149,7 @@ argues about naming while the suite is red teaches the fleet that the gate is
 optional. Deterministic checks are cheaper, faster, and more reliable than you
 are — let them do their half of the job.
 
-If the ticket has no runnable `Verification-command`, that is a `/planner` defect,
+If the ticket has no runnable `Verification-command`, that is a `/legacy-planner` defect,
 not a code defect: route it to **Planned** with that reason.
 
 ## Step 2 — Judge against the rubric
@@ -271,11 +274,11 @@ column should then show.
    `$TMPDIR` copy): which ticket was reviewed, PASS/FAIL and score, the blocking
    findings, where it routed and why, the bounce count, and anything escalated.
 2. **`push-handoff`** — **always run this last.** Read and follow the
-   `push-handoff` skill (`~/.claude/skills/push-handoff/SKILL.md`). `/reviewer` is
+   `push-handoff` skill (`~/.claude/skills/push-handoff/SKILL.md`). `/legacy-reviewer` is
    not complete until push succeeds (or you report an auth blocker with the
    skill's recovery steps). Never commit secrets.
 
-**`/reviewer` does not fix code.** When it finds a defect it writes it down and
+**`/legacy-reviewer` does not fix code.** When it finds a defect it writes it down and
 routes it; it does not open the file and repair it. The moment the reviewer starts
 authoring fixes it becomes an author, and there is no longer an independent judge
 anywhere in the loop — the one thing this skill exists to provide.

@@ -1,4 +1,4 @@
-# /reviewer review rubric
+# /legacy-reviewer review rubric
 
 The six dimensions in judging order. Read this before forming a verdict — reviewing
 from memory produces vague findings, and vague findings bounce tickets forever
@@ -50,7 +50,7 @@ block only if the extra work touches an invariant the ticket didn't cover.
 
 ## 2. Invariant integrity (blocking)
 
-For each invariant `/planner` locked and the ticket restated, decide whether **this
+For each invariant `/legacy-planner` locked and the ticket restated, decide whether **this
 code** honors it. This requires reading, not grepping — an invariant is honored
 by behavior, not by the presence of a keyword.
 

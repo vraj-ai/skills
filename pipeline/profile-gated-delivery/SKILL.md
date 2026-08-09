@@ -1,12 +1,12 @@
 ---
 name: profile-gated-delivery
-version: 1.0.0
-description: Run a multi-stage effort across the planner, coder, debugger, and reviewer roles with an evidence gate between every stage, so no stage may start until the previous stage's proof exists and the maker of a change is never its reviewer. Use when driving an effort end to end through separate top-level stage-parent sessions, when coordinating role handoffs, or when the user wants the full idea → Done factory run rather than a single stage.
+version: 1.1.0
+description: Run the preserved legacy planner, coder, debugger, and reviewer effort across separate stage-parent sessions with an evidence gate between every stage. Use only when deliberately coordinating the legacy four-stage workflow rather than the active goals pipeline.
 ---
 
 # profile-gated-delivery
 
-The whole factory in one skill: **planner → coder → debugger → reviewer**, with an evidence gate between each stage.
+The preserved factory in one skill: **legacy-planner → legacy-coder → legacy-debugger → legacy-reviewer**, with an evidence gate between each stage.
 
 The point is not the stages. It is that **each stage's entry condition is the previous stage's proof** — and that the maker of a change is never its reviewer.
 
@@ -33,10 +33,10 @@ stages serial and one ticket in flight.
 
 | Role | Queue | Loads | Produces | State effect |
 |---|---|---|---|---|
-| **planner** | Planned | `github-projects-pipeline` → `planner` | plan doc and ready tickets | Planned → Agent Ready when blockers are done |
-| **coder** | Agent Ready | `github-projects-pipeline` → `coder` | code, tests, commit, evidence | Coding → Debugger Ready |
-| **debugger** | Debugger Ready | `github-projects-pipeline` → `debugger` | hardened diff, evidence, follow-ups | Debugging → Review Ready |
-| **reviewer** | Review Ready | `github-projects-pipeline` → `reviewer` | blind verdict and routing | Reviewing → Done or bounce |
+| **planner** | Planned | `github-projects-pipeline` → `legacy-planner` | plan doc and ready tickets | Planned → Agent Ready when blockers are done |
+| **coder** | Agent Ready | `github-projects-pipeline` → `legacy-coder` | code, tests, commit, evidence | Coding → Debugger Ready |
+| **debugger** | Debugger Ready | `github-projects-pipeline` → `legacy-debugger` | hardened diff, evidence, follow-ups | Debugging → Review Ready |
+| **reviewer** | Review Ready | `github-projects-pipeline` → `legacy-reviewer` | blind verdict and routing | Reviewing → Done or bounce |
 
 The human owns two things no agent may take: **creating the effort in Planned** and **canceling**. The planner promotes a child from Planned → Agent Ready only when its blockers are Done. Spend, deploy, and purchase are separately authorized at any stage.
 
@@ -65,7 +65,7 @@ A child without a runnable gate does not enter the coder queue. Send it back to 
 **Gate 4 — hardening is proven.** Before reviewing:
 - [ ] The debugger re-ran the gate **itself**
 - [ ] Broader verify proportional to the change
-- [ ] Four nets and the named corners were swept (`debugger`)
+- [ ] Four nets and the named corners were swept (`legacy-debugger`)
 - [ ] Ticket moved Debugging → Review Ready, **readback confirmed**
 
 **Gate 5 — independent acceptance.** Before a ticket is Done:
@@ -121,4 +121,4 @@ If the pipeline is already thrashing, load `state-driven-pipeline-recovery`.
 
 ## Related
 
-`github-projects-pipeline` · `planner` · `coder` · `debugger` · `state-driven-pipeline-recovery` · `subagent-batch-implementation`
+`github-projects-pipeline` · `legacy-planner` · `legacy-coder` · `legacy-debugger` · `state-driven-pipeline-recovery` · `subagent-batch-implementation`
