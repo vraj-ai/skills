@@ -53,3 +53,10 @@ test('workflow skills preserve the required phase and result contracts', async (
     assert.ok(parallel.includes(marker), `parallel skill is missing ${marker}`);
   }
 });
+
+test('OpenCode profile exposes goal and council commands through goals', async () => {
+  for (const command of ['goal.md', 'council.md']) {
+    const content = await fs.readFile(path.join(repo, 'opencode', 'command', command), 'utf8');
+    assert.match(content, /agent: goals/);
+  }
+});

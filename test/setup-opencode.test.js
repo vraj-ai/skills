@@ -18,6 +18,7 @@ test('OpenCode profile installer is idempotent and backs up conflicts', async ()
     const first = await execFileAsync(process.execPath, [installer], { env });
     assert.match(first.stdout, /installed\s+agent\/goals\.md/);
     await assert.doesNotReject(fs.access(path.join(configRoot, 'command', 'goal.md')));
+    await assert.doesNotReject(fs.access(path.join(configRoot, 'command', 'council.md')));
 
     const second = await execFileAsync(process.execPath, [installer], { env });
     assert.match(second.stdout, /up-to-date\s+agent\/goals\.md/);
