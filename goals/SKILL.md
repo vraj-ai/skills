@@ -1,6 +1,6 @@
 ---
 name: goals
-version: 1.1.1
+version: 1.2.0
 description: Drive a plan document to verified completion through a resumable single-writer backlog, council research/review, worktree-isolated parallel builds, milestone gates, and a final adversarial teardown. Use when the user invokes /goal, asks to execute an architecture plan autonomously, resumes a goal, or needs a large issue set delivered milestone by milestone.
 dependencies: [council, parallel, council-adversary]
 ---
@@ -81,6 +81,21 @@ Rules:
 - **vskills does not mutate consumer repos.** The CLI ships skills and regenerates
   this repo's local-only context only; no `docs-init` command, no writes into a
   consumer project's `CONTEXT/`.
+
+## Session handoff artifact
+
+Keep two handoff layers separate:
+
+- `CONTEXT/goals/<slug>/handoff.md` is the compact, machine-readable goals
+  resume cursor. It remains the source of truth for Phase R.
+- A full human handoff is a temporary `$TMPDIR` document with the sections
+  `Objective`, `Important Details`, `Work State`, `Next Move`, `Relevant Files`,
+  and `Suggested Skills`. It summarizes the session without duplicating plans,
+  issues, ADRs, commits, diffs, or test output.
+
+At a clean stop, milestone stop, escalation, or verified completion, update the
+goals cursor first, then emit the full handoff artifact. `push-handoff` may
+deliver a project-owned copy later, but handoff creation never pushes.
 
 ## Preflight
 

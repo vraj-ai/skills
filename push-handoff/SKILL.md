@@ -1,6 +1,6 @@
 ---
 name: push-handoff
-version: 2.2.0
+version: 2.3.0
 description: Commit and push a verified handoff plus its artifacts, only under explicit authority, and prove the push happened by reading the remote SHA back. Use as the final delivery step after artifacts are ready, when the user asks to push work, or when a handoff needs to reach the remote. Refuses to claim success without remote proof and never force-pushes or commits secrets.
 ---
 
@@ -17,6 +17,16 @@ Three related operations have different owners and must not be collapsed:
 - This skill performs authorized delivery of an already-prepared handoff and its artifacts. It verifies, stages, commits, pushes, and proves the remote SHA.
 
 When both context compaction and delivery are needed, run `/handoff` first and `/push-handoff` second. A handoff never implies a push. A pipeline may invoke this skill directly when its handoff and artifacts already exist.
+
+## Handoff artifact input
+
+This skill delivers a handoff; it does not synthesize one from memory. Before
+staging, require the generated handoff at the path supplied by `/handoff` in
+`$TMPDIR`. If the run needs a handoff but no artifact exists, stop and invoke
+`/handoff` rather than inventing a second format.
+
+The temp file is not staged. If a project has its own tracked handoff archive,
+stage that project-owned copy only when the project rules explicitly require it.
 
 ## Step 0 — Authority check
 

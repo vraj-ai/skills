@@ -24,6 +24,8 @@ test('native workflow skills state durable context ownership', async () => {
   assert.match(council, /Council is read-only with respect to durable context/);
   assert.match(council, /never edits[\s\S]*backlog/);
   assert.match(setup, /`vskills` CLI never writes them\s+into a consumer repo/);
+  assert.match(setup, /init-context\.mjs/);
+  assert.match(setup, /AGENTS\.md/);
 });
 
 test('handoff compaction and delivery remain separate contracts', async () => {
@@ -34,6 +36,7 @@ test('handoff compaction and delivery remain separate contracts', async () => {
   ]);
 
   assert.match(handoff, /temporary directory/);
+  assert.match(handoff, /Suggested Skills/);
   assert.doesNotMatch(handoff, /git\s+(commit|push)|commit and push|push work/);
   assert.match(pushHandoff, /Handoff boundaries/);
   assert.match(pushHandoff, /A handoff never implies a push/);

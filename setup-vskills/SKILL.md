@@ -1,6 +1,6 @@
 ---
 name: setup-vskills
-version: 1.3.0
+version: 1.5.0
 description: Sets up this skills repo on a new machine — installs the skills with the vskills CLI, then regenerates the local-only context docs (CONTEXT.md, docs/) that are deliberately not published in the public repo.
 ---
 
@@ -47,6 +47,25 @@ Set `OPENCODE_CONFIG_DIR` to install into a supported alternate config root
 (tests use this for isolation); otherwise the installer uses
 `~/.config/opencode/`, matching OpenCode's global profile location.
 
+## Step 1.2 — Bootstrap the project agent architecture
+
+Run this from the root of the project being set up:
+
+```bash
+node "$HOME/.agents/skills/setup-vskills/scripts/init-context.mjs"
+```
+
+The initializer creates missing files only:
+
+- `AGENTS.md` — the always-loaded project router.
+- `CONTEXT/architecture.md` — human-owned purpose, locked decisions, invariants,
+  non-goals, accepted boundaries, and ownership.
+- `CONTEXT/progress.md` — the bounded derived milestone pointer.
+
+It also adds only goal runtime paths to `.gitignore`. It never overwrites an
+existing `AGENTS.md`, architecture, progress, or project decision. It does not
+create a goal backlog; `/goals` creates `CONTEXT/goals/<slug>/` when a plan runs.
+
 ## Step 2 — Regenerate CONTEXT.md
 
 Write a fresh `CONTEXT.md` at the repo root by reading the actual code, not by
@@ -92,6 +111,13 @@ git check-ignore CONTEXT.md docs/invariants.md
 Both paths must be ignored. If `git status` shows any of the regenerated docs
 as untracked-and-addable, stop and fix `.gitignore` before committing
 anything.
+
+## Session handoff
+
+`setup-vskills` owns installation, the initial project agent architecture, and
+this repository's local regenerated docs. When setup work must continue in
+another session, invoke `/handoff` after verification. That skill writes the
+full sectioned handoff to `$TMPDIR`.
 
 ## Durable context contract
 

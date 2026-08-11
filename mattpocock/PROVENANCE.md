@@ -31,6 +31,11 @@ Each directory beneath the listed categories was copied wholesale,
 including skill-local `agents/openai.yaml`, `scripts/`, and co-located
 reference files (`*.md` resources). Byte-equal to the pinned commit.
 
+The local `productivity/handoff/SKILL.md` has a documented workflow overlay for
+this repository's shared temp-handoff format. Its
+upstream core instructions remain intact; the overlay is intentionally not
+presented as upstream content.
+
 - `engineering/` (18 skills + `README.md`) — ask-matt, code-review,
   codebase-design, diagnosing-bugs, domain-modeling, grill-with-docs,
   implement, improve-codebase-architecture, prototype, research,
