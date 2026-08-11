@@ -1,6 +1,5 @@
 ---
 name: resolving-merge-conflicts
-version: 1.0.0
 description: "Use when you need to resolve an in-progress git merge/rebase conflict."
 ---
 

@@ -13,6 +13,8 @@ const models = {
   'council-kimi.md': 'openrouter/moonshotai/kimi-k3',
   'council-qwen.md': 'openrouter/qwen/qwen3.8-max',
   'council-sol.md': 'openai/gpt-5.6-sol',
+  'council-gemini.md': 'openrouter/google/gemini-3.6-flash',
+  'council-deepseek.md': 'openrouter/deepseek/deepseek-v4-flash-0731',
   'council-glm.md': 'opencode-go/glm-5.2',
   'council-adversary.md': 'opencode-go/grok-4.5',
 };

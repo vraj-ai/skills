@@ -80,6 +80,15 @@ never reparse. It acquires `lock.d`, reads the slim handoff, reconciles stale
 work from `results.json`, item digests, and branch ancestry, recomputes ready,
 and continues. Raw model logs never enter orchestrator context.
 
+### Handoff is not delivery
+
+The productivity `/handoff` skill only compacts and redacts conversation context
+to the OS temporary directory. `goals` separately owns the durable
+`CONTEXT/goals/<slug>/handoff.md` resume cursor. `/push-handoff` is the explicit
+delivery operation: it verifies, commits, pushes, and proves the fetched remote
+SHA. When both are needed, run `/handoff` then `/push-handoff`; creating a
+handoff never authorizes or implies a push.
+
 ### Council is independent
 
 The configured council is Grok 4.5, Kimi K3, Qwen 3.8 Max, GPT-5.6 Sol, and
@@ -193,7 +202,7 @@ Knowing where a tool stops is part of what makes it trustworthy inside its range
 | Price a feature whose cost is inference | `/ai-subscription-unit-economics` |
 | Unstick a pipeline reporting false progress | `/state-driven-pipeline-recovery` |
 | Hand off to the next session | `/handoff` then `/push-handoff` |
-| Write a skill of my own | `/writing-great-skills` |
+| Write a skill of my own | `/writing-for-agents` |
 
 ---
 
@@ -277,7 +286,7 @@ npx github:VrajGupta/skills add gauntlet-loop
 
 **engineering/** — `tdd` · `code-review` · `diagnosing-bugs` · `codebase-design` · `domain-modeling` · `grill-with-docs` · `implement` · `improve-codebase-architecture` · `prototype` · `research` · `resolving-merge-conflicts` · `to-spec` · `to-tickets` · `triage` · `wayfinder` · `ask-matt`
 
-**productivity/** — `grilling` · `grill-me` · `handoff` · `teach` · `writing-great-skills`
+**productivity/** — `grilling` · `grill-me` · `handoff` · `teach` · `writing-for-agents`
 
 **misc/** — `git-guardrails-claude-code` · `migrate-to-shoehorn` · `scaffold-exercises` · `setup-pre-commit`
 
@@ -368,6 +377,8 @@ council -> {council members, council-adversary}
 | `council-kimi` | `openrouter/moonshotai/kimi-k3` |
 | `council-qwen` | `openrouter/qwen/qwen3.8-max` |
 | `council-sol` | `openai/gpt-5.6-sol` |
+| `council-gemini` | `openrouter/google/gemini-3.6-flash` |
+| `council-deepseek` | `openrouter/deepseek/deepseek-v4-flash-0731` |
 | `council-glm` | `opencode-go/glm-5.2` (research only for GLM-authored code) |
 | `council-adversary` | `opencode-go/grok-4.5`, read-only |
 

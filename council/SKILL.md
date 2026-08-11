@@ -1,6 +1,6 @@
 ---
 name: council
-version: 1.0.0
+version: 1.2.0
 description: Run independent multi-model research, evidence-based debate, voting, and scoped T0/T1 reviews without rubber-stamping. Use when goals encounters a genuinely contested research item, Phase B needs backlog sanity checks, an item needs independent T0 reviewers, or a milestone needs one rotating integration reviewer.
 ---
 
@@ -15,17 +15,19 @@ The configured roster is:
 - `council-kimi`: `openrouter/moonshotai/kimi-k3`
 - `council-qwen`: `openrouter/qwen/qwen3.8-max`
 - `council-sol`: `openai/gpt-5.6-sol`
+- `council-gemini`: `openrouter/google/gemini-3.6-flash`
+- `council-deepseek`: `openrouter/deepseek/deepseek-v4-flash-0731`
 - `council-glm`: `opencode-go/glm-5.2`
 
-The active primary performs its own independent pass alongside all five,
-making six perspectives for contested research. Never pre-solve the question
+The active primary performs its own independent pass alongside all seven,
+making eight perspectives for contested research. Never pre-solve the question
 and ask members to ratify an answer.
 
 ## Research rounds
 
 ### Round 1: independent work
 
-In one tool message, spawn all five members concurrently with the full task
+In one tool message, spawn all seven members concurrently with the full task
 verbatim. Each independently reads real files, cites `file:line`, uses primary
 web sources where relevant, cites URLs, and returns a complete evidence-backed
 report. Goals performs its own pass before reading member reports. Do not merge
@@ -91,6 +93,23 @@ drift from the plan. Do not re-review item code quality. Emit `PASS`,
 
 Rotation is `council-grok -> council-kimi -> council-qwen -> council-sol`,
 never the same member twice in a row and never the maker model.
+
+## Context ownership
+
+Council is read-only with respect to durable context. It never edits
+`AGENTS.md`, `CONTEXT/architecture.md`, `CONTEXT/progress.md`, a goal
+`handoff.md`, `backlog.jsonl`, or any `reviews/*.json`. Review verdicts and
+research reports hand back to `goals` — the sole writer of goal state — which
+records them. When a member's findings imply a documentation change (a locked
+decision shifts, a non-goal boundary moves, `architecture.md` should grow),
+emit it as a finding with `file:line` evidence and the documentation impact;
+never edit the artifacts yourself, never rewrite context broadly, and never
+mutate the backlog. The public vskills repository's own machine-local notes
+(`CONTEXT.md`, `docs/`, `CONTEXT/`, `CLAUDE.md`) are local-only under that
+repository's own `.gitignore` and are not council artifacts; they are not a
+universal rule a consumer project applies to its own tracked `CONTEXT/`, whose
+`architecture.md`, `progress.md`, handoff, and review verdicts council reads
+but never edits.
 
 ## Anti-over-engineering guard
 

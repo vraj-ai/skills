@@ -59,8 +59,9 @@ new models ship — this is the one place to update):
   models default here).
 
 In pipeline mode, the orchestrator is that stage's own model (e.g. Kimi K3 for
-`/legacy-coder`, GPT-5.6 Luna for `/legacy-debugger`, Opus 5 for `/legacy-planner` per this repo's
-`CONTEXT.md` profile) — check it against the same list.
+`/legacy-coder`, GPT-5.6 Luna for `/legacy-debugger`, Opus 5 for `/legacy-planner`
+per the repository's durable context/profile docs) — check it against the same
+list.
 
 ## Step 1 — Pick the 3 subagent slots
 

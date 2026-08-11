@@ -1,6 +1,5 @@
 ---
 name: writing-shape
-version: 1.0.0
 description: Writing, exploit — shape raw material into an article, paragraph by paragraph.
 disable-model-invocation: true
 ---

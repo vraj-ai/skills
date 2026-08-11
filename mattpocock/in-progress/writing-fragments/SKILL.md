@@ -1,6 +1,5 @@
 ---
 name: writing-fragments
-version: 1.0.0
 description: Writing, explore — mine raw fragments, no structure yet.
 disable-model-invocation: true
 ---
