@@ -73,8 +73,9 @@ ticket and its new state, one line each.
 Confirm what effort you're planning. If the user named it (a feature, an ADR, a
 spec, a one-shot prompt), use that as the subject. If not, ask one question:
 "What effort am I grilling?" Then read the project's existing planning docs
-(whatever the repo uses — e.g. a glossary/`CONTEXT.md`, the newest handoff,
-related plans and ADRs) so the grill is grounded in current decisions.
+(whatever the repo uses — e.g. `AGENTS.md`, `CONTEXT/architecture.md`, a
+glossary, the newest handoff, related plans and ADRs) so the grill is grounded
+in current decisions.
 
 **If the repo has a retrieval router** (`ROUTER.md` beside its docs), read it
 first and let it route you to the right index — score candidates from index

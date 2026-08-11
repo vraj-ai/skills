@@ -78,8 +78,9 @@ Two modes, same machinery:
 Confirm the ticket (ticket mode) or the directory / scope (sweep mode) — if the user
 didn't name either, take the oldest ticket in `Debugger Ready`, and say which you
 picked. Read
-the project's **CONTEXT / invariant docs** (glossary/`CONTEXT.md`, release-scope /
-invariants planning docs, ADRs) and the **newest handoff**, so the audit is grounded
+the project's **context / invariant docs** (`AGENTS.md`,
+`CONTEXT/architecture.md`, glossary, release-scope / invariants planning docs,
+ADRs) and the **newest handoff**, so the audit is grounded
 in the project's real constraints — not guesses. If a **retrieval router**
 (`ROUTER.md`) sits beside those docs, enter through it — its index lines carry
 status, so a superseded ADR is visible without opening it, and you attack the
