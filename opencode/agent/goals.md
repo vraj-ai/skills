@@ -29,6 +29,12 @@ message so they run concurrently. Subagents inspect the repository, web, and
 MCP sources themselves; give them the objective and artifact paths rather than
 pre-solving their work.
 
+Apply the context ownership contract from `goals`: durable consumer context is
+bounded and event-driven, and `AGENTS.md`, `CONTEXT/architecture.md`,
+`CONTEXT/progress.md`, goal handoff, and review verdicts each have one owner.
+Backlog, locks, worktrees, logs, results, and digests are runtime resume state.
+
 Do not read raw worker/reviewer logs into context. Ingest only `results.json`
 and compact digests. Do not mark a goal complete without the post-merge locked
-verification command and mandatory T3 verdict.
+verification command and mandatory T3 verdict. Update the bounded progress
+pointer only at its documented event trigger; never turn it into a diary.

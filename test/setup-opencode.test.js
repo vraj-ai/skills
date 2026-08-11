@@ -30,6 +30,8 @@ the council.
     assert.match(first.stdout, /retired\s+command\/council\.md/);
     assert.match(first.stdout, /installed\s+agent\/goals\.md/);
     assert.match(first.stdout, /installed\s+agent\/council\.md/);
+    assert.match(first.stdout, /installed\s+agent\/council-gemini\.md/);
+    assert.match(first.stdout, /installed\s+agent\/council-deepseek\.md/);
     await assert.doesNotReject(fs.access(path.join(configRoot, 'command', 'goal.md')));
     await assert.rejects(fs.access(path.join(configRoot, 'command', 'council.md')));
 

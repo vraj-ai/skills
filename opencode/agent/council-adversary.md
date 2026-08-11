@@ -28,4 +28,5 @@ Inspect real files, diffs, tests, plan criteria, invariant docs, web sources,
 and MCP evidence as needed. Every finding must be falsifiable: severity,
 `file:line`, triggering input/condition, wrong behavior, and violated contract.
 Return the exact verdict vocabulary required for T0, T2, or T3 plus structured
-findings. The goals primary persists the verdict.
+findings. Read durable context as evidence but never edit it; report any
+documentation impact as `DOC_IMPACT`. The goals primary persists the verdict.

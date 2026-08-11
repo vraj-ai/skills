@@ -1,6 +1,6 @@
 ---
 name: setup-vskills
-version: 1.2.1
+version: 1.3.0
 description: Sets up this skills repo on a new machine — installs the skills with the vskills CLI, then regenerates the local-only context docs (CONTEXT.md, docs/) that are deliberately not published in the public repo.
 ---
 
@@ -36,11 +36,16 @@ node setup-vskills/scripts/install-opencode.mjs
 ```
 
 This installs selectable `goals` and read-only `council` primaries, the
-contributor/council/adversary subagents, and `/goal` under
+contributor, cost-aware Gemini/DeepSeek, council, and adversary subagents, and
+`/goal` under
 `~/.config/opencode/`. Goals remains the sole delivery/backlog authority inside
 a goal run. Installation is idempotent. A differing existing file is moved to
 `~/.config/opencode/.vskills-backup/` before replace.
 It does not modify `opencode.json` or provider credentials.
+
+Set `OPENCODE_CONFIG_DIR` to install into a supported alternate config root
+(tests use this for isolation); otherwise the installer uses
+`~/.config/opencode/`, matching OpenCode's global profile location.
 
 ## Step 2 — Regenerate CONTEXT.md
 
