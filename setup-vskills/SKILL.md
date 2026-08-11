@@ -1,6 +1,6 @@
 ---
 name: setup-vskills
-version: 1.1.0
+version: 1.2.0
 description: Sets up this skills repo on a new machine — installs the skills with the vskills CLI, then regenerates the local-only context docs (CONTEXT.md, docs/) that are deliberately not published in the public repo.
 ---
 
@@ -87,6 +87,48 @@ git check-ignore CONTEXT.md docs/invariants.md
 Both paths must be ignored. If `git status` shows any of the regenerated docs
 as untracked-and-addable, stop and fix `.gitignore` before committing
 anything.
+
+## Durable context contract
+
+This repository keeps its own regenerated working notes — `CONTEXT.md`,
+`docs/`, `CONTEXT/`, and `CLAUDE.md` — local-only and gitignored. They are not
+tracked by consumer projects, and the `vskills` CLI never writes them into a
+consumer repo. There is no `vskills docs-init` command and no inference of a
+consumer project's context: each consumer project owns its own durable
+context.
+
+Consumer projects that adopt `goals`/`council` track only these artifacts as
+durable context:
+
+- Uppercase `AGENTS.md` — the always-loaded router (human-owned).
+- `CONTEXT/architecture.md` — durable intent, locked decisions, non-goals, and
+  accepted boundaries (human-owned).
+- Bounded derived `CONTEXT/progress.md` — a small pointer to the current
+  milestone and last verified edit; never a diary, narrative, or resume source
+  of truth (`goals`-owned, event-driven).
+- `CONTEXT/goals/<slug>/handoff.md` and `reviews/M<n>.json`, `reviews/T3.json`
+  — the goal resume and review verdicts (`goals`-owned, event-driven).
+
+Everything else is runtime or local-only and never tracked:
+`CONTEXT/goals/<slug>/backlog.jsonl`, `lock.d/`, `CONTEXT/worktrees/<slug>/`,
+`*.log`, `results.json`, and `<id>.digest.json` are runtime goal state owned
+solely by `goals`. Per-machine notes (`CONTEXT.md`, `docs/`, `CONTEXT/`,
+`CLAUDE.md`) stay gitignored wherever they live.
+
+Ownership rules carry across skills:
+
+- **One owner per artifact.** No shared writers.
+- **Event-driven updates only.** Rewrite an artifact when its trigger fires —
+  a locked decision changes, a milestone completes, a T1/T3 verdict lands, or a
+  clean stop checkpoints the handoff. No polling, no autonomous broad rewrites,
+  no speculative refresh of the whole context tree.
+- **Evidence over prose.** Progress and handoff entries point at tests, builds,
+  review verdicts, or commits — never narrative.
+- **Bounded context.** `CONTEXT/progress.md` stays a derived pointer; backlogs
+  and handoffs remain the goal resume.
+- **`goals` is the sole writer of goal state** (backlog, handoff, progress
+  pointer, review verdicts). `council` is read-only and reports documentation
+  impact only; it never edits a context artifact or the backlog.
 
 ## Rules
 

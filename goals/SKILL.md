@@ -1,6 +1,6 @@
 ---
 name: goals
-version: 1.0.0
+version: 1.1.0
 description: Drive a plan document to verified completion through a resumable single-writer backlog, council research/review, worktree-isolated parallel builds, milestone gates, and a final adversarial teardown. Use when the user invokes /goal, asks to execute an architecture plan autonomously, resumes a goal, or needs a large issue set delivered milestone by milestone.
 dependencies: [council, parallel, council-adversary]
 ---
@@ -41,6 +41,44 @@ local backlog. Use exactly one `goals:*` state label per issue. Publish the
 3-7 thematic groups as native GitHub Milestones; milestone size has no fixed
 issue cap.
 
+## Context ownership contract
+
+In a consumer project, durable context is bounded, single-owner, and
+event-driven. Track only these artifacts; everything else is runtime state.
+
+| Artifact                                          | Writer | Update trigger |
+|---------------------------------------------------|--------|----------------|
+| `AGENTS.md`                                       | human  | durable router change |
+| `CONTEXT/architecture.md`                         | human  | locked decision / invariant / non-goal change |
+| `CONTEXT/progress.md`                             | goals  | milestone completion or verified edit (derived pointer) |
+| `CONTEXT/goals/<slug>/handoff.md`                 | goals  | batch, T1 gate, T3 gate, clean stop |
+| `CONTEXT/goals/<slug>/reviews/M<n>.json`, `T3.json` | goals | T1 gate, T3 gate |
+
+Runtime state, never tracked: `CONTEXT/goals/<slug>/backlog.jsonl` (goal resume
+state owned exclusively by `goals`), `lock.d/`, `CONTEXT/worktrees/<slug>/`,
+`*.log`, `results.json`, and `<id>.digest.json`. Local-machine context —
+`CONTEXT.md`, `docs/`, `CONTEXT/` (regenerated working notes), and `CLAUDE.md`
+— stays gitignored and is never tracked by consumer projects.
+
+Rules:
+
+- **One owner per artifact.** `goals` is the sole writer of goal backlogs, the
+  handoff, `progress.md`, and review verdicts. `council`, reviewers, and
+  contributors report documentation impact only; they never edit a context
+  artifact or the backlog.
+- **Event-driven updates.** Rewrite an artifact only when its trigger fires.
+  No polling, no autonomous broad rewrites, no speculative refresh of the
+  whole context tree.
+- **Evidence over prose.** Every progress or handoff entry points at a test,
+  build, review verdict, or commit. If there is no evidence, there is no
+  durable change.
+- **Bounded context.** `CONTEXT/progress.md` is a small derived pointer to the
+  current milestone and last verified edit — never a diary, narrative, or
+  resume source of truth. Goal backlogs and handoffs remain the resume.
+- **vskills does not mutate consumer repos.** The CLI ships skills and regenerates
+  this repo's local-only context only; no `docs-init` command, no writes into a
+  consumer project's `CONTEXT/`.
+
 ## Preflight
 
 Before mutation, verify the plan exists, the cwd is a Git worktree on a named
@@ -53,9 +91,11 @@ For Desktop and terminal parity, resolve the CLI in this order:
 resolved value in `goal.md` and `handoff.md` when the CLI path is used.
 
 If project state is missing, create it without overwriting existing files.
-Keep `architecture.md`, `AGENTS.md`, goal/handoff files, and review verdicts
-trackable. Add only runtime paths (`backlog.jsonl`, `lock.d/`, worktrees, logs,
-and producer JSON) to the project's ignore rules.
+Apply the context ownership contract above: keep `AGENTS.md`,
+`CONTEXT/architecture.md`, `CONTEXT/progress.md`, goal `handoff.md`, and
+`reviews/*.json` trackable. Add only runtime paths (`backlog.jsonl`, `lock.d/`,
+`CONTEXT/worktrees/<slug>/`, logs, `results.json`, and `*.digest.json`) to the
+project's ignore rules.
 
 ## Phase R: resume first
 
