@@ -1,6 +1,6 @@
 ---
 name: setup-vskills
-version: 1.1.0
+version: 1.2.1
 description: Sets up this skills repo on a new machine — installs the skills with the vskills CLI, then regenerates the local-only context docs (CONTEXT.md, docs/) that are deliberately not published in the public repo.
 ---
 
@@ -87,6 +87,52 @@ git check-ignore CONTEXT.md docs/invariants.md
 Both paths must be ignored. If `git status` shows any of the regenerated docs
 as untracked-and-addable, stop and fix `.gitignore` before committing
 anything.
+
+## Durable context contract
+
+This repository keeps its own machine-local working notes — `CONTEXT.md`,
+`docs/`, `CONTEXT/`, and `CLAUDE.md` — local-only under **this repo's own
+`.gitignore`**. They are a property of the public vskills repository, not a
+universal rule about consumer projects: the `vskills` CLI never writes them
+into a consumer repo, there is no `vskills docs-init` command, and the CLI
+never infers a consumer project's context. Each consumer project owns its own
+durable context.
+
+Consumer projects that adopt `goals`/`council` track only these artifacts as
+durable context:
+
+- Uppercase `AGENTS.md` — the always-loaded router (human-owned).
+- `CONTEXT/architecture.md` — durable intent, locked decisions, non-goals, and
+  accepted boundaries (human-owned).
+- Bounded derived `CONTEXT/progress.md` — a small pointer to the current
+  milestone and last verified edit; never a diary, narrative, or resume source
+  of truth (`goals`-owned, event-driven).
+- `CONTEXT/goals/<slug>/handoff.md` and `reviews/M<n>.json`, `reviews/T3.json`
+  — the goal resume and review verdicts (`goals`-owned, event-driven).
+
+Only the runtime paths beneath a consumer `CONTEXT/` are ignored there:
+`CONTEXT/goals/<slug>/backlog.jsonl` (goal resume state owned solely by
+`goals`), `lock.d/`, `CONTEXT/worktrees/<slug>/`, `*.log`, `results.json`,
+and `<id>.digest.json`. The tracked artifacts above are not ignored. Do not
+apply this repo's own `.gitignore` (which hides the whole `CONTEXT/` of the
+vskills repository) to a consumer project — a consumer's tracked
+`CONTEXT/architecture.md`, `CONTEXT/progress.md`, and goal handoff would
+become invisible.
+
+Ownership rules carry across skills:
+
+- **One owner per artifact.** No shared writers.
+- **Event-driven updates only.** Rewrite an artifact when its trigger fires —
+  a locked decision changes, a milestone completes, a T1/T3 verdict lands, or a
+  clean stop checkpoints the handoff. No polling, no autonomous broad rewrites,
+  no speculative refresh of the whole context tree.
+- **Evidence over prose.** Progress and handoff entries point at tests, builds,
+  review verdicts, or commits — never narrative.
+- **Bounded context.** `CONTEXT/progress.md` stays a derived pointer; backlogs
+  and handoffs remain the goal resume.
+- **`goals` is the sole writer of goal state** (backlog, handoff, progress
+  pointer, review verdicts). `council` is read-only and reports documentation
+  impact only; it never edits a context artifact or the backlog.
 
 ## Rules
 

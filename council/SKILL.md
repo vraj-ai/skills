@@ -1,6 +1,6 @@
 ---
 name: council
-version: 1.0.0
+version: 1.1.1
 description: Run independent multi-model research, evidence-based debate, voting, and scoped T0/T1 reviews without rubber-stamping. Use when goals encounters a genuinely contested research item, Phase B needs backlog sanity checks, an item needs independent T0 reviewers, or a milestone needs one rotating integration reviewer.
 ---
 
@@ -91,6 +91,23 @@ drift from the plan. Do not re-review item code quality. Emit `PASS`,
 
 Rotation is `council-grok -> council-kimi -> council-qwen -> council-sol`,
 never the same member twice in a row and never the maker model.
+
+## Context ownership
+
+Council is read-only with respect to durable context. It never edits
+`AGENTS.md`, `CONTEXT/architecture.md`, `CONTEXT/progress.md`, a goal
+`handoff.md`, `backlog.jsonl`, or any `reviews/*.json`. Review verdicts and
+research reports hand back to `goals` — the sole writer of goal state — which
+records them. When a member's findings imply a documentation change (a locked
+decision shifts, a non-goal boundary moves, `architecture.md` should grow),
+emit it as a finding with `file:line` evidence and the documentation impact;
+never edit the artifacts yourself, never rewrite context broadly, and never
+mutate the backlog. The public vskills repository's own machine-local notes
+(`CONTEXT.md`, `docs/`, `CONTEXT/`, `CLAUDE.md`) are local-only under that
+repository's own `.gitignore` and are not council artifacts; they are not a
+universal rule a consumer project applies to its own tracked `CONTEXT/`, whose
+`architecture.md`, `progress.md`, handoff, and review verdicts council reads
+but never edits.
 
 ## Anti-over-engineering guard
 
