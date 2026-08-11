@@ -1,6 +1,6 @@
 ---
 name: setup-vskills
-version: 1.2.0
+version: 1.2.1
 description: Sets up this skills repo on a new machine — installs the skills with the vskills CLI, then regenerates the local-only context docs (CONTEXT.md, docs/) that are deliberately not published in the public repo.
 ---
 
@@ -90,12 +90,13 @@ anything.
 
 ## Durable context contract
 
-This repository keeps its own regenerated working notes — `CONTEXT.md`,
-`docs/`, `CONTEXT/`, and `CLAUDE.md` — local-only and gitignored. They are not
-tracked by consumer projects, and the `vskills` CLI never writes them into a
-consumer repo. There is no `vskills docs-init` command and no inference of a
-consumer project's context: each consumer project owns its own durable
-context.
+This repository keeps its own machine-local working notes — `CONTEXT.md`,
+`docs/`, `CONTEXT/`, and `CLAUDE.md` — local-only under **this repo's own
+`.gitignore`**. They are a property of the public vskills repository, not a
+universal rule about consumer projects: the `vskills` CLI never writes them
+into a consumer repo, there is no `vskills docs-init` command, and the CLI
+never infers a consumer project's context. Each consumer project owns its own
+durable context.
 
 Consumer projects that adopt `goals`/`council` track only these artifacts as
 durable context:
@@ -109,11 +110,14 @@ durable context:
 - `CONTEXT/goals/<slug>/handoff.md` and `reviews/M<n>.json`, `reviews/T3.json`
   — the goal resume and review verdicts (`goals`-owned, event-driven).
 
-Everything else is runtime or local-only and never tracked:
-`CONTEXT/goals/<slug>/backlog.jsonl`, `lock.d/`, `CONTEXT/worktrees/<slug>/`,
-`*.log`, `results.json`, and `<id>.digest.json` are runtime goal state owned
-solely by `goals`. Per-machine notes (`CONTEXT.md`, `docs/`, `CONTEXT/`,
-`CLAUDE.md`) stay gitignored wherever they live.
+Only the runtime paths beneath a consumer `CONTEXT/` are ignored there:
+`CONTEXT/goals/<slug>/backlog.jsonl` (goal resume state owned solely by
+`goals`), `lock.d/`, `CONTEXT/worktrees/<slug>/`, `*.log`, `results.json`,
+and `<id>.digest.json`. The tracked artifacts above are not ignored. Do not
+apply this repo's own `.gitignore` (which hides the whole `CONTEXT/` of the
+vskills repository) to a consumer project — a consumer's tracked
+`CONTEXT/architecture.md`, `CONTEXT/progress.md`, and goal handoff would
+become invisible.
 
 Ownership rules carry across skills:
 

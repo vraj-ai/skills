@@ -1,6 +1,6 @@
 ---
 name: goals
-version: 1.1.0
+version: 1.1.1
 description: Drive a plan document to verified completion through a resumable single-writer backlog, council research/review, worktree-isolated parallel builds, milestone gates, and a final adversarial teardown. Use when the user invokes /goal, asks to execute an architecture plan autonomously, resumes a goal, or needs a large issue set delivered milestone by milestone.
 dependencies: [council, parallel, council-adversary]
 ---
@@ -54,11 +54,14 @@ event-driven. Track only these artifacts; everything else is runtime state.
 | `CONTEXT/goals/<slug>/handoff.md`                 | goals  | batch, T1 gate, T3 gate, clean stop |
 | `CONTEXT/goals/<slug>/reviews/M<n>.json`, `T3.json` | goals | T1 gate, T3 gate |
 
-Runtime state, never tracked: `CONTEXT/goals/<slug>/backlog.jsonl` (goal resume
+Runtime state, never tracked in a consumer project (these are paths beneath
+that project's `CONTEXT/`): `CONTEXT/goals/<slug>/backlog.jsonl` (goal resume
 state owned exclusively by `goals`), `lock.d/`, `CONTEXT/worktrees/<slug>/`,
-`*.log`, `results.json`, and `<id>.digest.json`. Local-machine context —
-`CONTEXT.md`, `docs/`, `CONTEXT/` (regenerated working notes), and `CLAUDE.md`
-— stays gitignored and is never tracked by consumer projects.
+`*.log`, `results.json`, and `<id>.digest.json`. The tracked artifacts above
+are not ignored. The public vskills repository's own machine-local notes
+(`CONTEXT.md`, `docs/`, `CONTEXT/`, `CLAUDE.md`) are local-only under that
+repository's own `.gitignore`; that is a property of the vskills repo, not a
+rule a consumer project applies to its own tracked `CONTEXT/`.
 
 Rules:
 
