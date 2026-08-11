@@ -80,6 +80,15 @@ never reparse. It acquires `lock.d`, reads the slim handoff, reconciles stale
 work from `results.json`, item digests, and branch ancestry, recomputes ready,
 and continues. Raw model logs never enter orchestrator context.
 
+### Handoff is not delivery
+
+The productivity `/handoff` skill only compacts and redacts conversation context
+to the OS temporary directory. `goals` separately owns the durable
+`CONTEXT/goals/<slug>/handoff.md` resume cursor. `/push-handoff` is the explicit
+delivery operation: it verifies, commits, pushes, and proves the fetched remote
+SHA. When both are needed, run `/handoff` then `/push-handoff`; creating a
+handoff never authorizes or implies a push.
+
 ### Council is independent
 
 The configured council is Grok 4.5, Kimi K3, Qwen 3.8 Max, GPT-5.6 Sol, and
