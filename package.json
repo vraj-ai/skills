@@ -1,7 +1,7 @@
 {
   "name": "v-skills",
   "version": "0.1.0",
-  "description": "Installer CLI for VrajGupta/skills — init/update/list/add skills into a local install root and symlink them into coding-agent skill directories.",
+  "description": "Installer CLI for vraj-ai/skills — init/update/list/add skills into a local install root and symlink them into coding-agent skill directories.",
   "type": "module",
   "bin": {
     "vskills": "bin/vskills.js"

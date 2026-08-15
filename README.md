@@ -5,7 +5,7 @@ Agent skills for running software work as a **factory** rather than a conversati
 A skill is a file an agent loads on demand that says *how to do one job properly*. This repo holds **two autonomous delivery pipelines** — `/ship` and `/goal` — the council and worktree machinery they compose, a preserved legacy four-stage workflow, and standalone skills for the jobs around them.
 
 ```
-npx github:VrajGupta/skills init
+npx github:vraj-ai/skills init
 ```
 
 ---
@@ -400,7 +400,7 @@ permissions, payments, migrations, or other high-risk work.
 Install only this skill with:
 
 ```bash
-npx github:VrajGupta/skills add gauntlet-loop
+npx github:vraj-ai/skills add gauntlet-loop
 ```
 
 </details>
@@ -408,10 +408,10 @@ npx github:VrajGupta/skills add gauntlet-loop
 ## Installing with `vskills`
 
 ```bash
-npx github:VrajGupta/skills init               # install every skill
-npx github:VrajGupta/skills list               # what's installed / drifted
-npx github:VrajGupta/skills add <skill>        # one skill + its dependencies
-npx github:VrajGupta/skills update [skill...]  # refresh (skips your local edits)
+npx github:vraj-ai/skills init               # install every skill
+npx github:vraj-ai/skills list               # what's installed / drifted
+npx github:vraj-ai/skills add <skill>        # one skill + its dependencies
+npx github:vraj-ai/skills update [skill...]  # refresh (skips your local edits)
 ```
 
 Content is copied to `~/.agents/skills/<name>` and symlinked into `~/.claude/skills/<name>`.
