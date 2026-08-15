@@ -2,7 +2,7 @@
 
 Agent skills for running software work as a **factory** rather than a conversation — plus `vskills`, a zero-dependency installer that puts them on your machine.
 
-A skill is a file an agent loads on demand that says *how to do one job properly*. This repo holds an autonomous goals pipeline, its council and worktree machinery, a preserved legacy four-stage workflow, and standalone skills for the jobs around them.
+A skill is a file an agent loads on demand that says *how to do one job properly*. This repo holds **two autonomous delivery pipelines** — `/ship` and `/goal` — the council and worktree machinery they compose, a preserved legacy four-stage workflow, and standalone skills for the jobs around them.
 
 ```
 npx github:VrajGupta/skills init
@@ -21,7 +21,8 @@ You already can prompt an agent to "build this feature and test it." It usually 
 | A ticket bounces between build and fix forever | Nobody is allowed to say "this ticket is unbuildable" | Three failed reviews **escalate to a human** instead of looping |
 | Second session has no idea what the first did | Chat history is not a handoff | Resume from **backlog + handoff + producer digests + git**, never chat |
 | Parallel agents overwrite each other | They share one checkout | One item gets one **branch + worktree**, so edits cannot collide by construction |
-| "I fixed the edge cases" (it did not) | Happy path is green, so the suite says yes | Two per-item reviewers plus milestone and whole-diff gates attack the claim |
+| "I fixed the edge cases" (it did not) | Happy path is green, so the suite says yes | Per-item review plus milestone and whole-diff gates attack the claim |
+| Agent over-builds: a factory for one call site | Nothing in the prompt rewards restraint | Contributors work a **decision ladder** — delete, reuse, stdlib, native, one line — before writing anything new |
 
 The thread running through all of it: **a claim is not evidence.** Nearly every rule in this repo exists to convert some claim into something checkable.
 
@@ -35,7 +36,7 @@ The thread running through all of it: **a claim is not evidence.** Nearly every 
 Not "the agent should double-check its work" — that fails, because the same context that made the mistake evaluates the mistake. Instead:
 
 - The fixed **GLM contributor** builds in an isolated worktree and cannot judge its own code.
-- Two different-model **council members** review each item before merge.
+- Different-model **council members** review each item before merge — one under `/ship`, two under `/goal`.
 - A rotating milestone reviewer checks integration only, and a read-only adversary tears down the final cumulative diff before completion.
 
 Everything else is plumbing around that one property.
@@ -44,7 +45,83 @@ Everything else is plumbing around that one property.
 
 ---
 
-## The pipeline
+## Two pipelines: `/ship` or `/goal`
+
+Both take a plan and drive it to verified, pushed completion. Both use isolated
+worktrees, locked verification commands, maker ≠ checker, a resumable backlog,
+and a mandatory final adversary. **Both produce production-grade code.**
+
+They differ in how much independent scrutiny each item receives — and that
+scrutiny is bought with tokens and wall-clock.
+
+| | `/ship` | `/goal` |
+|---|---|---|
+| **Buys you** | Production code, fast and cheap | Production code with the widest defect net |
+| **Research** | Inline lookup; recommends `/council` when genuinely contested | Full council — 8 perspectives, up to 3 debate rounds, vote |
+| **Backlog sanity** | — | Phase B: two members audit the backlog |
+| **Per-item review** | 1 reviewer, and only if the gate is already green | 2 independent reviewers |
+| **Milestone gate** | Mechanical checks, then 1 rotating reviewer | Mechanical checks, then 1 rotating reviewer |
+| **Pre-final sweep** | — | T2 success-criteria sweep |
+| **Final gate** | T3 adversary on the cumulative diff | T3 adversary on the cumulative diff |
+| **Build brief** | Decision ladder — YAGNI, stdlib, native, one line | Anti-over-engineering guard |
+| **Tests** | One minimal runnable check per piece of non-trivial logic | Test-first throughout |
+| **Human stops** | Plan approval, then runs to T3 | Plan approval, then a stop at **every** milestone |
+| **Batch** | 4 items, cap 8 | 3 items, cap 4 |
+| **Agents** (12 items, 3 milestones, 2 research) | **≈28** | **≈90** |
+
+### Which one
+
+**Reach for `/goal`** when being wrong is expensive and you want every net in the
+water: auth boundaries, payments, migrations, anything touching customer data,
+anything you cannot easily roll back. The extra reviewers, the debate rounds, and
+the milestone stops exist precisely so a defect meets several independent
+contexts before it reaches you. It is theoretically stronger, and it costs
+roughly **3× the agents and considerably more wall-clock**.
+
+**Reach for `/ship`** for everything else — features, refactors, internal tools,
+anything where a locked gate plus one independent reviewer plus a final adversary
+is proportionate scrutiny. It is not a "draft mode": the same gates that make
+`/goal` trustworthy are present, just fewer of them, and the decision ladder
+tends to produce a smaller diff to be wrong about in the first place.
+
+The honest summary: **`/goal` catches more, `/ship` costs less, and neither ships
+unverified code.** If you cannot decide, the tiebreaker is blast radius — not how
+important the feature feels.
+
+### `/ship`
+
+```mermaid
+flowchart LR
+    Spec[Spec from /to-spec] --> P0[Phase 0: milestones, items, locked gates]
+    P0 --> Loop[Ready items]
+    Loop --> W[Worktrees, ladder brief]
+    W --> G{Gate green?}
+    G -->|no| Fail[Fail, no model spent]
+    G -->|yes| R[1x reviewer]
+    R --> M[Merge passing items]
+    M --> MG[Milestone gate]
+    MG -->|next milestone| Loop
+    MG --> T3[T3 adversary]
+    T3 --> D[Handoff + push]
+
+    style D fill:#1a7f37,color:#fff
+    style Fail fill:#8b1a1a,color:#fff
+```
+
+```text
+/grill-with-docs  →  /to-spec  →  /ship
+```
+
+`/ship` reads `docs/agents/issue-tracker.md` to find what `/to-spec` published,
+so it works with GitHub, GitLab, or local markdown without configuration. It
+fires `/handoff` and `/push-handoff` itself on a clean T3, so three commands
+cover idea to pushed code.
+
+**Gate-first review** is where most of the saving comes from: the locked
+verification command runs *before* a reviewer is spawned. A red gate is a failure
+on its own — there is nothing for a model to add, so none is spent.
+
+### `/goal`
 
 ```mermaid
 flowchart LR
@@ -62,31 +139,45 @@ flowchart LR
     style Done fill:#1a7f37,color:#fff
 ```
 
-`/goal CONTEXT/architecture.md` starts one long-lived, resumable primary. It is
-the only writer of `backlog.jsonl` and the only process that merges branches or
-mirrors state to GitHub issue labels.
+---
 
-| Mechanism | Owns |
-|---|---|
-| `goals` | Phase R resume, 3-7 thematic milestones, backlog, checkpoints, T1/T2/T3 |
-| `parallel` | Up to three ready code items in isolated worktrees, fixed GLM contributor, T0, merge/results contract |
-| `council` | Independent research, evidence debate, Phase B sanity, T0/T1 reviews |
-| `council-adversary` | Read-only optional T0/T2 teardown and mandatory T3 whole-diff verdict |
+## The machinery
+
+`/ship <spec>` and `/goal <plan>` each start one long-lived, resumable primary.
+Whichever you run is the only writer of its `backlog.jsonl` and the only process
+that merges branches or mirrors state to issue labels.
+
+| Mechanism | Owns | Used by |
+|---|---|---|
+| `ship` | Phase R resume, milestones, backlog, derived gates, milestone gate, T3, delivery | `/ship` |
+| `ship-parallel` | Up to 4 items in isolated worktrees, ladder brief, gate-first single-reviewer T0 | `/ship` |
+| `goals` | Phase R resume, 3-7 thematic milestones, backlog, checkpoints, T1/T2/T3 | `/goal` |
+| `parallel` | Up to three ready code items in isolated worktrees, fixed GLM contributor, 2× T0, merge/results contract | `/goal` |
+| `council` | Independent research, evidence debate, Phase B sanity, T0/T1 reviews | `/goal`, or by hand |
+| `council-adversary` | Read-only optional T0/T2 teardown and mandatory T3 whole-diff verdict | both |
+
+`ship` and `goals` share one backlog format and one `state.mjs` contract, so a
+backlog written by either is readable by both.
 
 ### Resume is state, not memory
 
-Every fresh goals session runs Phase R first. `backlog.jsonl` means resume,
-never reparse. It acquires `lock.d`, reads the slim handoff, reconciles stale
-work from `results.json`, item digests, and branch ancestry, recomputes ready,
-and continues. Raw model logs never enter orchestrator context.
+Every fresh `/ship` or `/goal` session runs Phase R first. `backlog.jsonl` means
+resume, never reparse. It acquires `lock.d`, reads the slim handoff, reconciles
+stale work from `results.json`, item digests, and branch ancestry, recomputes
+ready, and continues. Raw model logs never enter orchestrator context.
 
 ### Handoff is not delivery
 
 Compacting a session into a handoff artifact and delivering it are separate
-operations. `goals` owns the durable `CONTEXT/goals/<slug>/handoff.md` resume
-cursor. `/push-handoff` is the explicit delivery operation: it verifies,
-commits, pushes, and proves the fetched remote SHA. Producing a handoff never
-authorizes or implies a push.
+operations. Each pipeline owns its durable resume cursor —
+`CONTEXT/goals/<slug>/handoff.md` or `CONTEXT/ship/<slug>/handoff.md`.
+`/push-handoff` is the explicit delivery operation: it verifies, commits,
+pushes, and proves the fetched remote SHA. Producing a handoff never authorizes
+or implies a push.
+
+`/ship` is the one caller that pushes without a second prompt, and only on a
+clean T3 — invoking it *is* the authority `push-handoff` Step 0 requires. A T3
+`BLOCK` writes the handoff and pushes nothing.
 
 ### Council is independent
 
@@ -97,20 +188,49 @@ reports and a neutral conflict index. Evidence resolves disagreements; a vote
 is only the three-round fallback. Phase B is the one exception: exactly two
 members, one round, no debate or vote.
 
-### Parallel is the workhorse
+### The worktree farm is the workhorse
 
-Each item gets `goals/<slug>/<id>` and its own worktree. GLM 5.2 builds
-test-first and commits there. Grok and Kimi independently review that one diff;
-no verdict means no merge. Green peers merge even when another item fails,
-unless `STRICT_BATCH=1`. Goals ingests only compact JSON results and digests.
+Each item gets its own branch and worktree — `goals/<slug>/<id>` under `/goal`,
+`ship/<slug>/<id>` under `/ship`. GLM 5.2 builds and commits there. Under
+`/goal`, Grok and Kimi independently review that one diff; under `/ship`, the
+locked command runs first and a single non-maker reviewer is spawned only if it
+is green. No verdict means no merge either way. Green peers merge even when
+another item fails, unless `STRICT_BATCH=1`. The orchestrator ingests only
+compact JSON results and digests.
+
+### The ladder
+
+`ship-parallel` hands every contributor a decision ladder and tells it to stop at
+the first rung that solves the problem: necessity (YAGNI) → codebase reuse →
+standard library → native platform features → existing dependencies → one-liner →
+minimal implementation. Input validation at trust boundaries, data-loss handling,
+security, accessibility, and anything the acceptance criteria explicitly asked for
+are never on the chopping block — lazy is not negligent.
+
+Tests follow the same restraint: **non-trivial logic requires at least one minimal
+runnable check**, trivial code gets none, and the locked verification command must
+still pass. The reviewer enforces both directions — under-build is P0/P1,
+over-build (a speculative abstraction, a needless dependency, tests past the rule)
+is P2.
+
+The ladder is adapted from [ponytail](https://github.com/DietrichGebert/ponytail)
+(MIT). It is inlined into the worker brief rather than loaded as a plugin, because
+worktree subagents may not load plugins.
 
 ### Gates get wider
 
-T0 checks one item with two non-maker reviewers. T1 first runs mechanical
-integration checks, then one rotating reviewer checks milestone composition
-only; the pipeline pauses after a passing T1 for human continuation. T2 sweeps
-the whole plan's success criteria. T3 is a mandatory read-only adversarial pass
-over the cumulative merged diff. P0/P1 findings must drain before completion.
+Under `/goal`: T0 checks one item with two non-maker reviewers, T1 runs mechanical
+integration checks then one rotating reviewer, T2 sweeps the plan's success
+criteria, T3 is a mandatory read-only adversary over the cumulative merged diff.
+The pipeline pauses after every passing T1 for human continuation.
+
+Under `/ship`: the item gate is the locked command plus one reviewer, the
+milestone gate is mechanical checks plus one rotating reviewer scoped to
+integration only, and T3 is the same mandatory adversary. There is no milestone
+stop — a passing gate rolls straight into the next milestone.
+
+Both drain P0/P1 findings before completion, and both cap attempts at two per
+source id before escalating to a human.
 
 ### Legacy workflow
 
@@ -128,11 +248,12 @@ This is the discipline you would apply to code that pages you at 3am, applied to
 | Standard | How it's held |
 |---|---|
 | **Nothing ships unverified** | Every ticket carries a `Verification-command` that must exit 0, run *after* the final edit — not before, not "probably still passing" |
-| **Independent sign-off** | The GLM maker is excluded from T0-T3 judgment; the final adversary is read-only |
+| **Independent sign-off** | The GLM maker is excluded from every review tier; the final adversary is read-only |
 | **Non-functionals are contracts** | Acceptance and invariant docs travel into every item, milestone gate, and final teardown |
 | **Failures terminate** | Attempts are capped at two per source id; blockers escalate instead of creating recursive retries |
 | **State is auditable** | Backlog, handoff, producer digests, branch ancestry, and structured review records reconstruct the run without chat |
-| **Concurrency is bounded** | `MAX_BATCH` defaults to 3 and caps at 4; every item gets a separate branch and worktree |
+| **Concurrency is bounded** | `MAX_BATCH` defaults to 3/caps at 4 under `/goal`, 4/caps at 8 under `/ship`; every item gets a separate branch and worktree |
+| **Restraint is reviewable** | Over-build is a reportable finding, not a matter of taste — the reviewer flags speculative abstractions and needless dependencies with `file:line` |
 | **Deploys are proven** | `push-handoff` refuses to claim success without reading the remote SHA back, never force-pushes, and scans the diff for secrets |
 
 The tooling holds the same bar. `vskills` ships **zero runtime dependencies** with tests covering install, drift detection, dependency resolution, symlink safety, and the npx entrypoint. Copies stage into a temp dir and swap in via `rename`, so an interrupted install cannot leave a half-written skill. Content is hashed, so a skill you hand-edited is detected as drifted and left alone rather than silently overwritten. Destructive overwrites are backed up first. The guarantees are written down and held to in [`docs/invariants.md`](docs/invariants.md).
@@ -147,14 +268,16 @@ No mechanism here is free. Each row is the honest trade.
 | Mechanism | Failure it removes | Costs you |
 |---|---|---|
 | Locked `Verification-command` run after the final edit | "Done" claimed on tests that were never run | Nothing — this one is strictly free |
+| Gate-first review (`/ship`) | Paying a reviewer to read code the tests already rejected | Nothing — also strictly free |
 | Blind review on a different model | Self-approved bugs. The single largest win. | A second model's tokens |
 | Invariants locked *before* the spec | Plans optimized for "finish" instead of "safe" | One interactive planning session |
-| T0 + T1 + T3 widening review | Local and composed defects missed by one scope | Several fresh-model passes |
+| Widening review tiers | Local and composed defects missed by one scope | Several fresh-model passes — the main cost difference between `/ship` and `/goal` |
+| The decision ladder | Factories for one call site; dependencies the stdlib already covers | Occasionally a rung too low, caught at review |
 | Attempt cap → human escalation | Infinite build/fix loops on impossible items | An occasional human interrupt |
 | Atomic backlog + producer digests | Session two re-deriving session one | Checkpoint discipline |
 | One worktree per item | Agents silently overwriting each other | Worktree lifecycle overhead |
 
-Overall you are trading **tokens and time-to-first-"done"** for **defects that never reach you**. That trade is excellent on a payments integration or an auth boundary, and poor on a script you are deleting tomorrow.
+Overall you are trading **tokens and time-to-first-"done"** for **defects that never reach you**. That trade is excellent on a payments integration or an auth boundary, and poor on a script you are deleting tomorrow. Choosing `/ship` over `/goal` is that same dial, set one notch cheaper.
 
 **If you adopt one thing:** lock a verification command before the work starts and require it to be run after the final edit. Most false "done" claims disappear and it costs nothing.
 
@@ -175,6 +298,12 @@ Knowing where a tool stops is part of what makes it trustworthy inside its range
 - **Solo hacking where you *are* the checker and you're actually going to read it.** The pipeline's value is proportional to how little you plan to read.
 - **No test suite at all.** The gate is the backbone. Without one, every "done" is a judgment call again and most of the machinery is inert.
 
+Within its range, the remaining question is only *which* pipeline. `/goal`'s extra
+tiers are worth their cost where a defect is expensive to discover late; `/ship`
+is the right default everywhere else. Reaching for `/goal` on low-blast-radius
+work is the same category of mistake as reaching for either on a throwaway script
+— overhead bought for nothing.
+
 </details>
 
 ---
@@ -183,9 +312,11 @@ Knowing where a tool stops is part of what makes it trustworthy inside its range
 
 | I want to… | Use |
 |---|---|
-| Drive a plan through milestones to verified completion | `/goal CONTEXT/architecture.md` |
+| **Build a spec to pushed, verified code** | `/grill-with-docs` → `/to-spec` → `/ship` |
+| Same, but with every review net in the water | `/grill-with-docs` → `/to-spec` → `/goal <plan>` |
+| Drive an existing plan doc through milestones | `/goal CONTEXT/architecture.md` |
 | Research a genuinely contested decision | `council` |
-| Build several ready items safely | `parallel` through `goals` |
+| Build several ready items safely | `ship-parallel` through `ship`, or `parallel` through `goals` |
 | Tear down a converged diff without fixing it | `council-adversary` |
 | Run a blind loop against a real quality bar | `/gauntlet-loop` |
 | Run *any* task until a checker says done | `/loop-engineer` |
@@ -208,11 +339,13 @@ Knowing where a tool stops is part of what makes it trustworthy inside its range
 
 <br>
 
-`goals` is the active chain. `council`, `parallel`, and `council-adversary` are the machinery it composes; `pipeline/` contains additional reusable delivery disciplines.
+`ship` and `goals` are the two active chains. `ship-parallel`, `council`, `parallel`, and `council-adversary` are the machinery they compose; `pipeline/` contains additional reusable delivery disciplines.
 
 | Skill | Use when |
 |---|---|
-| `goals` | Sole backlog writer and resumable autonomous plan driver |
+| `ship` | Lean resumable driver — spec to pushed code, gate-first review, runs to T3 unattended |
+| `ship-parallel` | Worktree build farm with the decision ladder, gate-first single-reviewer T0 |
+| `goals` | Widest-net resumable plan driver, sole backlog writer, milestone stops |
 | `council` | Independent research/debate and scoped T0/T1 review protocol |
 | `parallel` | Worktree build farm, two-reviewer T0 gate, partial-success integration |
 | `council-adversary` | Read-only optional T0/T2 and mandatory T3 teardown |
@@ -306,7 +439,9 @@ bin/vskills.js    the vskills CLI entrypoint
 src/              vskills implementation
 test/             vskills test suite (node --test)
 
-goals/            autonomous plan driver, atomic backlog, milestone gates
+ship/             lean spec-to-pushed driver, shared backlog contract, T3 + delivery
+ship-parallel/    worktree build farm with the decision ladder + gate-first review
+goals/            widest-net plan driver, atomic backlog, milestone gates
 council/          independent research, debate, T0/T1 review protocol
 parallel/         worktree build farm + CLI runner + compact results contract
 council-adversary/read-only T0/T2/T3 teardown
@@ -328,11 +463,14 @@ pipeline/         the machinery: stage protocol, roles, worktree safety,
 
 OpenCode loads the canonical definitions under `opencode/agent/` globally from
 `~/.config/opencode/agent/`. Shift-Tab can select either `goals` for delivery or
-`council` for standalone research/review. Goals remains the only writer and
-merger in a goal run. Every child is `mode: subagent` with `task: deny`, so the
-tree is always one level:
+`council` for standalone research/review. Whichever orchestrator is running
+remains the only writer and merger for its run. `ship` draws from the same
+roster — the fixed contributor plus one non-maker reviewer plus the adversary.
+Every child is `mode: subagent` with `task: deny`, so the tree is always one
+level:
 
 ```text
+ship    -> {contributor, one council reviewer, council-adversary}
 goals   -> {contributor, council members, council-adversary}
 council -> {council members, council-adversary}
 ```
@@ -354,8 +492,8 @@ council -> {council members, council-adversary}
 Members have read-only filesystem, web, skill, and inherited MCP access. They
 inspect source material themselves instead of receiving a
 pre-solved answer. The CLI path launches fresh `opencode run --dir <worktree>`
-processes; if no binary exists, goals uses parallel Task calls against the same
-worktrees and emits the same result contract.
+processes; if no binary exists, the orchestrator uses parallel Task calls against
+the same worktrees and emits the same result contract.
 
 OpenCode loads configuration once. Quit and restart it after changing an agent,
 skill, command, or config file.
