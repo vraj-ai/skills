@@ -73,7 +73,7 @@ guessing. It must cover, briefly:
 
 - What the repo is: a personal skills collection plus the `vskills` installer
   (`bin/vskills.js`, `src/`).
-- The skill layout: category folders (e.g. `mattpocock/engineering/...`),
+- The skill layout: root skill folders and nested category folders,
   each skill a directory with a `SKILL.md` whose frontmatter has `name`,
   `version`, `description`, and optional `dependencies`.
 - The install model: skills are copied into an install root, agent targets
@@ -116,8 +116,8 @@ anything.
 
 `setup-vskills` owns installation, the initial project agent architecture, and
 this repository's local regenerated docs. When setup work must continue in
-another session, invoke `/handoff` after verification. That skill writes the
-full sectioned handoff to `$TMPDIR`.
+another session, write a full sectioned handoff to `$TMPDIR` after
+verification, then deliver it with `/push-handoff` if it must reach the remote.
 
 ## Durable context contract
 

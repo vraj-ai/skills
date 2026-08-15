@@ -29,17 +29,13 @@ test('native workflow skills state durable context ownership', async () => {
 });
 
 test('handoff compaction and delivery remain separate contracts', async () => {
-  const [handoff, pushHandoff, readme] = await Promise.all([
-    read('mattpocock', 'productivity', 'handoff', 'SKILL.md'),
+  const [pushHandoff, readme] = await Promise.all([
     read('push-handoff', 'SKILL.md'),
     read('README.md'),
   ]);
 
-  assert.match(handoff, /temporary directory/);
-  assert.match(handoff, /Suggested Skills/);
-  assert.doesNotMatch(handoff, /git\s+(commit|push)|commit and push|push work/);
   assert.match(pushHandoff, /Handoff boundaries/);
   assert.match(pushHandoff, /A handoff never implies a push/);
   assert.match(pushHandoff, /remote SHA/);
-  assert.match(readme, /\/handoff` then `\/push-handoff/);
+  assert.match(readme, /push-handoff` is the explicit/);
 });
