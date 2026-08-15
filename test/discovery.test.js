@@ -18,10 +18,10 @@ test('discovers a root skill', async () => {
   }
 });
 
-test('discovers a nested mattpocock-style skill by its flattened name', async () => {
+test('discovers a nested category skill by its flattened name', async () => {
   const repo = await makeTmpDir();
   try {
-    await writeSkill(repo, 'mattpocock/misc/bar', { name: 'bar', description: 'Bar skill.' });
+    await writeSkill(repo, 'category/misc/bar', { name: 'bar', description: 'Bar skill.' });
     const { skills } = await discoverSkills(repo);
     assert.ok(skills.has('bar'));
   } finally {

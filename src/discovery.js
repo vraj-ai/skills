@@ -22,7 +22,7 @@ async function findSkillMdFiles(root) {
 }
 
 // Discovers every skill in the repo, keyed by its frontmatter `name` (not its
-// path) so a nested mattpocock skill is addressable the same way a root one is.
+// path) so a nested category skill is addressable the same way a root one is.
 export async function discoverSkills(repoRoot) {
   const skillDirs = await findSkillMdFiles(repoRoot);
   const byName = new Map();

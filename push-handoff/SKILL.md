@@ -12,18 +12,18 @@ The last step of a chain, and the one most likely to produce a **false claim**. 
 
 Three related operations have different owners and must not be collapsed:
 
-- Matt Pocock's `/handoff` compacts and redacts conversation context into the OS temporary directory. It does not commit or push.
+- Context compaction produces a redacted handoff artifact in the OS temporary directory. It does not commit or push.
 - `goals` owns `CONTEXT/goals/<slug>/handoff.md` as the small, durable resume cursor for a goal run.
 - This skill performs authorized delivery of an already-prepared handoff and its artifacts. It verifies, stages, commits, pushes, and proves the remote SHA.
 
-When both context compaction and delivery are needed, run `/handoff` first and `/push-handoff` second. A handoff never implies a push. A pipeline may invoke this skill directly when its handoff and artifacts already exist.
+When both context compaction and delivery are needed, produce the handoff artifact first and run `/push-handoff` second. A handoff never implies a push. A pipeline may invoke this skill directly when its handoff and artifacts already exist.
 
 ## Handoff artifact input
 
 This skill delivers a handoff; it does not synthesize one from memory. Before
-staging, require the generated handoff at the path supplied by `/handoff` in
-`$TMPDIR`. If the run needs a handoff but no artifact exists, stop and invoke
-`/handoff` rather than inventing a second format.
+staging, require the already-generated handoff artifact in `$TMPDIR`. If the
+run needs a handoff but no artifact exists, stop and have one produced rather
+than inventing a second format.
 
 The temp file is not staged. If a project has its own tracked handoff archive,
 stage that project-owned copy only when the project rules explicitly require it.

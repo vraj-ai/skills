@@ -82,12 +82,11 @@ and continues. Raw model logs never enter orchestrator context.
 
 ### Handoff is not delivery
 
-The productivity `/handoff` skill only compacts and redacts conversation context
-to the OS temporary directory. `goals` separately owns the durable
-`CONTEXT/goals/<slug>/handoff.md` resume cursor. `/push-handoff` is the explicit
-delivery operation: it verifies, commits, pushes, and proves the fetched remote
-SHA. When both are needed, run `/handoff` then `/push-handoff`; creating a
-handoff never authorizes or implies a push.
+Compacting a session into a handoff artifact and delivering it are separate
+operations. `goals` owns the durable `CONTEXT/goals/<slug>/handoff.md` resume
+cursor. `/push-handoff` is the explicit delivery operation: it verifies,
+commits, pushes, and proves the fetched remote SHA. Producing a handoff never
+authorizes or implies a push.
 
 ### Council is independent
 
@@ -170,9 +169,9 @@ Overall you are trading **tokens and time-to-first-"done"** for **defects that n
 
 Knowing where a tool stops is part of what makes it trustworthy inside its range.
 
-- **Throwaway scripts, spikes, prototypes.** Use `/prototype`. The pipeline's overhead buys nothing when the code is going in the bin.
+- **Throwaway scripts, spikes, prototypes.** The pipeline's overhead buys nothing when the code is going in the bin.
 - **One-line fixes.** A multi-tier goal run for a typo is theater.
-- **Exploratory work where you don't know the question yet.** Use `/wayfinder` to map it first, or `/research`. Grilling fog produces confident nonsense.
+- **Exploratory work where you don't know the question yet.** Map the question before driving a plan through it; fog produces confident nonsense.
 - **Solo hacking where you *are* the checker and you're actually going to read it.** The pipeline's value is proportional to how little you plan to read.
 - **No test suite at all.** The gate is the backbone. Without one, every "done" is a judgment call again and most of the machinery is inert.
 
@@ -191,9 +190,6 @@ Knowing where a tool stops is part of what makes it trustworthy inside its range
 | Run a blind loop against a real quality bar | `/gauntlet-loop` |
 | Run *any* task until a checker says done | `/loop-engineer` |
 | Have several models attempt + cross-examine the same task | `/multi-agent-review` |
-| Stress-test a plan before building | `/grilling`, `/grill-me` |
-| Map work too big to hold in one session | `/wayfinder` |
-| Debug something genuinely hard | `/diagnosing-bugs` |
 | Audit a whole codebase, not one diff | `/codebase-audit` |
 | Check an invariant is *enforced*, not just documented | `/invariant-evidence-review` |
 | Work on several tickets at once | `/parallel-subagent-implementation` |
@@ -201,8 +197,7 @@ Knowing where a tool stops is part of what makes it trustworthy inside its range
 | Ship a webhook / queue / billing integration | `/provider-integration-tdd` |
 | Price a feature whose cost is inference | `/ai-subscription-unit-economics` |
 | Unstick a pipeline reporting false progress | `/state-driven-pipeline-recovery` |
-| Hand off to the next session | `/handoff` then `/push-handoff` |
-| Write a skill of my own | `/writing-for-agents` |
+| Hand off to the next session | `/push-handoff` |
 
 ---
 
@@ -277,31 +272,6 @@ npx github:VrajGupta/skills add gauntlet-loop
 
 </details>
 
-<details>
-<summary><b>mattpocock/</b> — mirrored library, use independently</summary>
-
-<br>
-
-[mattpocock/skills](https://github.com/mattpocock/skills), MIT licensed — see `mattpocock/LICENSE`. Mirrored by his own category structure. Each is independent; invoke whichever fits the moment.
-
-**engineering/** — `tdd` · `code-review` · `diagnosing-bugs` · `codebase-design` · `domain-modeling` · `grill-with-docs` · `implement` · `improve-codebase-architecture` · `prototype` · `research` · `resolving-merge-conflicts` · `to-spec` · `to-tickets` · `triage` · `wayfinder` · `ask-matt`
-
-**productivity/** — `grilling` · `grill-me` · `handoff` · `teach` · `writing-for-agents`
-
-**misc/** — `git-guardrails-claude-code` · `migrate-to-shoehorn` · `scaffold-exercises` · `setup-pre-commit`
-
-**personal/** — `edit-article` · `obsidian-vault`
-
-**in-progress/** and **deprecated/** are mirrored as-is; treat accordingly.
-
-Run `setup-matt-pocock-skills` once per repo before using the engineering skills — it configures the issue tracker, triage labels, and domain-doc layout they assume.
-
-See `mattpocock/UPSTREAM-README.md` for his full reference and the philosophy behind them.
-
-</details>
-
----
-
 ## Installing with `vskills`
 
 ```bash
@@ -349,7 +319,6 @@ gauntlet-loop/    blind maker→critic loop for one-shot and UI work
 multi-agent-review/ standalone multi-model worktree comparison loop
 pipeline/         the machinery: stage protocol, roles, worktree safety,
                   batch delivery, audit, recovery
-mattpocock/       mirrored library (github.com/mattpocock/skills)
 ```
 
 <details>
