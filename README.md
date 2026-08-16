@@ -94,7 +94,7 @@ important the feature feels.
 
 ```mermaid
 flowchart LR
-    Spec[Spec from /to-spec] --> P0[Phase 0: milestones, items, locked gates]
+    Spec[Spec reference you provide] --> P0[Phase 0: milestones, items, locked gates]
     P0 --> Loop[Ready items]
     Loop --> W[Worktrees, ladder brief]
     W --> G{Gate green?}
@@ -110,14 +110,9 @@ flowchart LR
     style Fail fill:#8b1a1a,color:#fff
 ```
 
-```text
-/grill-with-docs  →  /to-spec  →  /ship
-```
-
-`/ship` reads `docs/agents/issue-tracker.md` to find what `/to-spec` published,
-so it works with GitHub, GitLab, or local markdown without configuration. It
-fires `/handoff` and `/push-handoff` itself on a clean T3, so three commands
-cover idea to pushed code.
+`/ship <spec>` takes a spec reference you provide — an issue number, URL, or file
+path. It does not require a generated `docs/agents/issue-tracker.md` file. On a
+clean T3, it handles handoff and push itself.
 
 **Gate-first review** is where most of the saving comes from: the locked
 verification command runs *before* a reviewer is spawned. A red gate is a failure
@@ -314,8 +309,8 @@ work is the same category of mistake as reaching for either on a throwaway scrip
 
 | I want to… | Use |
 |---|---|
-| **Build a spec to pushed, verified code** | `/grill-with-docs` → `/to-spec` → `/ship` |
-| Same, but with every review net in the water | `/grill-with-docs` → `/to-spec` → `/goal <plan>` |
+| **Build a spec to pushed, verified code** | `/ship <spec>` |
+| Same, but with every review net in the water | `/goal <plan>` |
 | Drive an existing plan doc through milestones | `/goal CONTEXT/architecture.md` |
 | Research a genuinely contested decision | `council` |
 | Build several ready items safely | `ship-parallel` through `ship`, or `parallel` through `goals` |
