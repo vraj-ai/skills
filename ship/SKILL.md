@@ -7,23 +7,24 @@ dependencies: [ship-parallel, council-adversary]
 
 # Ship
 
-`/ship` takes the spec `/to-spec` published and builds it, unattended, until a
-final adversary says it can go — then pushes it.
+`/ship` takes a spec reference and builds it, unattended, until a final adversary
+says it can go — then pushes it.
 
 It is the lean pipeline. Where `goals` councils, gates, and stops at every
 milestone, `/ship` runs one contributor and one reviewer per item, checks the
 gate before spending either, and stops only for trouble. `goals` remains
 available for work that earns the ceremony.
 
-The whole flow: **`/grill-with-docs` → `/to-spec` → `/ship`.** The handoff and
-push happen inside `/ship`.
+Start `/ship` with the spec reference. The handoff and push happen inside
+`/ship`.
 
 ## Input
 
-Read `docs/agents/issue-tracker.md` to learn where `/to-spec` published — GitHub
-Issues, GitLab, or `.scratch/`. Fetch the spec from there. `/ship <reference>`
-takes an issue number, URL, or path; with no argument, find the most recent spec
-carrying the `ready-for-agent` label.
+`/ship <reference>` takes an issue number, URL, or file path; fetch the spec from
+that reference. If the repo has a tracker-location document, use it only as an
+optional hint. With no argument, use available tracker configuration to find the
+most recent spec carrying the `ready-for-agent` label; if no tracker
+configuration is available, ask the user for the spec reference.
 
 Derive a stable `<slug>` from the spec's identifier (issue number + title slug,
 or the filename). The slug is the resume key — pin it in `goal.md` and never
