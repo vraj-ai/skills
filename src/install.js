@@ -5,6 +5,10 @@ import { isDirectory } from './discovery.js';
 
 export const BACKUP_DIR_NAME = '.vskills-backup';
 
+export function symlinkTypeForPlatform(platform) {
+  return platform === 'win32' ? 'junction' : undefined;
+}
+
 function randSuffix() {
   return Math.random().toString(36).slice(2, 10);
 }
@@ -51,7 +55,7 @@ export async function ensureSymlink(installedDir, targetDir, name, warnings) {
     existing = await lstat(linkPath);
   } catch (err) {
     if (err.code !== 'ENOENT') throw err;
-    await symlink(installedDir, linkPath);
+    await symlink(installedDir, linkPath, symlinkTypeForPlatform(process.platform));
     return;
   }
 
