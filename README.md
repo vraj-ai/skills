@@ -437,11 +437,11 @@ Content is copied to the install root and linked into each agent's skills direct
 On Windows, vskills explicitly requests a directory junction for each target. Junctions need neither Developer Mode nor an elevated shell.
 
 <details>
-<summary><b>If npm 12 blocks the package spec (<code>EALLOWGIT</code>/<code>EALLOWREMOTE</code>)</b></summary>
+<summary><b>If npm 12 blocks a GitHub package spec (<code>EALLOWGIT</code>/<code>EALLOWREMOTE</code>)</b></summary>
 
 <br>
 
-npm 12 defaults both `allow-git` and `allow-remote` to `'none'`. That means a GitHub package spec can fail with `EALLOWGIT`, and a GitHub archive tarball URL can fail with `EALLOWREMOTE`.
+When installing from GitHub, npm 12 defaults both `allow-git` and `allow-remote` to `'none'`. That means a GitHub package spec can fail with `EALLOWGIT`, and a GitHub archive tarball URL can fail with `EALLOWREMOTE`.
 
 ```
 npm error code EALLOWGIT

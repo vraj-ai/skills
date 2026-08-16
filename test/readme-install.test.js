@@ -11,5 +11,8 @@ test('README documents the registry install command without retracted npm guidan
 
   assert.match(readme, /npx vskills init/);
   assert.doesNotMatch(readme, /npm config set allow-git true/);
-  assert.doesNotMatch(readme, /falls back to a directory junction/);
+  assert.doesNotMatch(
+    readme,
+    /\bNode(?:['’]s|\s+versions?)?\b[^.]*\bautodetect(?:s|ed)?\b[^.]*\bjunction\b[^.]*\bneeds?\s+no\s+special\s+privileges\b/i,
+  );
 });
