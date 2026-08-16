@@ -5,7 +5,13 @@ Agent skills for running software work as a **factory** rather than a conversati
 A skill is a file an agent loads on demand that says *how to do one job properly*. This repo holds **two autonomous delivery pipelines** — `/ship` and `/goal` — the council and worktree machinery they compose, a preserved legacy four-stage workflow, and standalone skills for the jobs around them.
 
 ```
-npx github:VrajGupta/skills init
+npx github:vraj-ai/skills init
+```
+
+Same command on macOS, Linux, and Windows PowerShell. If npm answers with `npm error code EALLOWGIT` ("Fetching packages of type git have been disabled"), use the tarball form instead — plain HTTPS, no git:
+
+```
+npx https://github.com/vraj-ai/skills/archive/refs/heads/main.tar.gz init
 ```
 
 ---
@@ -400,21 +406,74 @@ permissions, payments, migrations, or other high-risk work.
 Install only this skill with:
 
 ```bash
-npx github:VrajGupta/skills add gauntlet-loop
+npx github:vraj-ai/skills add gauntlet-loop
 ```
 
 </details>
 
 ## Installing with `vskills`
 
+**macOS / Linux** (bash, zsh):
+
 ```bash
-npx github:VrajGupta/skills init               # install every skill
-npx github:VrajGupta/skills list               # what's installed / drifted
-npx github:VrajGupta/skills add <skill>        # one skill + its dependencies
-npx github:VrajGupta/skills update [skill...]  # refresh (skips your local edits)
+npx github:vraj-ai/skills init               # install every skill
+npx github:vraj-ai/skills list               # what's installed / drifted
+npx github:vraj-ai/skills add <skill>        # one skill + its dependencies
+npx github:vraj-ai/skills update [skill...]  # refresh (skips your local edits)
 ```
 
-Content is copied to `~/.agents/skills/<name>` and symlinked into `~/.claude/skills/<name>`.
+**Windows** (PowerShell) — the same commands, but don't type the angle brackets: PowerShell reserves `<` and `>` and will refuse the line.
+
+```powershell
+npx github:vraj-ai/skills init               # install every skill
+npx github:vraj-ai/skills list               # what's installed / drifted
+npx github:vraj-ai/skills add gauntlet-loop  # one skill + its dependencies
+npx github:vraj-ai/skills update ship        # refresh (skips your local edits)
+```
+
+Content is copied to the install root and linked into each agent's skills directory:
+
+| | install root | Claude Code target |
+|---|---|---|
+| macOS / Linux | `~/.agents/skills/<name>` | `~/.claude/skills/<name>` |
+| Windows | `%USERPROFILE%\.agents\skills\<name>` | `%USERPROFILE%\.claude\skills\<name>` |
+
+The link is created with Node's `fs.symlink`. Recent Node versions autodetect a directory target on Windows and create a junction, which needs no special privileges; if your Node is older and the install reports a symlink error, turn on Windows Developer Mode (Settings → System → For developers) or run the shell as administrator once.
+
+<details>
+<summary><b>If npm blocks git installs (<code>EALLOWGIT</code>)</b></summary>
+
+<br>
+
+Some npm setups — newer npm releases, corporate `.npmrc` policies, locked-down CI images — disable git-backed package specs, so `npx github:...` fails before it ever reaches this repo:
+
+```
+npm error code EALLOWGIT
+npm error Fetching packages of type "git" have been disabled
+```
+
+Nothing is wrong with the repo; npm just won't shell out to git. Pick either workaround.
+
+**Tarball spec (no git, no config change).** GitHub serves the repo as a plain HTTPS tarball, which npm treats as an ordinary package. Identical on macOS, Linux, and Windows PowerShell:
+
+```bash
+npx https://github.com/vraj-ai/skills/archive/refs/heads/main.tar.gz init
+npx https://github.com/vraj-ai/skills/archive/refs/heads/main.tar.gz list
+npx https://github.com/vraj-ai/skills/archive/refs/heads/main.tar.gz add gauntlet-loop
+```
+
+**Clone and run it directly.** No npm involvement at all — the CLI has zero dependencies, so there is nothing to install:
+
+```bash
+git clone https://github.com/vraj-ai/skills.git
+node skills/bin/vskills.js init
+```
+
+On Windows PowerShell that second line is `node skills\bin\vskills.js init`.
+
+Re-enabling git specs (`npm config set allow-git true`) also works, but only if the setting is yours to change — if a corporate `.npmrc` set it, leave it alone and use the tarball.
+
+</details>
 
 <details>
 <summary><b>What it guarantees</b></summary>

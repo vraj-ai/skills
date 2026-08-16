@@ -15,7 +15,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
 const installRoot = path.join(os.homedir(), '.agents', 'skills');
 
-const HELP = `V's Skills (vskills) — installer CLI for VrajGupta/skills
+const HELP = `V's Skills (vskills) — installer CLI for vraj-ai/skills
 
 Usage:
   vskills init                    Install every skill in the repo
