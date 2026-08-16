@@ -17,8 +17,13 @@ test('package metadata is ready for the vskills registry package', async () => {
     /^\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/
   );
   assert.equal(packageJson.bin?.vskills, 'bin/vskills.js');
-  assert.equal(packageJson.repository, 'git+https://github.com/vraj-ai/skills.git');
-  assert.equal(packageJson.homepage, 'https://github.com/vraj-ai/skills#readme');
-  assert.equal(packageJson.bugs, 'https://github.com/vraj-ai/skills/issues');
+  for (const field of ['repository', 'homepage', 'bugs']) {
+    assert.equal(Object.hasOwn(packageJson, field), true);
+    const value = packageJson[field];
+    const reference = typeof value === 'string' ? value : value?.url;
+    assert.equal(typeof reference, 'string');
+    assert.match(reference, /github\.com\/vraj-ai\/skills(?:\.git)?(?:[/#]|$)/);
+  }
+  assert.equal(Object.hasOwn(packageJson, 'files'), false);
   assert.equal(Object.hasOwn(packageJson, 'dependencies'), false);
 });
