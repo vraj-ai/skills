@@ -88,48 +88,58 @@ export async function runInit({ repoRoot, installRoot, targets, resolveConflicts
 
   const results = [];
   const messages = [...discoveryWarnings];
+  const linkFailures = [];
 
   for (const item of plan) {
     const { skill, action } = item;
-    const record = (status, warnings = []) => {
+    const record = (status, warnings = [], failures = []) => {
       results.push({ name: skill.name, status });
       messages.push(...warnings.map((w) => `${skill.name}: ${w}`));
+      linkFailures.push(...failures);
     };
 
     if (action === 'up-to-date') {
       // Already managed and byte-identical: installOne's up-to-date path
       // ensures symlinks without rewriting the manifest entry, so a re-run
       // is a true no-op (installedAt stays put).
-      const { warnings } = await installOne({ skill, installRoot, targets, manifest });
-      record('up-to-date', warnings);
+      const { warnings, linkFailures: failures } = await installOne({
+        skill, installRoot, targets, manifest,
+      });
+      record('up-to-date', warnings, failures);
       continue;
     }
 
     if (action === 'adopt') {
-      const { warnings } = await adoptOne({
+      const { warnings, linkFailures: failures } = await adoptOne({
         skill, installRoot, targets, manifest, contentHash: item.installedHash,
       });
-      record('adopted', warnings);
+      record('adopted', warnings, failures);
       continue;
     }
 
     if (action === 'install') {
-      const { warnings } = await installOne({ skill, installRoot, targets, manifest });
-      record('installed', warnings);
+      const { warnings, linkFailures: failures } = await installOne({
+        skill, installRoot, targets, manifest,
+      });
+      record('installed', warnings, failures);
       continue;
     }
 
     if (action === 'update') {
-      const { warnings } = await installOne({ skill, installRoot, targets, manifest, force: true });
-      record('updated', warnings);
+      const { warnings, linkFailures: failures } = await installOne({
+        skill, installRoot, targets, manifest, force: true,
+      });
+      record('updated', warnings, failures);
       if (item.note) messages.push(`${skill.name}: ${item.note}`);
       continue;
     }
 
     // conflict
     if (overwriteNames.has(skill.name)) {
-      const { warnings } = await installOne({ skill, installRoot, targets, manifest, force: true });
-      record('updated', warnings);
+      const { warnings, linkFailures: failures } = await installOne({
+        skill, installRoot, targets, manifest, force: true,
+      });
+      record('updated', warnings, failures);
     } else {
       record('skipped');
       messages.push(`${skill.name}: existing copy differs from this repo — kept yours (rerun init to revisit)`);
@@ -137,5 +147,5 @@ export async function runInit({ repoRoot, installRoot, targets, resolveConflicts
   }
 
   await writeManifest(installRoot, manifest);
-  return { ok: true, results, messages };
+  return { ok: linkFailures.length === 0, results, messages, linkFailures };
 }

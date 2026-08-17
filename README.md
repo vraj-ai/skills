@@ -5,14 +5,10 @@ Agent skills for running software work as a **factory** rather than a conversati
 A skill is a file an agent loads on demand that says *how to do one job properly*. This repo holds **two autonomous delivery pipelines** — `/ship` and `/goal` — the council and worktree machinery they compose, a preserved legacy four-stage workflow, and standalone skills for the jobs around them.
 
 ```
-npx github:vraj-ai/skills init
+npx vskills init
 ```
 
-Same command on macOS, Linux, and Windows PowerShell. If npm answers with `npm error code EALLOWGIT` ("Fetching packages of type git have been disabled"), use the tarball form instead — plain HTTPS, no git:
-
-```
-npx https://github.com/vraj-ai/skills/archive/refs/heads/main.tar.gz init
-```
+Same command on macOS, Linux, and Windows PowerShell.
 
 ---
 
@@ -98,7 +94,7 @@ important the feature feels.
 
 ```mermaid
 flowchart LR
-    Spec[Spec from /to-spec] --> P0[Phase 0: milestones, items, locked gates]
+    Spec[Spec reference you provide] --> P0[Phase 0: milestones, items, locked gates]
     P0 --> Loop[Ready items]
     Loop --> W[Worktrees, ladder brief]
     W --> G{Gate green?}
@@ -114,14 +110,9 @@ flowchart LR
     style Fail fill:#8b1a1a,color:#fff
 ```
 
-```text
-/grill-with-docs  →  /to-spec  →  /ship
-```
-
-`/ship` reads `docs/agents/issue-tracker.md` to find what `/to-spec` published,
-so it works with GitHub, GitLab, or local markdown without configuration. It
-fires `/handoff` and `/push-handoff` itself on a clean T3, so three commands
-cover idea to pushed code.
+`/ship <spec>` takes a spec reference you provide — an issue number, URL, or file
+path. It does not require a generated `docs/agents/issue-tracker.md` file. On a
+clean T3, it handles handoff and push itself.
 
 **Gate-first review** is where most of the saving comes from: the locked
 verification command runs *before* a reviewer is spawned. A red gate is a failure
@@ -318,8 +309,8 @@ work is the same category of mistake as reaching for either on a throwaway scrip
 
 | I want to… | Use |
 |---|---|
-| **Build a spec to pushed, verified code** | `/grill-with-docs` → `/to-spec` → `/ship` |
-| Same, but with every review net in the water | `/grill-with-docs` → `/to-spec` → `/goal <plan>` |
+| **Build a spec to pushed, verified code** | `/ship <spec>` |
+| Same, but with every review net in the water | `/goal <plan>` |
 | Drive an existing plan doc through milestones | `/goal CONTEXT/architecture.md` |
 | Run `/goal` from a live Herdr pane farm | `/herdr-orchestrator` |
 | Research a genuinely contested decision | `council` |
@@ -408,7 +399,7 @@ permissions, payments, migrations, or other high-risk work.
 Install only this skill with:
 
 ```bash
-npx github:vraj-ai/skills add gauntlet-loop
+npx vskills add gauntlet-loop
 ```
 
 `/herdr-orchestrator` is the path when you already work in [Herdr](https://herdr.dev)
@@ -437,19 +428,19 @@ Council — that target is excluded.
 **macOS / Linux** (bash, zsh):
 
 ```bash
-npx github:vraj-ai/skills init               # install every skill
-npx github:vraj-ai/skills list               # what's installed / drifted
-npx github:vraj-ai/skills add <skill>        # one skill + its dependencies
-npx github:vraj-ai/skills update [skill...]  # refresh (skips your local edits)
+npx vskills init               # install every skill
+npx vskills list               # what's installed / drifted
+npx vskills add <skill>        # one skill + its dependencies
+npx vskills update [skill...]  # refresh (skips your local edits)
 ```
 
-**Windows** (PowerShell) — the same commands, but don't type the angle brackets: PowerShell reserves `<` and `>` and will refuse the line.
+**Windows** (PowerShell) — the same commands, but replace placeholders such as `<skill>` with a real name; PowerShell reserves `<` and `>` so those angle-bracket placeholders must not be typed literally.
 
 ```powershell
-npx github:vraj-ai/skills init               # install every skill
-npx github:vraj-ai/skills list               # what's installed / drifted
-npx github:vraj-ai/skills add gauntlet-loop  # one skill + its dependencies
-npx github:vraj-ai/skills update ship        # refresh (skips your local edits)
+npx vskills init               # install every skill
+npx vskills list               # what's installed / drifted
+npx vskills add gauntlet-loop  # one skill + its dependencies
+npx vskills update ship        # refresh (skips your local edits)
 ```
 
 Content is copied to the install root and linked into each agent's skills directory:
@@ -459,40 +450,41 @@ Content is copied to the install root and linked into each agent's skills direct
 | macOS / Linux | `~/.agents/skills/<name>` | `~/.claude/skills/<name>` |
 | Windows | `%USERPROFILE%\.agents\skills\<name>` | `%USERPROFILE%\.claude\skills\<name>` |
 
-The link is created with Node's `fs.symlink`. Recent Node versions autodetect a directory target on Windows and create a junction, which needs no special privileges; if your Node is older and the install reports a symlink error, turn on Windows Developer Mode (Settings → System → For developers) or run the shell as administrator once.
+On Windows, vskills explicitly requests a directory junction for each target. Junctions need neither Developer Mode nor an elevated shell.
 
 <details>
-<summary><b>If npm blocks git installs (<code>EALLOWGIT</code>)</b></summary>
+<summary><b>If npm 12 blocks a GitHub package spec (<code>EALLOWGIT</code>/<code>EALLOWREMOTE</code>)</b></summary>
 
 <br>
 
-Some npm setups — newer npm releases, corporate `.npmrc` policies, locked-down CI images — disable git-backed package specs, so `npx github:...` fails before it ever reaches this repo:
+When installing from GitHub, npm 12 defaults both `allow-git` and `allow-remote` to `'none'`. That means a GitHub package spec can fail with `EALLOWGIT`, and a GitHub archive tarball URL can fail with `EALLOWREMOTE`.
 
 ```
 npm error code EALLOWGIT
 npm error Fetching packages of type "git" have been disabled
 ```
 
-Nothing is wrong with the repo; npm just won't shell out to git. Pick either workaround.
+An archive URL can be rejected similarly:
 
-**Tarball spec (no git, no config change).** GitHub serves the repo as a plain HTTPS tarball, which npm treats as an ordinary package. Identical on macOS, Linux, and Windows PowerShell:
-
-```bash
-npx https://github.com/vraj-ai/skills/archive/refs/heads/main.tar.gz init
-npx https://github.com/vraj-ai/skills/archive/refs/heads/main.tar.gz list
-npx https://github.com/vraj-ai/skills/archive/refs/heads/main.tar.gz add gauntlet-loop
+```
+npm error code EALLOWREMOTE
 ```
 
-**Clone and run it directly.** No npm involvement at all — the CLI has zero dependencies, so there is nothing to install:
+Use the git allowance escape hatch if you control npm's command-line options:
+
+```bash
+npx --allow-git=all github:vraj-ai/skills init
+```
+
+Or clone and run the CLI directly, with no npm involvement:
 
 ```bash
 git clone https://github.com/vraj-ai/skills.git
-node skills/bin/vskills.js init
+cd skills
+node bin/vskills.js init
 ```
 
-On Windows PowerShell that second line is `node skills\bin\vskills.js init`.
-
-Re-enabling git specs (`npm config set allow-git true`) also works, but only if the setting is yours to change — if a corporate `.npmrc` set it, leave it alone and use the tarball.
+On Windows PowerShell, use `node bin\vskills.js init` for the final line.
 
 </details>
 

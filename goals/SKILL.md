@@ -37,7 +37,12 @@ Every backlog line has at most these 12 fields:
 Use `scripts/state.mjs` for locks, validation, ready calculation, and atomic
 replacement. Never append or edit the backlog in place. Mirror backlog state
 to GitHub issue labels when a GitHub remote is available, but resume from the
-local backlog. Use exactly one `goals:*` state label per issue. Publish the
+local backlog. Use exactly one `goals:*` state label per issue — one per
+backlog status: `goals:planned`, `goals:ready`, `goals:in-progress`,
+`goals:blocked`, `goals:failed`, `goals:done`, `goals:cancelled`. Remove the
+old label in the same operation that adds the new one, create labels on demand
+with `gh label create goals:<status> --force`, and never let a failed label
+write block the run. `ship` mirrors the same vocabulary. Publish the
 3-7 thematic groups as native GitHub Milestones; milestone size has no fixed
 issue cap.
 

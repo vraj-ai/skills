@@ -98,7 +98,7 @@ Recreate `docs/` with:
 - `docs/spec-vskills-cli.md` — command-by-command behavior of `init`, `add`,
   `list`, `update`, taken from `src/commands/`.
 - `docs/adr/` — one short ADR per structural decision you can actually
-  observe (e.g. npx/GitHub distribution, CLI architecture). Number them
+  observe (e.g. npm registry distribution as `vskills`, CLI architecture). Number them
   `0001-...`, `0002-...`.
 
 ## Step 4 — Verify nothing leaks

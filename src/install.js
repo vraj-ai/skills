@@ -5,12 +5,41 @@ import { isDirectory } from './discovery.js';
 
 export const BACKUP_DIR_NAME = '.vskills-backup';
 
+export function symlinkTypeForPlatform(platform) {
+  return platform === 'win32' ? 'junction' : undefined;
+}
+
 function randSuffix() {
   return Math.random().toString(36).slice(2, 10);
 }
 
 function timestamp() {
   return new Date().toISOString().replace(/[:.]/g, '-').replace(/Z$/, '');
+}
+
+async function createSymlink(installedDir, linkPath) {
+  try {
+    await symlink(installedDir, linkPath, symlinkTypeForPlatform(process.platform));
+  } catch (junctionError) {
+    if (process.platform !== 'win32') throw junctionError;
+    try {
+      await symlink(installedDir, linkPath);
+    } catch (fallbackError) {
+      const junctionCode = junctionError?.code ?? 'unknown';
+      const fallbackCode = fallbackError?.code ?? 'unknown';
+      const junctionMessage = junctionError?.message ?? String(junctionError);
+      const fallbackMessage = fallbackError?.message ?? String(fallbackError);
+      const fallbackDetail = fallbackCode !== junctionCode
+        ? `; fallback attempt failed (${fallbackCode}: ${fallbackMessage})`
+        : '';
+      const combinedError = junctionError instanceof Error
+        ? junctionError
+        : new Error(junctionMessage);
+      combinedError.message = `${junctionMessage}${fallbackDetail}`;
+      combinedError.code = junctionCode;
+      throw combinedError;
+    }
+  }
 }
 
 // Replaces destDir with a copy of sourceDir. The copy lands in a temp dir
@@ -42,7 +71,7 @@ async function atomicReplaceDir(sourceDir, destDir, { backupRoot = null } = {}) 
   return null;
 }
 
-export async function ensureSymlink(installedDir, targetDir, name, warnings) {
+export async function ensureSymlink(installedDir, targetDir, name, warnings, linkFailures = []) {
   await mkdir(targetDir, { recursive: true });
   const linkPath = path.join(targetDir, name);
 
@@ -51,7 +80,17 @@ export async function ensureSymlink(installedDir, targetDir, name, warnings) {
     existing = await lstat(linkPath);
   } catch (err) {
     if (err.code !== 'ENOENT') throw err;
-    await symlink(installedDir, linkPath);
+    try {
+      await createSymlink(installedDir, linkPath);
+    } catch (err) {
+      const code = err?.code ?? 'unknown';
+      const message = err?.message ?? String(err);
+      warnings.push(
+        `${linkPath}: could not create symlink (${code}: ${message}) — `
+        + 'skill is installed in the install root but was not linked into this target'
+      );
+      linkFailures.push({ name, targetDir });
+    }
     return;
   }
 
@@ -71,16 +110,17 @@ export async function ensureSymlink(installedDir, targetDir, name, warnings) {
 // without touching its files: manifest entry + symlinks only.
 export async function adoptOne({ skill, installRoot, targets, manifest, contentHash }) {
   const warnings = [];
+  const linkFailures = [];
   const installedDir = path.join(installRoot, skill.name);
   for (const target of targets) {
-    await ensureSymlink(installedDir, target, skill.name, warnings);
+    await ensureSymlink(installedDir, target, skill.name, warnings, linkFailures);
   }
   manifest.skills[skill.name] = {
     sourcePath: skill.dir,
     contentHash,
     installedAt: new Date().toISOString(),
   };
-  return { status: 'adopted', warnings };
+  return { status: 'adopted', warnings, linkFailures };
 }
 
 // Installs or refreshes a single skill. Returns one of:
@@ -92,6 +132,7 @@ export async function adoptOne({ skill, installRoot, targets, manifest, contentH
 // <installRoot>/.vskills-backup/<name>-<timestamp> rather than deleted.
 export async function installOne({ skill, installRoot, targets, manifest, force = false }) {
   const warnings = [];
+  const linkFailures = [];
   const installedDir = path.join(installRoot, skill.name);
   const sourceHash = await hashDir(skill.dir);
   const existingEntry = manifest.skills[skill.name];
@@ -104,13 +145,13 @@ export async function installOne({ skill, installRoot, targets, manifest, force 
 
     if (!force) {
       if (knownGoodHash === undefined || installedHash !== knownGoodHash) {
-        return { status: 'drifted', warnings };
+        return { status: 'drifted', warnings, linkFailures };
       }
       if (installedHash === sourceHash) {
         for (const target of targets) {
-          await ensureSymlink(installedDir, target, skill.name, warnings);
+          await ensureSymlink(installedDir, target, skill.name, warnings, linkFailures);
         }
-        return { status: 'up-to-date', warnings };
+        return { status: 'up-to-date', warnings, linkFailures };
       }
     }
   }
@@ -127,7 +168,7 @@ export async function installOne({ skill, installRoot, targets, manifest, force 
     warnings.push(`previous copy backed up to ${backupDir}`);
   }
   for (const target of targets) {
-    await ensureSymlink(installedDir, target, skill.name, warnings);
+    await ensureSymlink(installedDir, target, skill.name, warnings, linkFailures);
   }
 
   manifest.skills[skill.name] = {
@@ -136,5 +177,5 @@ export async function installOne({ skill, installRoot, targets, manifest, force 
     installedAt: new Date().toISOString(),
   };
 
-  return { status: 'installed', warnings };
+  return { status: 'installed', warnings, linkFailures };
 }
