@@ -22,9 +22,10 @@ Start `/ship` with the spec reference. The handoff and push happen inside
 
 `/ship <reference>` takes an issue number, URL, or file path; fetch the spec from
 that reference. If the repo has a tracker-location document, use it only as an
-optional hint. With no argument, use available tracker configuration to find the
-most recent spec carrying the `ready-for-agent` label; if no tracker
-configuration is available, ask the user for the spec reference.
+optional hint. With no argument, look for the most recent spec carrying the
+`ready-for-agent` label — on GitHub that is `gh issue list --label ready-for-agent
+--limit 1`. If no tracker is reachable, ask the user for the spec reference
+rather than guessing.
 
 Derive a stable `<slug>` from the spec's identifier (issue number + title slug,
 or the filename). The slug is the resume key — pin it in `goal.md` and never
