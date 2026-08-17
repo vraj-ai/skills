@@ -17,6 +17,15 @@ function timestamp() {
   return new Date().toISOString().replace(/[:.]/g, '-').replace(/Z$/, '');
 }
 
+async function createSymlink(installedDir, linkPath) {
+  try {
+    await symlink(installedDir, linkPath, symlinkTypeForPlatform(process.platform));
+  } catch (err) {
+    if (process.platform !== 'win32') throw err;
+    await symlink(installedDir, linkPath);
+  }
+}
+
 // Replaces destDir with a copy of sourceDir. The copy lands in a temp dir
 // first so an interrupted copy never leaves destDir partial. When
 // `backupRoot` is given, the previous destDir is preserved there instead of
@@ -55,7 +64,14 @@ export async function ensureSymlink(installedDir, targetDir, name, warnings) {
     existing = await lstat(linkPath);
   } catch (err) {
     if (err.code !== 'ENOENT') throw err;
-    await symlink(installedDir, linkPath, symlinkTypeForPlatform(process.platform));
+    try {
+      await createSymlink(installedDir, linkPath);
+    } catch (err) {
+      warnings.push(
+        `${linkPath}: could not create symlink (${err.code ?? 'unknown'}) — `
+        + 'skill is installed in the install root but was not linked into this target'
+      );
+    }
     return;
   }
 
