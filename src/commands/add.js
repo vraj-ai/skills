@@ -28,13 +28,23 @@ export async function runAdd({ names, repoRoot, installRoot, targets }) {
 
   const manifest = await readManifest(installRoot);
   const results = [];
+  const linkFailures = [];
   for (const name of order) {
     const skill = skills.get(name);
-    const { status, warnings } = await installOne({ skill, installRoot, targets, manifest });
+    const { status, warnings, linkFailures: failures } = await installOne({
+      skill, installRoot, targets, manifest,
+    });
     results.push({ name, status });
     messages.push(...warnings.map((w) => `${name}: ${w}`));
+    linkFailures.push(...failures);
   }
   await writeManifest(installRoot, manifest);
 
-  return { ok: errors.length === 0, results, messages, discoveryWarnings };
+  return {
+    ok: errors.length === 0 && linkFailures.length === 0,
+    results,
+    messages,
+    discoveryWarnings,
+    linkFailures,
+  };
 }

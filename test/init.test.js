@@ -64,8 +64,22 @@ test('a link-creation failure warns without aborting later skills', { skip: skip
           message.includes('was not linked into this target')
       )
     );
+    assert.equal(result.ok, false);
+    assert.equal(result.linkFailures.length, 2);
     await assert.doesNotReject(fs.access(path.join(installRoot, 'alpha', 'SKILL.md')));
     await assert.doesNotReject(fs.access(path.join(installRoot, 'beta', 'SKILL.md')));
+    await assert.rejects(fs.lstat(path.join(target, 'alpha')), { code: 'ENOENT' });
+    await assert.rejects(fs.lstat(path.join(target, 'beta')), { code: 'ENOENT' });
+
+    await fs.chmod(target, 0o700);
+    const rerun = await runInit({ repoRoot: repo, installRoot, targets: [target] });
+    assert.equal(rerun.ok, true);
+    for (const name of ['alpha', 'beta']) {
+      const linkPath = path.join(target, name);
+      const stat = await fs.lstat(linkPath);
+      assert.ok(stat.isSymbolicLink());
+      assert.equal(await fs.realpath(linkPath), await fs.realpath(path.join(installRoot, name)));
+    }
   } finally {
     await fs.chmod(target, 0o700).catch(() => {});
     await cleanup(repo, installRoot, target);
@@ -110,6 +124,8 @@ test('a pre-existing real file at the agent-target path is left untouched', asyn
 
     const result = await runInit({ repoRoot: repo, installRoot, targets: [target] });
     assert.equal(result.results[0].status, 'installed');
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.linkFailures, []);
     assert.ok(result.messages.some((m) => m.includes('left untouched')));
 
     const content = await fs.readFile(path.join(target, 'alpha'), 'utf8');
