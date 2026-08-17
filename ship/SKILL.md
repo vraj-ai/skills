@@ -58,6 +58,39 @@ Use `ship/scripts/state.mjs` for locks, validation, ready calculation, and
 atomic replacement. It is the same contract `goals` uses, so a backlog written
 by either is readable by both. Never append or edit the backlog in place.
 
+Mirror backlog state to GitHub issue labels when a GitHub remote is available,
+but **always resume from the local backlog** — labels are a view, never the
+source of truth. Use the same `goals:*` vocabulary `goals` uses, one label per
+status, and **exactly one `goals:*` label per issue** at any time. The
+namespace is shared deliberately: the two pipelines share one backlog format
+and one `state.mjs`, so an issue's state should not be named differently
+depending on which pipeline drove it.
+
+| backlog `status` | label |
+|---|---|
+| `planned` | `goals:planned` |
+| `ready` | `goals:ready` |
+| `in-progress` | `goals:in-progress` |
+| `blocked` | `goals:blocked` |
+| `failed` | `goals:failed` |
+| `done` | `goals:done` |
+| `cancelled` | `goals:cancelled` |
+
+Rules:
+
+- **Remove the old label in the same operation that adds the new one.** An
+  issue carrying two `goals:*` labels is a corrupt view; if you find one,
+  the backlog wins and the extra labels go.
+- **Create labels on demand**, idempotently — `gh label create goals:<status>
+  --force`. Never fail a run because a label is missing.
+- **A label write never blocks the run.** No GitHub remote, no `gh`, no auth,
+  or a rate limit means skip the mirror and keep building; record it in
+  `handoff.md` rather than stopping.
+- **Never read labels back as state.** Phase R reconciles from
+  `backlog.jsonl`, `results.json`, digests, and branch ancestry only.
+- Leave the spec's own triage label (`ready-for-agent`) alone; it belongs to
+  whoever wrote the spec, not to this run.
+
 Track `goal.md`, `handoff.md`, and `reviews/*.json`. Add the rest —
 `backlog.jsonl`, `lock.d/`, `CONTEXT/worktrees/<slug>/`, logs, `results.json`,
 `*.digest.json` — to the project's ignore rules.
@@ -81,8 +114,11 @@ Run Phase R before every other phase in every fresh session.
 3. Read `handoff.md`, then the backlog.
 4. Reconcile every stale `in-progress` item from `results.json`, its digest, and
    `git merge-base --is-ancestor <branch> <MAIN_BRANCH>`. Never infer from chat,
-   commit subjects, or elapsed time.
-5. Recompute ready items and enter the execution loop.
+   commit subjects, or elapsed time — and never from labels, which the previous
+   session may have died halfway through writing.
+5. Re-mirror the `goals:*` labels from the reconciled backlog, dropping any
+   duplicate or contradictory label the interrupted session left behind.
+6. Recompute ready items and enter the execution loop.
 
 Generate one stable session id when acquiring the lock and use that same id to
 release it. A same-host lock whose PID is provably dead may be recovered;
@@ -118,8 +154,9 @@ Only when no backlog exists.
 5. **Present the plan and its gates once, together, for approval.** Show every
    item with the command that will judge it. This is the only approval in the
    run — after it, the gates are locked and never re-asked.
-6. Atomically write the backlog. Mirror state to tracker labels where one
-   exists, but always resume from the local backlog.
+6. Atomically write the backlog, then mirror each item's initial state to its
+   `goals:*` label without creating duplicates. Always resume from the local
+   backlog, never from labels.
 
 ## Execution loop
 
@@ -128,17 +165,19 @@ Repeat until every item is `done` or `cancelled`.
 1. Compute ready items whose dependencies are all `done`, preserving dependency
    order and the active milestone. Pass the handoff's `milestone_cursor` to
    `state.mjs ready`; readiness never crosses a milestone boundary.
-2. Before spawning, flip the selected code ids to `in-progress` and atomically
-   rewrite the backlog.
+2. Before spawning, flip the selected code ids to `in-progress`, atomically
+   rewrite the backlog, then mirror the new state to their `goals:*` labels.
+   The backlog write comes first: a crash between the two leaves a stale label,
+   which Phase R corrects, whereas the reverse loses the state.
 3. Send up to `MAX_BATCH` code items to `ship-parallel`. Partial success is the
    default: one failed item must not sink green peers.
 4. Run `research` and `verify` items directly. One primary-source lookup settles
    most research; tests and builds are deterministic work.
 5. Ingest only `results.json` and `<id>.digest.json`, each at most 30 lines.
    Never ingest worker or reviewer transcripts; `.log` files are for humans.
-6. Rewrite the backlog and `handoff.md` atomically after every batch. A failed
-   source id retains its attempt count. Cap attempts at 2 per `source_id`, then
-   escalate.
+6. Rewrite the backlog and `handoff.md` atomically after every batch, then
+   re-mirror every changed item's `goals:*` label. A failed source id retains
+   its attempt count. Cap attempts at 2 per `source_id`, then escalate.
 
 ## Milestone gate
 
