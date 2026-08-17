@@ -67,12 +67,26 @@ async function promptForConflicts(conflicts) {
   }
 }
 
-function report(title, { results = [], messages = [] }) {
+function report(title, { results = [], messages = [], linkFailures = [] }) {
   console.log(banner(title));
   for (const r of results) console.log(installLine(r.status, r.name));
   if (results.length > 0) {
     console.log(color.dim('  ' + '─'.repeat(30)));
     console.log(`  ${summarize(results)}`);
+  }
+  const failuresByTarget = new Map();
+  for (const failure of linkFailures) {
+    const targetDir = failure?.targetDir ?? 'the target directory';
+    failuresByTarget.set(targetDir, (failuresByTarget.get(targetDir) ?? 0) + 1);
+  }
+  for (const [targetDir, count] of failuresByTarget) {
+    const noun = count === 1 ? 'skill' : 'skills';
+    console.error(
+      warningLine(
+        `${count} ${noun} installed but not linked into ${targetDir}; `
+        + 'fix the condition and re-run init to recreate the missing links'
+      )
+    );
   }
   for (const m of messages) console.error(warningLine(m));
   console.log();
@@ -102,8 +116,9 @@ export async function main(argv) {
     const assumeYes = rest.includes('--yes') || rest.includes('-y');
     const interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY) && !assumeYes;
     const resolveConflicts = interactive ? promptForConflicts : null;
-    report("V's Skills — installing", await runInit({ repoRoot, installRoot, targets, resolveConflicts }));
-    return 0;
+    const result = await runInit({ repoRoot, installRoot, targets, resolveConflicts });
+    report("V's Skills — installing", result);
+    return result.ok ? 0 : 1;
   }
 
   if (command === 'list') {
@@ -133,7 +148,7 @@ export async function main(argv) {
     const names = rest.filter((a) => a !== '--force');
     const result = await runUpdate({ names, repoRoot, installRoot, targets, force });
     report("V's Skills — update", result);
-    return 0;
+    return result.ok ? 0 : 1;
   }
 }
 

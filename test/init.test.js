@@ -7,6 +7,8 @@ import { installOne } from '../src/install.js';
 import { readManifest } from '../src/manifest.js';
 import { makeTmpDir, writeSkill, cleanup } from './helpers.js';
 
+const skipLinkCreationFailureTest = process.platform === 'win32' || process.getuid?.() === 0;
+
 async function setup() {
   const repo = await makeTmpDir('vskills-repo-');
   const installRoot = await makeTmpDir('vskills-install-');
@@ -36,6 +38,69 @@ test('fresh init installs every discovered skill', async () => {
   }
 });
 
+test('a link-creation failure warns without aborting later skills', { skip: skipLinkCreationFailureTest }, async () => {
+  const { repo, installRoot, target } = await setup();
+  try {
+    await writeSkill(repo, 'beta', { name: 'beta', description: 'Beta.' });
+    await fs.chmod(target, 0o500);
+
+    const result = await runInit({ repoRoot: repo, installRoot, targets: [target] });
+
+    assert.deepEqual(
+      result.results
+        .map(({ name, status }) => ({ name, status }))
+        .sort((left, right) => left.name.localeCompare(right.name)),
+      [
+        { name: 'alpha', status: 'installed' },
+        { name: 'beta', status: 'installed' },
+      ]
+    );
+    assert.ok(
+      result.messages.some(
+        (message) =>
+          message.includes(path.join(target, 'alpha')) &&
+          message.includes('EACCES') &&
+          message.includes('installed in the install root') &&
+          message.includes('was not linked into this target')
+      )
+    );
+    assert.equal(result.ok, false);
+    assert.equal(result.linkFailures.length, 2);
+    await assert.doesNotReject(fs.access(path.join(installRoot, 'alpha', 'SKILL.md')));
+    await assert.doesNotReject(fs.access(path.join(installRoot, 'beta', 'SKILL.md')));
+    await assert.rejects(fs.lstat(path.join(target, 'alpha')), { code: 'ENOENT' });
+    await assert.rejects(fs.lstat(path.join(target, 'beta')), { code: 'ENOENT' });
+
+    await fs.chmod(target, 0o700);
+    const rerun = await runInit({ repoRoot: repo, installRoot, targets: [target] });
+    assert.equal(rerun.ok, true);
+    for (const name of ['alpha', 'beta']) {
+      const linkPath = path.join(target, name);
+      const stat = await fs.lstat(linkPath);
+      assert.ok(stat.isSymbolicLink());
+      assert.equal(await fs.realpath(linkPath), await fs.realpath(path.join(installRoot, name)));
+    }
+  } finally {
+    await fs.chmod(target, 0o700).catch(() => {});
+    await cleanup(repo, installRoot, target);
+  }
+});
+
+test('the manifest is written when a link-creation failure occurs', { skip: skipLinkCreationFailureTest }, async () => {
+  const { repo, installRoot, target } = await setup();
+  try {
+    await fs.chmod(target, 0o500);
+
+    await runInit({ repoRoot: repo, installRoot, targets: [target] });
+
+    const manifest = await readManifest(installRoot);
+    assert.ok(manifest.skills.alpha?.contentHash);
+  } finally {
+    await fs.chmod(target, 0o700).catch(() => {});
+    await cleanup(repo, installRoot, target);
+  }
+});
+
 test('re-running init is a no-op', async () => {
   const { repo, installRoot, target } = await setup();
   try {
@@ -59,6 +124,8 @@ test('a pre-existing real file at the agent-target path is left untouched', asyn
 
     const result = await runInit({ repoRoot: repo, installRoot, targets: [target] });
     assert.equal(result.results[0].status, 'installed');
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.linkFailures, []);
     assert.ok(result.messages.some((m) => m.includes('left untouched')));
 
     const content = await fs.readFile(path.join(target, 'alpha'), 'utf8');

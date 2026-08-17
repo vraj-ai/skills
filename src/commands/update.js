@@ -9,6 +9,7 @@ export async function runUpdate({ names, repoRoot, installRoot, targets, force =
 
   const results = [];
   const messages = [...discoveryWarnings];
+  const linkFailures = [];
 
   for (const name of targetNames) {
     if (!manifest.skills[name]) {
@@ -20,14 +21,17 @@ export async function runUpdate({ names, repoRoot, installRoot, targets, force =
       messages.push(`${name}: no longer exists in the repo — left installed as-is`);
       continue;
     }
-    const { status, warnings } = await installOne({ skill, installRoot, targets, manifest, force });
+    const { status, warnings, linkFailures: failures } = await installOne({
+      skill, installRoot, targets, manifest, force,
+    });
     results.push({ name, status });
     messages.push(...warnings.map((w) => `${name}: ${w}`));
+    linkFailures.push(...failures);
     if (status === 'drifted') {
       messages.push(`${name}: locally modified — skipped (use --force to overwrite)`);
     }
   }
 
   await writeManifest(installRoot, manifest);
-  return { ok: true, results, messages, discoveryWarnings };
+  return { ok: linkFailures.length === 0, results, messages, discoveryWarnings, linkFailures };
 }
