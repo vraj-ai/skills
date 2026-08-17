@@ -321,6 +321,7 @@ work is the same category of mistake as reaching for either on a throwaway scrip
 | **Build a spec to pushed, verified code** | `/grill-with-docs` → `/to-spec` → `/ship` |
 | Same, but with every review net in the water | `/grill-with-docs` → `/to-spec` → `/goal <plan>` |
 | Drive an existing plan doc through milestones | `/goal CONTEXT/architecture.md` |
+| Run `/goal` from a live Herdr pane farm | `/herdr-orchestrator` |
 | Research a genuinely contested decision | `council` |
 | Build several ready items safely | `ship-parallel` through `ship`, or `parallel` through `goals` |
 | Tear down a converged diff without fixing it | `council-adversary` |
@@ -383,6 +384,7 @@ The load-bearing rule across all of them: **done is a locked verification comman
 |---|---|
 | `loop-engineer` | Wrap any task in a closed maker→checker loop with an explicit done-condition |
 | `gauntlet-loop` | Generate or run a blind maker→critic loop against a real quality bar for one-shot, UI, writing, and implementation work |
+| `herdr-orchestrator` | Live Herdr layout plus Grok/Codex/Council orchestration for a `/goal` run |
 | `multi-agent-review` | Same task, several model/provider agents in isolated worktrees, relayed cross-critique, final artifacts rated side by side |
 | `push-handoff` | Commit and push under explicit authority, and **prove** it by reading the remote SHA back |
 | `setup-obsidian` | Turn a docs folder into a retrieval graph — router, generated indexes, state file |
@@ -408,6 +410,25 @@ Install only this skill with:
 ```bash
 npx github:vraj-ai/skills add gauntlet-loop
 ```
+
+`/herdr-orchestrator` is the path when you already work in [Herdr](https://herdr.dev)
+and want a Grok pane to run `/goal` across live terminals instead of inside one
+OpenCode session. It is useful when Codex should implement, three non-OpenCode
+Council agents should plan and review independently, and the run must pause at
+every milestone until you type `continue`. It asks which panes and models to
+use, builds a Main tab plus a Council Agents tab, then peeks Codex against
+durable `goals` state rather than trusting chat.
+
+It is the wrong tool outside Herdr, for a single-agent task, for native
+OpenCode `/goal` without a pane farm, or whenever you want an OpenCode agent on
+Council — that target is excluded.
+
+```text
+/herdr-orchestrator
+```
+
+`vskills add herdr-orchestrator` also installs `goals`, `council`, and
+`parallel`.
 
 </details>
 
@@ -510,6 +531,7 @@ legacy-workflow/  preserved legacy-planner/coder/debugger/reviewer skills
 push-handoff/     verified, explicitly authorized commit/push closeout
 loop-engineer/    closed maker→checker loop runner
 gauntlet-loop/    blind maker→critic loop for one-shot and UI work
+herdr-orchestrator/ Herdr pane farm for Grok + Codex + 3 Council on a /goal run
 multi-agent-review/ standalone multi-model worktree comparison loop
 pipeline/         the machinery: stage protocol, roles, worktree safety,
                   batch delivery, audit, recovery
