@@ -25,7 +25,8 @@ const baseEnv = (fake) => ({
 test('ship-parallel builds, reviews, verifies, and merges one isolated item', async () => {
   const root = await makeTmpDir('ship-parallel-');
   try {
-    const { repo, fake, worktrees } = await setup(root);
+    const { repo, fake } = await setup(root);
+    const worktrees = path.join(repo, 'CONTEXT', 'worktrees', 'ship', 'demo');
     const manifest = path.join(root, 'manifest.txt');
     await fs.writeFile(manifest, 'a|ship/demo/a|opencode-go/glm-5.2|Create done-a.txt\n');
     const { stdout } = await execFileAsync(process.execPath, [runner, repo, worktrees, manifest], {
@@ -46,7 +47,8 @@ test('ship-parallel builds, reviews, verifies, and merges one isolated item', as
 test('ship-parallel fails closed on a blocking finding even when the reviewer says PASS', async () => {
   const root = await makeTmpDir('ship-parallel-');
   try {
-    const { repo, fake, worktrees } = await setup(root);
+    const { repo, fake } = await setup(root);
+    const worktrees = path.join(repo, 'CONTEXT', 'worktrees', 'ship', 'demo');
     const manifest = path.join(root, 'manifest.txt');
     await fs.writeFile(manifest, 'a|ship/demo/a|opencode-go/glm-5.2|Create done-a.txt\n');
     const { stdout } = await execFileAsync(process.execPath, [runner, repo, worktrees, manifest], {
@@ -69,7 +71,8 @@ test('ship-parallel fails closed on a blocking finding even when the reviewer sa
 test('ship-parallel accepts only ship/ branches, not the goals/ prefix', async () => {
   const root = await makeTmpDir('ship-parallel-');
   try {
-    const { repo, fake, worktrees } = await setup(root);
+    const { repo, fake } = await setup(root);
+    const worktrees = path.join(repo, 'CONTEXT', 'worktrees', 'ship', 'demo');
     const manifest = path.join(root, 'manifest.txt');
     await fs.writeFile(manifest, 'a|goals/demo/a|opencode-go/glm-5.2|Create done-a.txt\n');
 
@@ -87,7 +90,8 @@ test('ship-parallel accepts only ship/ branches, not the goals/ prefix', async (
 test('ship-parallel requires exactly one T0 reviewer, unlike the two-reviewer fork', async () => {
   const root = await makeTmpDir('ship-parallel-');
   try {
-    const { repo, fake, worktrees } = await setup(root);
+    const { repo, fake } = await setup(root);
+    const worktrees = path.join(repo, 'CONTEXT', 'worktrees', 'ship', 'demo');
     const manifest = path.join(root, 'manifest.txt');
     await fs.writeFile(manifest, 'a|ship/demo/a|opencode-go/glm-5.2|Create done-a.txt\n');
 

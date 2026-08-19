@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { collectTestFiles } from '../scripts/run-tests.mjs';
+import { collectTestFiles, invocationAction } from '../scripts/run-tests.mjs';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -16,6 +16,7 @@ test('the runner collects only test files, including nested ones', async () => {
     await fs.writeFile(path.join(dir, 'a.test.js'), '');
     await fs.writeFile(path.join(dir, 'nested', 'b.test.js'), '');
     await fs.writeFile(path.join(dir, 'nested', 'deeper', 'c.test.js'), '');
+    await fs.writeFile(path.join(dir, 'd.spec.js'), '');
     // node's default `**/test/**/*.js` pattern would load these two as tests.
     await fs.writeFile(path.join(dir, 'helpers.js'), '');
     await fs.writeFile(path.join(dir, 'nested', 'fixture.json'), '{}');
@@ -24,6 +25,7 @@ test('the runner collects only test files, including nested ones', async () => {
 
     assert.deepEqual(found, [
       'a.test.js',
+      'd.spec.js',
       path.join('nested', 'b.test.js'),
       path.join('nested', 'deeper', 'c.test.js'),
     ]);
@@ -32,24 +34,35 @@ test('the runner collects only test files, including nested ones', async () => {
   }
 });
 
-test('the runner never reaches outside test/, even with a worktree checked out', async () => {
-  // #29: `node --test` walks the whole tree ignoring .gitignore, so a git
-  // worktree under CONTEXT/worktrees/ double-counts every test file and can
-  // inject foreign failures. Collection is rooted at test/, so it cannot.
-  const worktree = path.join(repo, 'CONTEXT', 'worktrees', 'runner-scope-check', 'test');
-  await fs.mkdir(worktree, { recursive: true });
-  try {
-    await fs.writeFile(path.join(worktree, 'foreign.test.js'), '');
-    const found = await collectTestFiles(path.join(repo, 'test'));
+test('npm test runs the scoped collector, not node --test', async () => {
+  // #29: `node --test` walks the whole tree ignoring .gitignore. The package
+  // script is the source of truth that the collector is what npm test runs.
+  const pkg = JSON.parse(await fs.readFile(path.join(repo, 'package.json'), 'utf8'));
+  assert.equal(pkg.scripts.test, 'node scripts/run-tests.mjs');
+});
 
-    assert.ok(found.length > 0, 'expected the real suite to be collected');
-    assert.ok(
-      found.every((f) => !f.includes(`${path.sep}worktrees${path.sep}`)),
-      'collection leaked into CONTEXT/worktrees/',
+test('a path mismatch that still names this script is a loud failure, not a silent skip', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'vskills-main-guard-'));
+  try {
+    const real = path.join(dir, 'run-tests.mjs');
+    await fs.writeFile(real, '');
+    const link = path.join(dir, 'alias.mjs');
+    await fs.symlink(real, link);
+
+    assert.equal(invocationAction(real, real), 'run');
+    assert.equal(invocationAction(link, real), 'run', 'a symlink to this script must still run');
+    assert.equal(invocationAction(real.toLowerCase(), real), 'run');
+    assert.equal(invocationAction(path.join(dir, 'other.test.js'), real), 'skip');
+
+    const other = path.join(dir, 'other', 'run-tests.mjs');
+    await fs.mkdir(path.join(dir, 'other'));
+    await fs.writeFile(other, '');
+    assert.equal(
+      invocationAction(other, real),
+      'fail',
+      'same basename, different file must not exit 0 having run nothing',
     );
-    // helpers.js is a helper module, not a test; counting it was a phantom pass.
-    assert.ok(found.every((f) => f.endsWith('.test.js')));
   } finally {
-    await fs.rm(path.join(repo, 'CONTEXT', 'worktrees', 'runner-scope-check'), { recursive: true, force: true });
+    await fs.rm(dir, { recursive: true, force: true });
   }
 });

@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { discoverSkills, isDirectory } from '../discovery.js';
-import { adoptOne, installOne } from '../install.js';
+import { adoptOne, ensureSymlink, installOne } from '../install.js';
 import { hashDir } from '../hash.js';
 import { parseFrontmatter } from '../frontmatter.js';
 import { compareVersions } from '../version.js';
@@ -141,7 +141,13 @@ export async function runInit({ repoRoot, installRoot, targets, resolveConflicts
       });
       record('updated', warnings, failures);
     } else {
-      record('skipped');
+      const warnings = [];
+      const failures = [];
+      const installedDir = path.join(installRoot, skill.name);
+      for (const target of targets) {
+        await ensureSymlink(installedDir, target, skill.name, warnings, failures);
+      }
+      record('skipped', warnings, failures);
       messages.push(`${skill.name}: existing copy differs from this repo — kept yours (rerun init to revisit)`);
     }
   }

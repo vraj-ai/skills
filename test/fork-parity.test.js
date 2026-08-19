@@ -43,7 +43,11 @@ test('the two parallel runners diverge only on their approved differences', asyn
     /(goals|ship)\\\/\[A-Za-z/,              // branch-prefix guard
     /strictIntegrationBranch\s*=/,           // integration branch prefix
     /MAX_BATCH|maxBatch/,                    // batch bounds
-    /reviewers|REVIEWERS/,                   // reviewer count and family rules
+    /process\.env\.REVIEWERS/,               // default reviewer list
+    /reviewers\.length !== [12]/,            // one vs two T0 reviewers
+    /T0 reviewers must be distinct/,         // goals-only distinct ids
+    /T0 reviewers must use distinct model families/,
+    /reviewers\.map\(\(reviewer\) => modelFamily/,
     /const guard =/,                         // contributor brief
     /const prompt = `T0 per-item review/,    // reviewer brief
   ];
@@ -56,4 +60,17 @@ test('the two parallel runners diverge only on their approved differences', asyn
 
   const unexpected = unique.filter((line) => !approved.some((re) => re.test(line)));
   assert.deepEqual(unexpected, [], 'unapproved drift between the parallel runners');
+});
+
+test('ship and ship-parallel agree that worktrees live under CONTEXT/worktrees/ship/<slug>/', async () => {
+  const [ship, fork] = await Promise.all([
+    read('ship', 'SKILL.md'),
+    read('ship-parallel', 'SKILL.md'),
+  ]);
+
+  assert.match(ship, /CONTEXT\/worktrees\/ship\/<slug>\//);
+  assert.match(
+    fork,
+    /git worktree add -b ship\/<slug>\/<id> CONTEXT\/worktrees\/ship\/<slug>\/<id>/,
+  );
 });

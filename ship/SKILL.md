@@ -120,8 +120,7 @@ Track `goal.md`, `handoff.md`, and `reviews/*.json`. Add the rest —
 
 Verify the spec resolves, the cwd is a Git worktree on a named branch,
 `CONTEXT/worktrees/ship` is writable, and every configured model is reachable.
-Record
-the pre-ship merge base. `MAX_BATCH` defaults to 4 and may not exceed 8.
+Record the pre-ship merge base. `MAX_BATCH` defaults to 4 and may not exceed 8.
 
 Resolve the CLI in this order: `OPENCODE_BIN`, `~/.opencode/bin/opencode`, then
 `opencode` on `PATH`. Pin the resolved value in `goal.md` and `handoff.md`.
@@ -236,10 +235,8 @@ escalates to the human and **never pushes**.
 On `SHIP` or `SHIP-WITH-FOLLOWUPS`, with the locked success criteria passing
 after the final merge:
 
-1. Write the full session document to `$TMPDIR` — objective, important
-   details, work state, next move, relevant files — and update the `handoff.md`
-   resume cursor. `/push-handoff` delivers this artifact; it never synthesizes
-   one, so the file has to exist before step 2.
+1. Write the session document to `$TMPDIR` and update the `handoff.md` resume
+   cursor.
 2. `/push-handoff` — commit and push. Invoking `/ship` is the push authority its
    Step 0 requires. Report the fetched remote SHA as proof.
 

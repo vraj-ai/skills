@@ -70,6 +70,32 @@ test('update --force overwrites a drifted skill with upstream content', async ()
   }
 });
 
+test('update on a drifted skill repairs missing links without overwriting content', async () => {
+  const repo = await makeTmpDir();
+  const installRoot = await makeTmpDir();
+  const target = await makeTmpDir();
+  try {
+    await writeSkill(repo, 'alpha', { name: 'alpha', body: 'v1' });
+    await runInit({ repoRoot: repo, installRoot, targets: [target] });
+    await fs.appendFile(path.join(installRoot, 'alpha', 'SKILL.md'), '\nlocal edit\n', 'utf8');
+    const before = await fs.readFile(path.join(installRoot, 'alpha', 'SKILL.md'), 'utf8');
+    await fs.rm(path.join(target, 'alpha'));
+
+    const result = await runUpdate({ names: [], repoRoot: repo, installRoot, targets: [target] });
+    assert.equal(result.results[0].status, 'drifted');
+
+    const after = await fs.readFile(path.join(installRoot, 'alpha', 'SKILL.md'), 'utf8');
+    assert.equal(after, before);
+
+    const linkPath = path.join(target, 'alpha');
+    const stat = await fs.lstat(linkPath);
+    assert.ok(stat.isSymbolicLink());
+    assert.equal(await fs.realpath(linkPath), await fs.realpath(path.join(installRoot, 'alpha')));
+  } finally {
+    await cleanup(repo, installRoot, target);
+  }
+});
+
 test('list shows drifted status for a hand-modified installed skill', async () => {
   const repo = await makeTmpDir();
   const installRoot = await makeTmpDir();
