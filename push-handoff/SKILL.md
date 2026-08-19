@@ -33,7 +33,7 @@ stage that project-owned copy only when the project rules explicitly require it.
 Push only when one of these is true:
 
 - The user explicitly authorized commit/push for this run.
-- The active skill chain was invoked with push in scope (e.g. `/planner` including its final push step).
+- The active skill chain was invoked with push in scope (e.g. `/ship`, whose Delivery step pushes).
 - A standing project rule grants it (e.g. an auto-push skill the user configured).
 
 If none hold: **stop, write the handoff to disk, and report that push needs authorization.** Do not push "to be helpful."

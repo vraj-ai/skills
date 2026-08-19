@@ -213,6 +213,33 @@ test('a strictly older installed version is auto-updated, even if unmanaged', as
   }
 });
 
+test('init that keeps a drifted skill still repairs missing links', async () => {
+  const { repo, installRoot, target } = await setup();
+  try {
+    await runInit({ repoRoot: repo, installRoot, targets: [target] });
+    await fs.appendFile(path.join(installRoot, 'alpha', 'SKILL.md'), '\nlocal edit\n', 'utf8');
+    const before = await fs.readFile(path.join(installRoot, 'alpha', 'SKILL.md'), 'utf8');
+    await fs.rm(path.join(target, 'alpha'));
+
+    const result = await runInit({
+      repoRoot: repo,
+      installRoot,
+      targets: [target],
+      resolveConflicts: async () => [],
+    });
+
+    assert.equal(result.results[0].status, 'skipped');
+    const after = await fs.readFile(path.join(installRoot, 'alpha', 'SKILL.md'), 'utf8');
+    assert.equal(after, before);
+    const linkPath = path.join(target, 'alpha');
+    const stat = await fs.lstat(linkPath);
+    assert.ok(stat.isSymbolicLink());
+    assert.equal(await fs.realpath(linkPath), await fs.realpath(path.join(installRoot, 'alpha')));
+  } finally {
+    await cleanup(repo, installRoot, target);
+  }
+});
+
 test('a conflicting copy the resolver declines is kept, not overwritten', async () => {
   const repo = await makeTmpDir('vskills-repo-');
   const installRoot = await makeTmpDir('vskills-install-');

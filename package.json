@@ -15,7 +15,7 @@
     "vskills": "bin/vskills.js"
   },
   "scripts": {
-    "test": "node --test"
+    "test": "node scripts/run-tests.mjs"
   },
   "engines": {
     "node": ">=18.0.0"

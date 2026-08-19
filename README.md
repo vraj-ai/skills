@@ -253,7 +253,7 @@ This is the discipline you would apply to code that pages you at 3am, applied to
 | **Restraint is reviewable** | Over-build is a reportable finding, not a matter of taste — the reviewer flags speculative abstractions and needless dependencies with `file:line` |
 | **Deploys are proven** | `push-handoff` refuses to claim success without reading the remote SHA back, never force-pushes, and scans the diff for secrets |
 
-The tooling holds the same bar. `vskills` ships **zero runtime dependencies** with tests covering install, drift detection, dependency resolution, symlink safety, and the npx entrypoint. Copies stage into a temp dir and swap in via `rename`, so an interrupted install cannot leave a half-written skill. Content is hashed, so a skill you hand-edited is detected as drifted and left alone rather than silently overwritten. Destructive overwrites are backed up first. The guarantees are written down and held to in [`docs/invariants.md`](docs/invariants.md).
+The tooling holds the same bar. `vskills` ships **zero runtime dependencies** with tests covering install, drift detection, dependency resolution, symlink safety, and the npx entrypoint. Copies stage into a temp dir and swap in via `rename`, so an interrupted install cannot leave a half-written skill. Content is hashed, so a skill you hand-edited is detected as drifted and left alone rather than silently overwritten. Destructive overwrites are backed up first. Every one of those guarantees is pinned by a test in [`test/`](test/), which ships inside the package — so the claims are checkable from the copy you installed.
 
 <details>
 <summary><b>What each mechanism buys, and what it costs</b></summary>
@@ -450,7 +450,9 @@ Content is copied to the install root and linked into each agent's skills direct
 | macOS / Linux | `~/.agents/skills/<name>` | `~/.claude/skills/<name>` |
 | Windows | `%USERPROFILE%\.agents\skills\<name>` | `%USERPROFILE%\.claude\skills\<name>` |
 
-On Windows, vskills explicitly requests a directory junction for each target. Junctions need neither Developer Mode nor an elevated shell.
+On Windows, vskills explicitly requests a directory junction for each target. Junctions need neither Developer Mode nor an elevated shell, which is why they are the default: a stock, non-elevated corporate laptop can install without a privilege request.
+
+Junctions do have one limit. They are NTFS reparse points and cannot point at a network location, so if your `%USERPROFILE%` is folder-redirected to a UNC path or lives on a non-NTFS volume, the junction fails. vskills then retries the same link as a real directory symlink, which does support remote targets but needs Developer Mode or an elevated shell. If both attempts fail, the skill still installs into the install root and the run reports which targets were left unlinked, rather than aborting — re-run `init` once the condition is fixed and the missing links are created.
 
 <details>
 <summary><b>If npm 12 blocks a GitHub package spec (<code>EALLOWGIT</code>/<code>EALLOWREMOTE</code>)</b></summary>
@@ -498,7 +500,7 @@ On Windows PowerShell, use `node bin\vskills.js init` for the final line.
 - **Interrupted copies never corrupt.** Staged in a temp dir, swapped in with `rename`.
 - **Symlinks are never clobbered.** A real directory or a foreign symlink at the target path is left alone with a warning.
 
-Zero runtime dependencies, Node ≥18. Full design in [`docs/spec-vskills-cli.md`](docs/spec-vskills-cli.md); the guarantees it holds itself to are in [`docs/invariants.md`](docs/invariants.md).
+Zero runtime dependencies, Node ≥18. The guarantees it holds itself to are pinned by the tests in [`test/`](test/).
 
 </details>
 

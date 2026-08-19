@@ -13,7 +13,7 @@ gate is already green.** It never mutates `backlog.jsonl`.
 One item equals one branch and one worktree:
 
 ```text
-git worktree add -b ship/<slug>/<id> CONTEXT/worktrees/<slug>/<id>
+git worktree add -b ship/<slug>/<id> CONTEXT/worktrees/ship/<slug>/<id>
   -> contributor builds to the ladder, commits
   -> ship runs the locked Verification-command
   -> green? one non-maker reviewer. red? straight back, no model spent

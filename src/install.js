@@ -145,6 +145,10 @@ export async function installOne({ skill, installRoot, targets, manifest, force 
 
     if (!force) {
       if (knownGoodHash === undefined || installedHash !== knownGoodHash) {
+        // Content stays put; missing agent-target links are still repaired.
+        for (const target of targets) {
+          await ensureSymlink(installedDir, target, skill.name, warnings, linkFailures);
+        }
         return { status: 'drifted', warnings, linkFailures };
       }
       if (installedHash === sourceHash) {
