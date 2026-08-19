@@ -40,14 +40,19 @@ test('the two parallel runners diverge only on their approved differences', asyn
   // while `ship` runs one. Those are the only concerns allowed to differ; a
   // change to any shared safety check must land in both copies.
   const approved = [
-    /\^\(\?:\)?\\?\/?\^?(goals|ship)\\\//,   // branch-prefix guard
     /(goals|ship)\\\/\[A-Za-z/,              // branch-prefix guard
     /strictIntegrationBranch\s*=/,           // integration branch prefix
     /MAX_BATCH|maxBatch/,                    // batch bounds
-    /reviewers|REVIEWERS/i,                  // reviewer count and family rules
+    /reviewers|REVIEWERS/,                   // reviewer count and family rules
     /const guard =/,                         // contributor brief
     /const prompt = `T0 per-item review/,    // reviewer brief
   ];
+
+  // Every pattern must earn its place: one that matches nothing is not a
+  // constraint, it is a comment that looks like a constraint.
+  for (const re of approved) {
+    assert.ok(unique.some((line) => re.test(line)), `approved pattern matches nothing: ${re}`);
+  }
 
   const unexpected = unique.filter((line) => !approved.some((re) => re.test(line)));
   assert.deepEqual(unexpected, [], 'unapproved drift between the parallel runners');
