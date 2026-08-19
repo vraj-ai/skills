@@ -42,9 +42,10 @@ backlog status: `goals:planned`, `goals:ready`, `goals:in-progress`,
 `goals:blocked`, `goals:failed`, `goals:done`, `goals:cancelled`. Remove the
 old label in the same operation that adds the new one, create labels on demand
 with `gh label create goals:<status> --force`, and never let a failed label
-write block the run. `ship` mirrors the same vocabulary. Publish the
-3-7 thematic groups as native GitHub Milestones; milestone size has no fixed
-issue cap.
+write block the run. Publish the 3-7 thematic groups as native GitHub
+Milestones and open their issues; milestone size has no fixed issue cap. `ship`
+publishes the same milestones and label vocabulary, but opens no issues of its
+own.
 
 ## Context ownership contract
 

@@ -39,3 +39,46 @@ test('handoff compaction and delivery remain separate contracts', async () => {
   assert.match(pushHandoff, /remote SHA/);
   assert.match(readme, /push-handoff` is the explicit/);
 });
+
+// These skill docs are hard-wrapped prose, so a phrase assertion has to
+// tolerate a line break falling anywhere inside it.
+function phrase(text) {
+  return new RegExp(text.split(' ')
+    .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('\\s+'));
+}
+
+test('ship and goals share one state-label vocabulary', async () => {
+  const [ship, goals] = await Promise.all([
+    read('ship', 'SKILL.md'),
+    read('goals', 'SKILL.md'),
+  ]);
+
+  // Compare the two files against each other, not against a hardcoded list —
+  // a status added to one pipeline and not the other is the actual hazard.
+  const statuses = (doc) => new Set([...doc.matchAll(/goals:([a-z-]+)/g)].map((m) => m[1]));
+  const shipStatuses = statuses(ship);
+
+  assert.ok(shipStatuses.size >= 7, `ship declares only ${shipStatuses.size} statuses`);
+  assert.deepEqual(shipStatuses, statuses(goals));
+});
+
+test('ship publishes native milestones without goals ceremony', async () => {
+  const ship = await read('ship', 'SKILL.md');
+
+  assert.match(ship, phrase('native GitHub Milestones'));
+
+  // `gh` has no milestone subcommand, so the doc must not imply one exists.
+  assert.match(ship, phrase('gh api repos/{owner}/{repo}/milestones'));
+  assert.doesNotMatch(ship, /gh milestone/);
+
+  // A resumed run must match closed milestones too; matching only open ones
+  // creates a duplicate title after a gate closes one, which GitHub rejects.
+  assert.match(ship, phrase('across open and closed milestones alike'));
+
+  // `source_id` is state.mjs's attempt-cap grouping key, never a tracker link.
+  assert.doesNotMatch(ship, /`source_id` is the link/);
+
+  // The close rule has exactly one home, so the two copies cannot drift apart.
+  assert.equal((ship.match(/close the milestone/gi) ?? []).length, 1);
+});

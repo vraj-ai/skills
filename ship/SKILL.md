@@ -1,6 +1,6 @@
 ---
 name: ship
-version: 1.0.0
+version: 1.1.0
 description: Drive a published spec to verified, pushed completion through a resumable backlog, worktree-isolated parallel builds under a lazy-senior-dev ladder, gate-first review, a milestone reviewer, and a final adversarial teardown. Use when the user invokes /ship, asks to build out a spec autonomously, or resumes a ship run.
 dependencies: [ship-parallel, council-adversary]
 ---
@@ -86,10 +86,31 @@ Rules:
 - **A label write never blocks the run.** No GitHub remote, no `gh`, no auth,
   or a rate limit means skip the mirror and keep building; record it in
   `handoff.md` rather than stopping.
-- **Never read labels back as state.** Phase R reconciles from
+- **Never read labels or milestones back as state.** Phase R reconciles from
   `backlog.jsonl`, `results.json`, digests, and branch ancestry only.
 - Leave the spec's own triage label (`ready-for-agent`) alone; it belongs to
   whoever wrote the spec, not to this run.
+
+### Milestones
+
+Publish the plan's thematic groups as native GitHub Milestones, the same view
+`goals` publishes. Milestone size has no fixed issue cap.
+
+- **The title is the group's name; the backlog only keys it.** A backlog line's
+  `milestone` is an id — `state.mjs ready` matches it against
+  `milestone_cursor`, and `reviews/M<n>.json` is named for it. Pin each id's
+  thematic name in `goal.md` at plan time and title the Milestone with that
+  name, so the published view reads as the plan rather than as `M1`, `M2`.
+- **Create or match by title, across open and closed milestones alike.** `gh`
+  has no milestone command; use `gh api repos/{owner}/{repo}/milestones`. A
+  resumed run whose gate already closed M1 has to match that closed milestone —
+  searching only open ones makes it create a second M1, which GitHub rejects as
+  a duplicate title and which would otherwise fail the run.
+- **Attach an item's issue whenever the item first has one.** `/ship` opens no
+  issue merely to fill a milestone; an item living only in the backlog stays
+  there. That is the lean default.
+- **Publishing degrades exactly as the label mirror above does**, and is skipped
+  on the same conditions.
 
 Track `goal.md`, `handoff.md`, and `reviews/*.json`. Add the rest —
 `backlog.jsonl`, `lock.d/`, `CONTEXT/worktrees/<slug>/`, logs, `results.json`,
@@ -117,7 +138,9 @@ Run Phase R before every other phase in every fresh session.
    commit subjects, or elapsed time — and never from labels, which the previous
    session may have died halfway through writing.
 5. Re-mirror the `goals:*` labels from the reconciled backlog, dropping any
-   duplicate or contradictory label the interrupted session left behind.
+   duplicate or contradictory label the interrupted session left behind. In
+   the same pass, match each milestone by title and attach any item whose issue
+   an interrupted session created the milestone without attaching.
 6. Recompute ready items and enter the execution loop.
 
 Generate one stable session id when acquiring the lock and use that same id to
@@ -154,9 +177,9 @@ Only when no backlog exists.
 5. **Present the plan and its gates once, together, for approval.** Show every
    item with the command that will judge it. This is the only approval in the
    run — after it, the gates are locked and never re-asked.
-6. Atomically write the backlog, then mirror each item's initial state to its
-   `goals:*` label without creating duplicates. Always resume from the local
-   backlog, never from labels.
+6. Atomically write the backlog. Then publish the plan's milestones and mirror
+   each item's initial state to its `goals:*` label, creating no duplicates of
+   either. Always resume from the local backlog, never from the published view.
 
 ## Execution loop
 
@@ -191,7 +214,8 @@ re-review item code quality already covered at the item gate. Rotate
 `council-grok -> council-kimi -> council-qwen -> council-sol`; never repeat the
 last reviewer, never use the contributor's model. Record `PASS`,
 `PASS-WITH-FOLLOWUPS`, or `FAIL` in `reviews/M<n>.json` and `last_reviewer` in
-the handoff.
+the handoff. On `PASS` or `PASS-WITH-FOLLOWUPS`, close the milestone in that
+same step.
 
 **Continue straight into the next milestone.** A passing gate is not a reason to
 stop and ask.
