@@ -1,5 +1,5 @@
 {
-  "name": "vskills",
+  "name": "@vskills/cli",
   "version": "0.2.0",
   "description": "vskills installer CLI for vraj-ai/skills — init/update/list/add skills into a local install root and symlink them into coding-agent skill directories.",
   "repository": {

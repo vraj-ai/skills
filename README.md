@@ -5,7 +5,7 @@ Agent skills for running software work as a **factory** rather than a conversati
 A skill is a file an agent loads on demand that says *how to do one job properly*. This repo holds **two autonomous delivery pipelines** — `/ship` and `/goal` — the council and worktree machinery they compose, a preserved legacy four-stage workflow, and standalone skills for the jobs around them.
 
 ```
-npx vskills init
+npx @vskills/cli init
 ```
 
 Same command on macOS, Linux, and Windows PowerShell.
@@ -399,7 +399,7 @@ permissions, payments, migrations, or other high-risk work.
 Install only this skill with:
 
 ```bash
-npx vskills add gauntlet-loop
+npx @vskills/cli add gauntlet-loop
 ```
 
 `/herdr-orchestrator` is the path when you already work in [Herdr](https://herdr.dev)
@@ -428,19 +428,19 @@ Council — that target is excluded.
 **macOS / Linux** (bash, zsh):
 
 ```bash
-npx vskills init               # install every skill
-npx vskills list               # what's installed / drifted
-npx vskills add <skill>        # one skill + its dependencies
-npx vskills update [skill...]  # refresh (skips your local edits)
+npx @vskills/cli init               # install every skill
+npx @vskills/cli list               # what's installed / drifted
+npx @vskills/cli add <skill>        # one skill + its dependencies
+npx @vskills/cli update [skill...]  # refresh (skips your local edits)
 ```
 
 **Windows** (PowerShell) — the same commands, but replace placeholders such as `<skill>` with a real name; PowerShell reserves `<` and `>` so those angle-bracket placeholders must not be typed literally.
 
 ```powershell
-npx vskills init               # install every skill
-npx vskills list               # what's installed / drifted
-npx vskills add gauntlet-loop  # one skill + its dependencies
-npx vskills update ship        # refresh (skips your local edits)
+npx @vskills/cli init               # install every skill
+npx @vskills/cli list               # what's installed / drifted
+npx @vskills/cli add gauntlet-loop  # one skill + its dependencies
+npx @vskills/cli update ship        # refresh (skips your local edits)
 ```
 
 Content is copied to the install root and linked into each agent's skills directory:

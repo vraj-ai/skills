@@ -9,7 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 test('README documents the registry install command without retracted npm guidance', async () => {
   const readme = await readFile(path.resolve(__dirname, '..', 'README.md'), 'utf8');
 
-  assert.match(readme, /npx vskills init/);
+  assert.match(readme, /npx @vskills\/cli init/);
   assert.doesNotMatch(readme, /npm config set allow-git true/);
   assert.doesNotMatch(
     readme,

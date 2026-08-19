@@ -10,7 +10,7 @@ const packagePath = path.resolve(__dirname, '..', 'package.json');
 test('package metadata is ready for the vskills registry package', async () => {
   const packageJson = JSON.parse(await fs.readFile(packagePath, 'utf8'));
 
-  assert.equal(packageJson.name, 'vskills');
+  assert.equal(packageJson.name, '@vskills/cli');
   assert.doesNotMatch(packageJson.description, /v-skills/);
   assert.match(
     packageJson.version,
