@@ -2,9 +2,14 @@
   "name": "vskills",
   "version": "0.2.0",
   "description": "vskills installer CLI for vraj-ai/skills — init/update/list/add skills into a local install root and symlink them into coding-agent skill directories.",
-  "repository": "git+https://github.com/vraj-ai/skills.git",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vraj-ai/skills.git"
+  },
   "homepage": "https://github.com/vraj-ai/skills#readme",
-  "bugs": "https://github.com/vraj-ai/skills/issues",
+  "bugs": {
+    "url": "https://github.com/vraj-ai/skills/issues"
+  },
   "type": "module",
   "bin": {
     "vskills": "bin/vskills.js"
