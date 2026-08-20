@@ -318,6 +318,7 @@ work is the same category of mistake as reaching for either on a throwaway scrip
 | Tear down a converged diff without fixing it | `council-adversary` |
 | Run a blind loop against a real quality bar | `/gauntlet-loop` |
 | Run *any* task until a checker says done | `/loop-engineer` |
+| Finish a task without being asked, then wait for me to push and merge | `/hands-free` |
 | Have several models attempt + cross-examine the same task | `/multi-agent-review` |
 | Audit a whole codebase, not one diff | `/codebase-audit` |
 | Check an invariant is *enforced*, not just documented | `/invariant-evidence-review` |
@@ -373,6 +374,7 @@ The load-bearing rule across all of them: **done is a locked verification comman
 
 | Skill | What it's for |
 |---|---|
+| `hands-free` | User-invoked at-your-own-risk mode: finish the task, ignore other skills' judgement stops, wait for a push and a PR merge |
 | `loop-engineer` | Wrap any task in a closed maker→checker loop with an explicit done-condition |
 | `gauntlet-loop` | Generate or run a blind maker→critic loop against a real quality bar for one-shot, UI, writing, and implementation work |
 | `herdr-orchestrator` | Live Herdr layout plus Grok/Codex/Council orchestration for a `/goal` run |
@@ -380,6 +382,21 @@ The load-bearing rule across all of them: **done is a locked verification comman
 | `push-handoff` | Commit and push under explicit authority, and **prove** it by reading the remote SHA back |
 | `setup-obsidian` | Turn a docs folder into a retrieval graph — router, generated indexes, state file |
 | `setup-vskills` | Set this repo up on a new machine |
+
+`/hands-free` is the at-your-own-risk path when you want the agent to finish a
+task without pausing for other skills' human questions. It does not commit,
+push, or merge. It waits until the work is on the remote, opens a PR if none
+exists, and waits until that PR is merged. Only you can start it.
+
+```text
+/hands-free build the settings page
+```
+
+Install only this skill with:
+
+```bash
+npx @vskills/cli add hands-free
+```
 
 `/gauntlet-loop` is the lightweight path for work that does not need the full
 planner → coder → debugger → reviewer pipeline. Use it for one-shot prompts, UI
@@ -523,6 +540,7 @@ opencode/         canonical global primary/subagent + /goal definitions
 legacy-workflow/  preserved legacy-planner/coder/debugger/reviewer skills
 
 push-handoff/     verified, explicitly authorized commit/push closeout
+hands-free/       user-invoked mode: finish the task, wait for push + PR merge
 loop-engineer/    closed maker→checker loop runner
 gauntlet-loop/    blind maker→critic loop for one-shot and UI work
 herdr-orchestrator/ Herdr pane farm for Grok + Codex + 3 Council on a /goal run
