@@ -1,6 +1,6 @@
 ---
 name: ship-parallel
-version: 1.0.0
+version: 1.1.0
 description: Run ready code items through isolated git worktrees with a lazy-senior-dev build brief, gate-first review by one non-maker model, and partial-success merging. Use when ship batches ready code items or when the lean worktree build farm must resume, review, merge, or report a batch.
 ---
 
@@ -56,6 +56,51 @@ The ladder is adapted from [ponytail](https://github.com/DietrichGebert/ponytail
 (MIT, DietrichGebert). Interactive sessions can invoke the plugin directly;
 this copy exists because worktree subagents may not load plugins.
 
+## The review rubric
+
+Pass this to every reviewer, verbatim, after the correctness brief. Correctness,
+security, and data loss are judged first and keep their existing weight. What
+follows is the quality pass, and it has three lenses.
+
+> **over-build** — reinvented standard library, a dependency for what the
+> platform already ships, an abstraction with one implementation, a factory with
+> one product, config nobody sets, a wrapper that only delegates, a flag with one
+> caller.
+>
+> **slop** — a comment restating the line below it, a defensive `try/catch` on a
+> path that cannot fail, a cast that silences the compiler instead of fixing the
+> type, nesting where a guard clause would return early, code whose shape does
+> not match the file it was added to.
+>
+> **structure** — a new special case bolted into a flow that does not own it,
+> feature logic living in a shared path, a bespoke helper duplicating one this
+> repo already has, a file this diff pushed past the size the rest of the tree
+> keeps.
+>
+> **One line per finding:** `<file>:<line>: <lens>: <what to cut>. <replacement>.`
+>
+> **A finding is admissible when it names the replacement** — a standard-library
+> function, an existing symbol in this repo, a native platform feature, or
+> `delete, nothing replaces it`. Name the replacement and the finding stands.
+> Without one it is an opinion about taste, and taste does not block a merge.
+>
+> An admissible `over-build` or `structure` finding is **P1** and blocks the
+> merge. `slop` is **P2**. Cap the quality pass at **5 findings**, ranked biggest
+> cut first, and print `net: -<N> lines possible.` on its own line, or
+> `Lean already.` for a clean item. **It goes immediately before `VERDICT:`**,
+> never after `FOLLOWUPS:`: the result contract parses the last three lines, so
+> a trailing net line displaces the verdict and invalidates the whole review.
+>
+> One runnable check per piece of non-trivial logic (`assert`, `demo()`, or one
+> small test) is the required minimum and is never an `over-build` finding.
+> Missing trust-boundary validation, data-loss handling, security,
+> accessibility, or an unmet acceptance criterion stays P0/P1 under-build.
+
+The rubric is adapted from [ponytail-review](https://github.com/DietrichGebert/ponytail)
+(MIT, DietrichGebert), Cursor's `deslop` and `thermo-nuclear-code-quality-review`,
+and [@elithrar](https://github.com/elithrar)'s `simplify`. It is inlined here for
+the same reason the ladder is: worktree subagents may not load plugins.
+
 ## Batch input
 
 `MAX_BATCH` defaults to 4 and is capped at 8. `ship` marks all selected ids
@@ -78,7 +123,7 @@ When `OPENCODE_BIN`, `~/.opencode/bin/opencode`, or `opencode` on `PATH` is
 available, run:
 
 ```bash
-ship-parallel/scripts/parallel.sh <repo-root> <worktree-root> <manifest>
+delivery/ship-parallel/scripts/parallel.sh <repo-root> <worktree-root> <manifest>
 ```
 
 The runner creates worktrees and launches one
@@ -111,9 +156,9 @@ fallback emits the same JSON contract as the CLI path.
   never the contributor's model. No verdict means no merge.
 - Review items separately, never as a batch.
 - Any evidenced P0/P1 blocks even if the reviewer mistakenly prints `PASS`.
-- **Over-build is a finding.** A reviewer that sees a speculative abstraction, a
-  new dependency where the stdlib sufficed, or tests beyond the runnable-check
-  rule reports it as P2 with `file:line`.
+- **Every reviewer applies the review rubric above** — the `over-build`, `slop`,
+  and `structure` lenses, the named-replacement admissibility rule, and the
+  `net: -<N>` close.
 - `HARDENED=1` adds one read-only `council-adversary` pass on top.
 - Partial success is default: merge green/PASS peers and report failed ids.
 - `STRICT_BATCH=1` integrates on a temporary branch and fast-forwards

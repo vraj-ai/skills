@@ -6,10 +6,11 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cleanup, makeTmpDir } from './helpers.js';
+import { skillPath } from './helpers.js';
 
 const execFileAsync = promisify(execFile);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const stateScript = path.resolve(__dirname, '..', 'goals', 'scripts', 'state.mjs');
+const stateScript = skillPath(path.resolve(__dirname, '..'), 'goals', 'scripts', 'state.mjs');
 
 function item(overrides) {
   return {

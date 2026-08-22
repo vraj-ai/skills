@@ -1,6 +1,6 @@
 ---
 name: council
-version: 1.2.0
+version: 1.3.0
 description: Run independent multi-model research, evidence-based debate, voting, and scoped T0/T1 reviews without rubber-stamping. Use when goals encounters a genuinely contested research item, Phase B needs backlog sanity checks, an item needs independent T0 reviewers, or a milestone needs one rotating integration reviewer.
 ---
 
@@ -22,6 +22,21 @@ The configured roster is:
 The active primary performs its own independent pass alongside all seven,
 making eight perspectives for contested research. Never pre-solve the question
 and ask members to ratify an answer.
+
+**When the OpenCode roster is unreachable** (no binary, no auth, an exhausted
+workspace balance), the parent session runs members through local CLIs instead
+of skipping review. Two are enough to keep maker separate from checker:
+
+```bash
+grok -p "<prompt>" --output-format plain                    # council-grok
+codex exec --model gpt-5.6-sol --sandbox read-only -        # council-sol
+```
+
+`grok` needs `--output-format plain`; without it the TUI never returns in a
+headless shell. `codex exec` reads the prompt from stdin when passed `-`, which
+is how a long diff gets in. Record the substitute in the review verdict so the
+run's provenance stays honest, and never let the fallback silently become no
+review at all.
 
 ## Research rounds
 

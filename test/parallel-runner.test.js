@@ -6,10 +6,11 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cleanup, git, makeTmpDir, setupParallelFixture as setup } from './helpers.js';
+import { skillPath } from './helpers.js';
 
 const execFileAsync = promisify(execFile);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const runner = path.resolve(__dirname, '..', 'parallel', 'scripts', 'parallel.mjs');
+const runner = skillPath(path.resolve(__dirname, '..'), 'parallel', 'scripts', 'parallel.mjs');
 
 
 test('parallel runner builds, reviews, verifies, and merges one isolated item', async () => {

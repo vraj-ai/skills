@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { skillPath } from './helpers.js';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const read = (...p) => fs.readFile(path.join(repo, ...p), 'utf8');
+const read = (name, ...p) => fs.readFile(skillPath(repo, name, ...p), 'utf8');
 
 // #30: `ship` and `goals` each carry their own copy of these modules, because a
 // skill installs as a self-contained directory — `ship/` cannot import out of
@@ -49,7 +50,6 @@ test('the two parallel runners diverge only on their approved differences', asyn
     /T0 reviewers must use distinct model families/,
     /reviewers\.map\(\(reviewer\) => modelFamily/,
     /const guard =/,                         // contributor brief
-    /const prompt = `T0 per-item review/,    // reviewer brief
   ];
 
   // Every pattern must earn its place: one that matches nothing is not a
