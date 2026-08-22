@@ -78,7 +78,7 @@ When `OPENCODE_BIN`, `~/.opencode/bin/opencode`, or `opencode` on `PATH` is
 available, run:
 
 ```bash
-ship-parallel/scripts/parallel.sh <repo-root> <worktree-root> <manifest>
+delivery/ship-parallel/scripts/parallel.sh <repo-root> <worktree-root> <manifest>
 ```
 
 The runner creates worktrees and launches one

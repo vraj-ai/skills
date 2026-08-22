@@ -54,7 +54,7 @@ Every backlog line has at most these 12 fields: `id`, `type`, `title`, `status`,
 `milestone`, `priority`, `source`, `source_id`, `depends_on`, `acceptance`,
 `attempts`, `created_by`.
 
-Use `ship/scripts/state.mjs` for locks, validation, ready calculation, and
+Use `delivery/ship/scripts/state.mjs` for locks, validation, ready calculation, and
 atomic replacement. It is the same contract `goals` uses, so a backlog written
 by either is readable by both. Never append or edit the backlog in place.
 

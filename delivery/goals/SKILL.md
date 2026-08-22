@@ -34,7 +34,7 @@ Every backlog line has at most these 12 fields:
 `id`, `type`, `title`, `status`, `milestone`, `priority`, `source`,
 `source_id`, `depends_on`, `acceptance`, `attempts`, `created_by`.
 
-Use `scripts/state.mjs` for locks, validation, ready calculation, and atomic
+Use `delivery/goals/scripts/state.mjs` for locks, validation, ready calculation, and atomic
 replacement. Never append or edit the backlog in place. Mirror backlog state
 to GitHub issue labels when a GitHub remote is available, but resume from the
 local backlog. Use exactly one `goals:*` state label per issue — one per
