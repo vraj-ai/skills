@@ -18,6 +18,11 @@ available for work that earns the ceremony.
 Start `/ship` with the spec reference. The handoff and push happen inside
 `/ship`.
 
+**`/ship` is the code review.** Every item passes its locked gate and one
+non-maker reviewer applying `ship-parallel`'s review rubric; the milestone gate
+and T3 widen the same lenses. Running a separate review skill afterwards
+re-reads work that has already been reviewed.
+
 ## Input
 
 `/ship <reference>` takes an issue number, URL, or file path; fetch the spec from
@@ -209,8 +214,11 @@ mechanically before spending a model: no new test failures against baseline,
 build passes, no conflict or TODO or stub markers, every deliverable exists.
 
 Then invoke one rotating reviewer for **integration scope only** — whether the
-merged items compose, cross-item coverage gaps, and drift from the spec. Do not
-re-review item code quality already covered at the item gate. Rotate
+merged items compose, cross-item coverage gaps, and drift from the spec, under
+the `structure` lens of `ship-parallel`'s review rubric: a special case bolted
+into a flow that does not own it, feature logic in a shared path, a helper
+duplicating one the repo already has. Item-level `over-build` and `slop` were
+settled at the item gate and are not re-litigated here. Rotate
 `council-grok -> council-kimi -> council-qwen -> council-sol`; never repeat the
 last reviewer, never use the contributor's model. Record `PASS`,
 `PASS-WITH-FOLLOWUPS`, or `FAIL` in `reviews/M<n>.json` and `last_reviewer` in
@@ -224,8 +232,9 @@ stop and ask.
 
 Mandatory. Invoke one read-only `council-adversary` on the full cumulative
 `MAIN_BRANCH` diff from the pre-ship merge base, reviewing merged paths as a
-composed system. Require `reviews/T3.json` with `SHIP`, `SHIP-WITH-FOLLOWUPS`,
-or `BLOCK`.
+composed system under all three lenses of `ship-parallel`'s review rubric, and
+closing with `net: -<N> lines possible.` Require `reviews/T3.json` with `SHIP`,
+`SHIP-WITH-FOLLOWUPS`, or `BLOCK`.
 
 Drain P0/P1 before completion; P2 may become labelled follow-up issues. A `BLOCK`
 escalates to the human and **never pushes**.

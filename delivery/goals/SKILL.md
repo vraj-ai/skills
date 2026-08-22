@@ -12,6 +12,11 @@ writer of `CONTEXT/goals/<slug>/backlog.jsonl`. It composes `parallel` for code 
 `council` for contested research and review. Subagents emit evidence; they
 never mutate the backlog.
 
+**`goals` is the code review.** Two non-maker T0 reviewers apply `parallel`'s
+review rubric to every item, and T1, T2, and T3 widen the same lenses. Running
+a separate review skill afterwards re-reads work that has already been
+reviewed.
+
 ## State contract
 
 For plan `<plan-path>`, derive a stable `<slug>` and use:
@@ -191,8 +196,9 @@ against baseline, build passes, no conflict/TODO/stub markers, and every
 deliverable exists. Reject mechanically before spending a model review.
 
 Then invoke one rotating eligible council reviewer for integration scope only:
-composition, cross-item coverage gaps, and plan drift. Do not re-review item
-code quality already covered by T0. Rotate
+composition, cross-item coverage gaps, and plan drift, under the `structure`
+lens of `parallel`'s review rubric. Item-level `over-build` and `slop` were
+settled at T0 and are not re-litigated here. Rotate
 `council-grok -> council-kimi -> council-qwen -> council-sol`; never repeat the
 last reviewer and never use the GLM worker model. Record `PASS`,
 `PASS-WITH-FOLLOWUPS`, or `FAIL` in `reviews/M<n>.json` and
@@ -208,7 +214,8 @@ and performs a facts sweep. A whole-deliverable `council-adversary` pass is
 optional at T2.
 
 T3 is mandatory after T2. Invoke one read-only `council-adversary` on the full
-cumulative MAIN_BRANCH diff from the pre-goal merge base. Require
+cumulative MAIN_BRANCH diff from the pre-goal merge base, under all three lenses
+of `parallel`'s review rubric, closing with `net: -<N> lines possible.` Require
 `reviews/T3.json` with `SHIP`, `SHIP-WITH-FOLLOWUPS`, or `BLOCK`. Drain P0/P1
 before completion; P2 may become labeled follow-up issues. A P0 `BLOCK`
 escalates to the human. Mark the goal complete only after T3 and the locked
