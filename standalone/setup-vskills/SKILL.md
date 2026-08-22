@@ -32,7 +32,7 @@ Confirm with `node bin/vskills.js list` and run the test suite once:
 Install the canonical agent and command files tracked under `opencode/`:
 
 ```bash
-node setup-vskills/scripts/install-opencode.mjs
+node standalone/setup-vskills/scripts/install-opencode.mjs
 ```
 
 This installs selectable `goals` and read-only `council` primaries, the
