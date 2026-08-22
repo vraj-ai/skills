@@ -1,6 +1,7 @@
 import { execFile, execFileSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import fs from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -87,4 +88,20 @@ if (prompt.includes('Resolve the active merge')) {
 `);
   await fs.chmod(fake, 0o755);
   return { repo, fake, worktrees: path.join(repo, 'CONTEXT', 'worktrees', 'demo') };
+}
+
+// Skills are grouped into category folders (`delivery/`, `standalone/`,
+// `pipeline/`, `legacy-workflow/`), so a test must not hard-code a skill's
+// parent directory: regrouping one would silently break every path literal.
+// Resolve by skill name instead. Sync, because several suites build these
+// paths at module scope.
+// ship: fixed parent list, switch to src/discovery.js if the layout ever nests deeper.
+const SKILL_PARENTS = ['', 'delivery', 'standalone', 'pipeline', 'legacy-workflow'];
+
+export function skillPath(repoRoot, name, ...rest) {
+  for (const parent of SKILL_PARENTS) {
+    const dir = path.join(repoRoot, parent, name);
+    if (existsSync(path.join(dir, 'SKILL.md'))) return path.join(dir, ...rest);
+  }
+  throw new Error(`no skill named "${name}" under ${repoRoot}`);
 }

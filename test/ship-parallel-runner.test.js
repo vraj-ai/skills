@@ -6,6 +6,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cleanup, makeTmpDir, setupParallelFixture as setup } from './helpers.js';
+import { skillPath } from './helpers.js';
 
 // #30: `ship-parallel/scripts/parallel.mjs` is the runner `/ship` actually
 // executes, and every existing runner test pinned the `parallel/` copy instead,
@@ -13,7 +14,7 @@ import { cleanup, makeTmpDir, setupParallelFixture as setup } from './helpers.js
 // each behaviour the fork deliberately diverges on.
 const execFileAsync = promisify(execFile);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const runner = path.resolve(__dirname, '..', 'ship-parallel', 'scripts', 'parallel.mjs');
+const runner = skillPath(path.resolve(__dirname, '..'), 'ship-parallel', 'scripts', 'parallel.mjs');
 
 const baseEnv = (fake) => ({
   ...process.env,

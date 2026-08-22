@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseFrontmatter } from '../src/frontmatter.js';
+import { skillPath } from './helpers.js';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -19,7 +20,7 @@ function phrase(text) {
 }
 
 test('hands-free is user-invoked and leaves git delivery to the human', async () => {
-  const raw = await fs.readFile(path.join(repo, 'hands-free', 'SKILL.md'), 'utf8');
+  const raw = await fs.readFile(skillPath(repo, 'hands-free', 'SKILL.md'), 'utf8');
   const { data, body } = parseFrontmatter(raw);
 
   assert.equal(data.name, 'hands-free');

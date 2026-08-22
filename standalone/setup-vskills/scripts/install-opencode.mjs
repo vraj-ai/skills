@@ -2,10 +2,20 @@
 import { mkdir, open, readFile, readdir, rename } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(scriptDir, '..', '..');
+
+// Walk up to the repo root instead of counting `..` segments: this skill sits
+// under standalone/, and a future regrouping would silently change its depth.
+function findRepoRoot(from) {
+  let dir = from;
+  while (!existsSync(path.join(dir, 'package.json')) && dir !== path.dirname(dir)) dir = path.dirname(dir);
+  return dir;
+}
+
+const repoRoot = findRepoRoot(scriptDir);
 const sourceRoot = path.join(repoRoot, 'opencode');
 const configRoot = process.env.OPENCODE_CONFIG_DIR || path.join(os.homedir(), '.config', 'opencode');
 

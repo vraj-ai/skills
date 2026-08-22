@@ -6,10 +6,11 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cleanup, makeTmpDir } from './helpers.js';
+import { skillPath } from './helpers.js';
 
 const execFileAsync = promisify(execFile);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const installer = path.resolve(__dirname, '..', 'setup-vskills', 'scripts', 'install-opencode.mjs');
+const installer = skillPath(path.resolve(__dirname, '..'), 'setup-vskills', 'scripts', 'install-opencode.mjs');
 
 test('OpenCode profile installer is idempotent and backs up conflicts', async () => {
   const configRoot = await makeTmpDir('opencode-profile-');

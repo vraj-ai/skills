@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { skillPath } from './helpers.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(__dirname, '..');
@@ -11,11 +12,15 @@ async function read(...parts) {
   return fs.readFile(path.join(repo, ...parts), 'utf8');
 }
 
+async function readSkill(name, ...parts) {
+  return fs.readFile(skillPath(repo, name, ...parts), 'utf8');
+}
+
 test('native workflow skills state durable context ownership', async () => {
   const [goals, council, setup] = await Promise.all([
-    read('goals', 'SKILL.md'),
-    read('council', 'SKILL.md'),
-    read('setup-vskills', 'SKILL.md'),
+    readSkill('goals', 'SKILL.md'),
+    readSkill('council', 'SKILL.md'),
+    readSkill('setup-vskills', 'SKILL.md'),
   ]);
 
   assert.match(goals, /One owner per artifact/);
@@ -30,7 +35,7 @@ test('native workflow skills state durable context ownership', async () => {
 
 test('handoff compaction and delivery remain separate contracts', async () => {
   const [pushHandoff, readme] = await Promise.all([
-    read('push-handoff', 'SKILL.md'),
+    readSkill('push-handoff', 'SKILL.md'),
     read('README.md'),
   ]);
 
@@ -50,8 +55,8 @@ function phrase(text) {
 
 test('ship and goals share one state-label vocabulary', async () => {
   const [ship, goals] = await Promise.all([
-    read('ship', 'SKILL.md'),
-    read('goals', 'SKILL.md'),
+    readSkill('ship', 'SKILL.md'),
+    readSkill('goals', 'SKILL.md'),
   ]);
 
   // Compare the two files against each other, not against a hardcoded list —
@@ -64,7 +69,7 @@ test('ship and goals share one state-label vocabulary', async () => {
 });
 
 test('ship publishes native milestones without goals ceremony', async () => {
-  const ship = await read('ship', 'SKILL.md');
+  const ship = await readSkill('ship', 'SKILL.md');
 
   assert.match(ship, phrase('native GitHub Milestones'));
 

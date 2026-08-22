@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { skillPath } from './helpers.js';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const read = (...p) => fs.readFile(path.join(repo, ...p), 'utf8');
+const read = (name, ...p) => fs.readFile(skillPath(repo, name, ...p), 'utf8');
 
 // #30: `ship` and `goals` each carry their own copy of these modules, because a
 // skill installs as a self-contained directory — `ship/` cannot import out of
