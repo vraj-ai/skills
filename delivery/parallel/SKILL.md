@@ -20,6 +20,49 @@ git worktree add -b goals/<slug>/<id> CONTEXT/worktrees/<slug>/<id>
 The fixed contributor is `opencode-go/glm-5.2`. GLM may join research council
 rounds but cannot review GLM-authored code.
 
+## The review rubric
+
+Pass this to every reviewer, verbatim, after the correctness brief. Correctness,
+security, and data loss are judged first and keep their existing weight. What
+follows is the quality pass, and it has three lenses.
+
+> **over-build** — reinvented standard library, a dependency for what the
+> platform already ships, an abstraction with one implementation, a factory with
+> one product, config nobody sets, a wrapper that only delegates, a flag with one
+> caller.
+>
+> **slop** — a comment restating the line below it, a defensive `try/catch` on a
+> path that cannot fail, a cast that silences the compiler instead of fixing the
+> type, nesting where a guard clause would return early, code whose shape does
+> not match the file it was added to.
+>
+> **structure** — a new special case bolted into a flow that does not own it,
+> feature logic living in a shared path, a bespoke helper duplicating one this
+> repo already has, a file this diff pushed past the size the rest of the tree
+> keeps.
+>
+> **One line per finding:** `<file>:<line>: <lens>: <what to cut>. <replacement>.`
+>
+> **A finding is admissible when it names the replacement** — a standard-library
+> function, an existing symbol in this repo, a native platform feature, or
+> `delete, nothing replaces it`. Name the replacement and the finding stands.
+> Without one it is an opinion about taste, and taste does not block a merge.
+>
+> An admissible `over-build` or `structure` finding is **P1** and blocks the
+> merge. `slop` is **P2**. Cap the quality pass at **5 findings**, ranked biggest
+> cut first, and close with `net: -<N> lines possible.` A clean item returns
+> `Lean already.`
+>
+> One runnable check per piece of non-trivial logic (`assert`, `demo()`, or one
+> small test) is the required minimum and is never an `over-build` finding.
+> Missing trust-boundary validation, data-loss handling, security,
+> accessibility, or an unmet acceptance criterion stays P0/P1 under-build.
+
+The rubric is adapted from [ponytail-review](https://github.com/DietrichGebert/ponytail)
+(MIT, DietrichGebert), Cursor's `deslop` and `thermo-nuclear-code-quality-review`,
+and [@elithrar](https://github.com/elithrar)'s `simplify`. It is inlined here for
+the same reason the ladder is: worktree subagents may not load plugins.
+
 ## Batch input
 
 `MAX_BATCH` defaults to 3 and is capped at 4. Goals marks all selected ids
@@ -33,9 +76,8 @@ per item:
 The task contains the plan/item path, exact acceptance criteria, locked
 Verification-command, MAIN_BRANCH, and absolute worktree path. Set
 `TEST_CMDS_JSON` to a complete JSON map from id to its locked command;
-`TEST_CMD` is only accepted for a one-item batch. Append the anti-over-engineering
-guard from `council`. Reject any manifest model other than the fixed contributor
-pin.
+`TEST_CMD` is only accepted for a one-item batch. Reject any manifest model
+other than the fixed contributor pin.
 
 ## CLI path
 
@@ -73,6 +115,9 @@ fallback emits the same JSON contract as the CLI path.
 
 - Two reviewers per item, always. No verdict means no merge.
 - Any evidenced P0/P1 blocks even if a reviewer mistakenly prints `PASS`.
+- **Both reviewers apply the review rubric above** — the `over-build`, `slop`,
+  and `structure` lenses, the named-replacement admissibility rule, and the
+  `net: -<N>` close.
 - `HARDENED=1` adds one read-only `council-adversary` T0 pass.
 - Partial success is default: merge green/PASS peers and report failed ids.
 - `STRICT_BATCH=1` integrates on a temporary branch and fast-forwards

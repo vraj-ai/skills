@@ -50,7 +50,6 @@ test('the two parallel runners diverge only on their approved differences', asyn
     /T0 reviewers must use distinct model families/,
     /reviewers\.map\(\(reviewer\) => modelFamily/,
     /const guard =/,                         // contributor brief
-    /const prompt = `T0 per-item review/,    // reviewer brief
   ];
 
   // Every pattern must earn its place: one that matches nothing is not a
