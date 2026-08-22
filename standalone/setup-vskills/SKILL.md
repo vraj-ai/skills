@@ -1,6 +1,6 @@
 ---
 name: setup-vskills
-version: 1.5.0
+version: 1.6.0
 description: Sets up this skills repo on a new machine — installs the skills with the vskills CLI, then regenerates the local-only context docs (CONTEXT.md, docs/) that are deliberately not published in the public repo.
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: ship-parallel
-version: 1.0.0
+version: 1.1.0
 description: Run ready code items through isolated git worktrees with a lazy-senior-dev build brief, gate-first review by one non-maker model, and partial-success merging. Use when ship batches ready code items or when the lean worktree build farm must resume, review, merge, or report a batch.
 ---
 
@@ -86,8 +86,10 @@ follows is the quality pass, and it has three lenses.
 >
 > An admissible `over-build` or `structure` finding is **P1** and blocks the
 > merge. `slop` is **P2**. Cap the quality pass at **5 findings**, ranked biggest
-> cut first, and close with `net: -<N> lines possible.` A clean item returns
-> `Lean already.`
+> cut first, and print `net: -<N> lines possible.` on its own line, or
+> `Lean already.` for a clean item. **It goes immediately before `VERDICT:`**,
+> never after `FOLLOWUPS:`: the result contract parses the last three lines, so
+> a trailing net line displaces the verdict and invalidates the whole review.
 >
 > One runnable check per piece of non-trivial logic (`assert`, `demo()`, or one
 > small test) is the required minimum and is never an `over-build` finding.

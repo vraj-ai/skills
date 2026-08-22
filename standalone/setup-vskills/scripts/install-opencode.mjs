@@ -11,7 +11,11 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 // under standalone/, and a future regrouping would silently change its depth.
 function findRepoRoot(from) {
   let dir = from;
-  while (!existsSync(path.join(dir, 'package.json')) && dir !== path.dirname(dir)) dir = path.dirname(dir);
+  while (!existsSync(path.join(dir, 'package.json'))) {
+    const parent = path.dirname(dir);
+    if (parent === dir) throw new Error(`no package.json above ${from}: run this from a repo checkout`);
+    dir = parent;
+  }
   return dir;
 }
 

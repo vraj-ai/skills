@@ -1,6 +1,6 @@
 ---
 name: goals
-version: 1.2.0
+version: 1.3.0
 description: Drive a plan document to verified completion through a resumable single-writer backlog, council research/review, worktree-isolated parallel builds, milestone gates, and a final adversarial teardown. Use when the user invokes /goal, asks to execute an architecture plan autonomously, resumes a goal, or needs a large issue set delivered milestone by milestone.
 dependencies: [council, parallel, council-adversary]
 ---
