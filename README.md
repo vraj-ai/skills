@@ -13,8 +13,6 @@ Same command on macOS, Linux, and Windows PowerShell.
 
 ## The workflow
 
-This is the loop the repo is built around. Each step hands off to the next.
-
 | Step | What it does |
 |---|---|
 | `/grill-with-docs` | Stress-tests the plan and writes ADRs and glossary entries as you go |
@@ -23,16 +21,17 @@ This is the loop the repo is built around. Each step hands off to the next.
 | `/handoff` | Compacts the session into a document the next agent can pick up |
 | `/push-handoff` | Commits and pushes that handoff, then reads the remote SHA back as proof |
 
-There is no separate review step. `/ship`, `/ship-parallel`, and `/goals` review
-their own output at three widths: the item gate, the milestone gate, and a final
-read-only adversary over the whole diff. `/grill-with-docs`, `/to-spec`, and
-`/handoff` come from Matt Pocock, see [Skills from elsewhere](#skills-from-elsewhere).
+There is no separate review step. `/ship` and `/goals` review their own output at
+three widths: the item gate, the milestone gate, and a read-only adversary over
+the whole diff. `/ship-parallel` is the item gate, one non-maker model per green
+item. `/grill-with-docs`, `/to-spec`, and `/handoff` come from Matt Pocock, see
+[Skills from elsewhere](#skills-from-elsewhere).
 
 ## Two pipelines
 
-Both drive a plan to verified, pushed code using isolated worktrees, locked
+Both drive a plan to verified, merged code using isolated worktrees, locked
 verification commands, a resumable backlog, and a mandatory final adversary.
-They differ in how much independent scrutiny each item gets.
+Only `/ship` pushes on its own.
 
 | | `/ship` | `/goals` |
 |---|---|---|
@@ -104,7 +103,7 @@ caller that pushes without a second prompt, and only on a clean final gate.
 | `loop-engineer` | Wrap any task in a maker/checker loop with a done-condition |
 | `gauntlet-loop` | Blind maker/critic loop against a real quality bar |
 | `multi-agent-review` | Several models attempt and cross-examine the same task |
-| `herdr-orchestrator` | Run `/goals` across live [Herdr](https://herdr.dev) panes |
+| `herdr-orchestrator` | Run `/goals` through Codex and three council agents across live [Herdr](https://herdr.dev) panes |
 | `setup-obsidian` | Turn a docs folder into a retrieval graph |
 | `setup-vskills` | Set this repo up on a new machine |
 
@@ -135,8 +134,8 @@ configure the issue tracker and triage labels those skills expect.
 Plugins install through Claude Code's `/plugin` command, not `vskills`.
 
 [ponytail](https://github.com/DietrichGebert/ponytail) is the one to start with.
-It forces the laziest solution that works and ships `/ponytail-review` and
-`/ponytail-audit` for hunting complexity. The build ladder is adapted from it.
+It forces the laziest solution that works and ships `/ponytail`,
+`/ponytail-review`, and `/ponytail-audit`. The build ladder is adapted from it.
 From the [official marketplace](https://github.com/anthropics/claude-plugins-official):
 `superpowers` for brainstorming, TDD, systematic debugging, and worktrees;
 `skill-creator` for writing skills; `frontend-design` for UI work.
@@ -221,14 +220,14 @@ opencode/         global OpenCode agent and command definitions
 OpenCode loads `opencode/agent/` from `~/.config/opencode/agent/`. Every child
 agent is a subagent with `task: deny`, so the tree is one level deep. OpenCode
 reads its config once, so restart it after changing an agent or skill. The
-contributor is pinned to `opencode-go/glm-5.2`; council runs Grok 4.5, Kimi K3,
-Qwen 3.8 Max, and GPT-5.6 Sol, with a read-only Grok adversary. When that roster
-is unavailable, council falls back to local CLIs: `grok -p`, and
-`codex exec --model gpt-5.6-sol --sandbox read-only`.
+contributor is pinned to `opencode-go/glm-5.2`. Council members are Grok 4.5,
+Kimi K3, Qwen 3.8 Max, GPT-5.6 Sol, Gemini 3.6 Flash, DeepSeek V4 Flash, and
+GLM 5.2, with a read-only Grok adversary. When that roster is unreachable,
+council falls back to local CLIs, `grok -p --output-format plain` and
+`codex exec --model gpt-5.6-sol --sandbox read-only`, run by the parent
+session.
 
 ## Credits
-
-The ladder, the rubric, and the workflow are built on other people's work.
 
 - [ponytail](https://github.com/DietrichGebert/ponytail) by DietrichGebert (MIT): the decision ladder, and the `delete / stdlib / native / yagni / shrink` shape of the rubric.
 - [mattpocock/skills](https://github.com/mattpocock/skills) by Matt Pocock: `/grill-with-docs`, `/to-spec`, `/handoff`, and the shape of the workflow.

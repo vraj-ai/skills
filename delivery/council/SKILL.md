@@ -23,6 +23,21 @@ The active primary performs its own independent pass alongside all seven,
 making eight perspectives for contested research. Never pre-solve the question
 and ask members to ratify an answer.
 
+**When the OpenCode roster is unreachable** (no binary, no auth, an exhausted
+workspace balance), the parent session runs members through local CLIs instead
+of skipping review. Two are enough to keep maker separate from checker:
+
+```bash
+grok -p "<prompt>" --output-format plain                    # council-grok
+codex exec --model gpt-5.6-sol --sandbox read-only -        # council-sol
+```
+
+`grok` needs `--output-format plain`; without it the TUI never returns in a
+headless shell. `codex exec` reads the prompt from stdin when passed `-`, which
+is how a long diff gets in. Record the substitute in the review verdict so the
+run's provenance stays honest, and never let the fallback silently become no
+review at all.
+
 ## Research rounds
 
 ### Round 1: independent work
