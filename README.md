@@ -15,23 +15,23 @@ Same command on macOS, Linux, and Windows PowerShell.
 
 | Step | What it does |
 |---|---|
-| `/grill-with-docs` | Stress-tests the plan and writes ADRs and glossary entries as you go |
-| `/to-spec` | Turns the conversation into a spec on your issue tracker |
+| `/grill` | Stress-tests the plan and writes glossary, architecture, and ADRs into `CONTEXT/` |
+| `/issues` | Sets up the tracker once, then publishes a spec and tracer-bullet tickets |
 | `/ship <spec>` | Builds it, reviews it, pushes it. Use `/goals` when you want more review |
-| `/handoff` | Compacts the session into a document the next agent can pick up |
-| `/push-handoff` | Commits and pushes that handoff, then reads the remote SHA back as proof |
+| `/snapshot` | Syncs `CONTEXT/` and the tracker, writes a handoff, commits and pushes with remote SHA proof |
 
 There is no separate review step. `/ship` and `/goals` review their own output at
 three widths: the item gate, the milestone gate, and a read-only adversary over
 the whole diff. `/ship-parallel` is the item gate, one non-maker model per green
-item. `/grill-with-docs`, `/to-spec`, and `/handoff` come from Matt Pocock, see
+item. `/grill`, `/issues`, and `/snapshot` are this repo's planning and closeout
+skills. Matt Pocock's originals remain available, see
 [Skills from elsewhere](#skills-from-elsewhere).
 
 ## Two pipelines
 
 Both drive a plan to verified, merged code using isolated worktrees, locked
 verification commands, a resumable backlog, and a mandatory final adversary.
-Only `/ship` pushes on its own.
+Only `/ship` and `/snapshot` push on their own.
 
 | | `/ship` | `/goals` |
 |---|---|---|
@@ -78,8 +78,8 @@ stdlib function, an existing symbol in the repo, a native feature, or "delete,
 nothing replaces it". Without one it is taste, and taste does not block a merge.
 
 *Handoff is not delivery.* `push-handoff` is the explicit delivery step: it
-verifies, commits, pushes, and proves the fetched remote SHA. `/ship` is the one
-caller that pushes without a second prompt, and only on a clean final gate.
+verifies, commits, pushes, and proves the fetched remote SHA. `/ship` pushes
+on a clean final gate. `/snapshot` pushes because you invoked it.
 
 ## The skills
 
@@ -98,6 +98,9 @@ caller that pushes without a second prompt, and only on a clean final gate.
 
 | Skill | Use when |
 |---|---|
+| `grill` | User-invoked interview; writes language and decisions into `CONTEXT/` |
+| `issues` | User-invoked; one-time project setup, then spec plus tickets |
+| `snapshot` | User-invoked closeout: sync docs and tracker, handoff, proven push |
 | `push-handoff` | Commit and push under explicit authority, proven by remote SHA |
 | `hands-free` | Finish the task without pausing, then wait for a push and PR merge |
 | `loop-engineer` | Wrap any task in a maker/checker loop with a done-condition |
@@ -126,8 +129,8 @@ npx skills add mattpocock/skills/to-spec
 npx skills add mattpocock/skills/handoff
 ```
 
-Run `npx skills add mattpocock/skills/setup-matt-pocock-skills` once per repo to
-configure the issue tracker and triage labels those skills expect.
+Run `npx skills add mattpocock/skills/setup-matt-pocock-skills` only if you still
+want his originals. This repo's chain is `/grill` → `/issues` → `/ship` or `/goals` → `/snapshot`.
 
 ## Plugins
 
@@ -210,8 +213,9 @@ src/              vskills implementation
 test/             vskills test suite (node --test)
 
 delivery/         ship, ship-parallel, goals, parallel, council, council-adversary
-standalone/       push-handoff, hands-free, loop-engineer, gauntlet-loop,
-                  multi-agent-review, herdr-orchestrator, setup-obsidian, setup-vskills
+standalone/       grill, issues, snapshot, push-handoff, hands-free, loop-engineer,
+                  gauntlet-loop, multi-agent-review, herdr-orchestrator,
+                  setup-obsidian, setup-vskills
 pipeline/         reusable delivery disciplines
 legacy-workflow/  the preserved planner/coder/debugger/reviewer chain
 opencode/         global OpenCode agent and command definitions
@@ -230,7 +234,8 @@ session.
 ## Credits
 
 - [ponytail](https://github.com/DietrichGebert/ponytail) by DietrichGebert (MIT): the decision ladder, and the `delete / stdlib / native / yagni / shrink` shape of the rubric.
-- [mattpocock/skills](https://github.com/mattpocock/skills) by Matt Pocock: `/grill-with-docs`, `/to-spec`, `/handoff`, and the shape of the workflow.
+- [mattpocock/skills](https://github.com/mattpocock/skills) by Matt Pocock: `/grill-with-docs`, `/to-spec`, `/handoff`, `/to-tickets`, and the shape of the workflow. `/grill`, `/issues`, and `/snapshot` are this repo's versions, writing `CONTEXT/` and combining setup, spec, tickets, and closeout.
+- [pstack](https://github.com/backnotprop/pstack) by poteto (MIT): exhaust the design space, prove safety by running code, expand-contract for wide blast radius, and settle caller usage before module shape.
 
 The review rubric's three lenses came from reading these anti-slop skills:
 

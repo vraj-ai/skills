@@ -33,6 +33,34 @@ test('native workflow skills state durable context ownership', async () => {
   assert.match(setup, /AGENTS\.md/);
 });
 
+test('grill issues and snapshot own CONTEXT paths and do not steal goal state', async () => {
+  const [grill, issues, snapshot] = await Promise.all([
+    readSkill('grill', 'SKILL.md'),
+    readSkill('issues', 'SKILL.md'),
+    readSkill('snapshot', 'SKILL.md'),
+  ]);
+
+  assert.match(grill, /disable-model-invocation: true/);
+  assert.match(grill, /CONTEXT\/glossary\.md/);
+  assert.match(grill, /CONTEXT\/architecture\.md/);
+  assert.match(grill, /CONTEXT\/adr\//);
+  assert.match(grill, /Never/);
+  assert.match(grill, /progress\.md/);
+
+  assert.match(issues, /disable-model-invocation: true/);
+  assert.match(issues, /docs\/agents\/issue-tracker\.md/);
+  assert.match(issues, /ready-for-agent/);
+  assert.match(issues, /Verification-command/);
+  assert.match(issues, /\/ship/);
+  assert.match(issues, /\/goals/);
+
+  assert.match(snapshot, /disable-model-invocation: true/);
+  assert.match(snapshot, /\$TMPDIR|OS temp directory/);
+  assert.match(snapshot, /push-handoff/);
+  assert.match(snapshot, /remote SHA/);
+  assert.match(snapshot, /Never write `CONTEXT\/progress\.md`/);
+});
+
 test('handoff compaction and delivery remain separate contracts', async () => {
   const [pushHandoff, readme] = await Promise.all([
     readSkill('push-handoff', 'SKILL.md'),
