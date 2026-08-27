@@ -27,6 +27,24 @@ item. `/grill`, `/issues`, and `/snapshot` are this repo's planning and closeout
 skills. Matt Pocock's originals remain available, see
 [Skills from elsewhere](#skills-from-elsewhere).
 
+## Agents
+
+The planning skills are user-only, so a general omp session will not start them.
+Put task agents in the User bucket so spawning one *is* the workflow.
+
+Files: `~/.omp/agent/agents/{grill,issues,ship}.md`. Reload the Agents tab with
+Ctrl+R. `/skill:grill` still works; the tab agent is the better start because
+it autoloads the skill and pins model plus effort.
+
+| Agent | Model | Effort | What it does |
+|---|---|---|---|
+| `grill` | `@plan` (opus-5:medium) | high | Interview; writes `CONTEXT/` |
+| `issues` | `@default` (grok-4.6:high) | medium | Setup once, then spec and tickets |
+| `ship` | `@slow` (opus-5:medium) | high | Lean build-to-push |
+
+`/snapshot` is a skill, not an Agents-tab entry. Closeout stays a named
+invocation.
+
 ## Two pipelines
 
 Both drive a plan to verified, merged code using isolated worktrees, locked
@@ -221,15 +239,12 @@ legacy-workflow/  the preserved planner/coder/debugger/reviewer chain
 opencode/         global OpenCode agent and command definitions
 ```
 
-OpenCode loads `opencode/agent/` from `~/.config/opencode/agent/`. Every child
-agent is a subagent with `task: deny`, so the tree is one level deep. OpenCode
-reads its config once, so restart it after changing an agent or skill. The
-contributor is pinned to `opencode-go/glm-5.2`. Council members are Grok 4.5,
-Kimi K3, Qwen 3.8 Max, GPT-5.6 Sol, Gemini 3.6 Flash, DeepSeek V4 Flash, and
-GLM 5.2, with a read-only Grok adversary. When that roster is unreachable,
-council falls back to local CLIs, `grok -p --output-format plain` and
-`codex exec --model gpt-5.6-sol --sandbox read-only`, run by the parent
-session.
+OpenCode loads `opencode/agent/` from `~/.config/opencode/agent/` when you still
+use that client. Delivery farm: contributor pinned to `opencode-go/glm-5.2`.
+Council members are Grok 4.5, Kimi K3, Qwen 3.8 Max, GPT-5.6 Sol, Gemini 3.6
+Flash, DeepSeek V4 Flash, and GLM 5.2, with a read-only Grok adversary. The
+omp path for grill, issues, and ship is the User bucket above, not these
+OpenCode primaries.
 
 ## Credits
 
