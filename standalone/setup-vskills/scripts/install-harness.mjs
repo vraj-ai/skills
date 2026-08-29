@@ -171,7 +171,11 @@ export async function installHarness(harnessName, options = {}) {
 
 // CLI entry point
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
-  const harnessArg = process.argv[2] || process.env.HARNESS || 'omp';
+  const harnessArg = process.argv[2] || process.env.HARNESS;
+  if (!harnessArg || !String(harnessArg).trim()) {
+    console.error('usage: install-harness.mjs <harness>\nSet HARNESS or pass the harness name. Do not assume omp.');
+    process.exit(1);
+  }
   const result = await installHarness(harnessArg);
 
   if (result.results) {
