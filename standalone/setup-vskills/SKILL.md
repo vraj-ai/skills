@@ -1,6 +1,6 @@
 ---
 name: setup-vskills
-version: 1.8.0
+version: 1.9.0
 description: Sets up this skills repo on a new machine — installs the skills with the vskills CLI, then regenerates the local-only context docs (CONTEXT.md, docs/) that are deliberately not published in the public repo.
 ---
 
@@ -27,26 +27,21 @@ node bin/vskills.js init
 Confirm with `node bin/vskills.js list` and run the test suite once:
 `node --test 'test/*.test.js'` — everything should pass before you write docs.
 
-## Step 1.1 — Install the global OpenCode profile
+## Step 1.1 — Research the current harness and install integration templates
 
-The installer reads canonical agent and command files from
-`harness/opencode/`:
+Ask the user which coding agent harness is in use (e.g. omp, OpenCode, Claude Code, Codex, Cursor, etc.). Always research that harness's agent configuration and integration model first — there is no hardcoded allowlist that skips research.
+
+Install the tightest integration for `grill`, `issues`, `ship`/`goals`, and `snapshot`:
 
 ```bash
-node standalone/setup-vskills/scripts/install-opencode.mjs
+node standalone/setup-vskills/scripts/install-harness.mjs <harness>
 ```
 
-This installs selectable `goals` and read-only `council` primaries, the
-contributor, cost-aware Gemini/DeepSeek, council, and adversary subagents, and
-`/goal` under
-`~/.config/opencode/`. Goals remains the sole delivery/backlog authority inside
-a goal run. Installation is idempotent. A differing existing file is moved to
-`~/.config/opencode/.vskills-backup/` before replace.
-It does not modify `opencode.json` or provider credentials.
+- **omp**: The installer copies the 10 canonical Role templates from `harness/omp/agent/` into `~/.omp/agent/agents/` (or `$OMP_AGENTS_DIR` when set for test isolation). This installs invocation templates (`grill`, `issues`, `ship`, `goals`, `snapshot`) and worker templates (`researcher`, `builder`, `reviewer`, `adversary`, `small-task`). You can also run `node standalone/setup-vskills/scripts/install-omp.mjs`.
+- **OpenCode**: The installer reads canonical agent and command files from `harness/opencode/` into `~/.config/opencode/` (or `$OPENCODE_CONFIG_DIR`). This installs selectable `goals` and read-only `council` primaries, the contributor, cost-aware Gemini/DeepSeek, council, and adversary subagents, and `/goal`. Goals remains the sole delivery/backlog authority inside a goal run. You can also run `node standalone/setup-vskills/scripts/install-opencode.mjs`.
+- **Any other harness**: Research how the harness defines agent roles, custom commands, prompt templates, and subagents. Document the research findings and write an integration plan mapping `grill`, `issues`, `ship`/`goals`, and `snapshot` to that harness. Never fail with an 'unknown harness' error from an allowlist.
 
-Set `OPENCODE_CONFIG_DIR` to install into a supported alternate config root
-(tests use this for isolation); otherwise the installer uses
-`~/.config/opencode/`, matching OpenCode's global profile location.
+All template installations are atomic and idempotent. Differing existing files are moved to `.vskills-backup/` before replace. It does not modify credentials or core configuration files.
 
 ## Step 1.2 — Bootstrap the project agent architecture
 
@@ -172,8 +167,8 @@ Ownership rules carry across skills:
   repo. They are local-only by design.
 - Never edit installed copies under the install root — edit the repo source
   and re-run `node bin/vskills.js init`.
-- Never edit the installed OpenCode agent copies directly — edit `harness/opencode/`
-  and rerun `install-opencode.mjs`.
+- Never edit installed harness agent/role copies directly — edit `harness/<harness>/`
+  and rerun the installer (`install-harness.mjs`, `install-omp.mjs`, or `install-opencode.mjs`).
 - Bump the `version:` in a skill's frontmatter whenever you change its
   content; init uses versions to auto-resolve otherwise-ambiguous updates.
-- Quit and restart OpenCode after installing; config-time files are loaded once.
+- Quit and restart the harness (e.g. OpenCode or omp) after installing; config-time files are loaded once.
