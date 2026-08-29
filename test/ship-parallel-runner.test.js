@@ -9,8 +9,6 @@ import { cleanup, makeTmpDir, setupParallelFixture as setup } from './helpers.js
 import { skillPath } from './helpers.js';
 
 // #51: `ship/scripts/parallel.mjs` is the runner `/ship` owns and executes.
-// Keep this suite pointed at that parent copy while `ship-parallel` remains
-// available as the compatibility skill.
 const execFileAsync = promisify(execFile);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const runner = skillPath(path.resolve(__dirname, '..'), 'ship', 'scripts', 'parallel.mjs');
@@ -22,8 +20,8 @@ const baseEnv = (fake) => ({
   CLEANUP: '0',
 });
 
-test('ship-parallel builds, reviews, verifies, and merges one isolated item', async () => {
-  const root = await makeTmpDir('ship-parallel-');
+test('ship builds, reviews, verifies, and merges one isolated item', async () => {
+  const root = await makeTmpDir('ship-');
   try {
     const { repo, fake } = await setup(root);
     const worktrees = path.join(repo, 'CONTEXT', 'worktrees', 'ship', 'demo');
@@ -44,8 +42,8 @@ test('ship-parallel builds, reviews, verifies, and merges one isolated item', as
   }
 });
 
-test('ship-parallel fails closed on a blocking finding even when the reviewer says PASS', async () => {
-  const root = await makeTmpDir('ship-parallel-');
+test('ship fails closed on a blocking finding even when the reviewer says PASS', async () => {
+  const root = await makeTmpDir('ship-');
   try {
     const { repo, fake } = await setup(root);
     const worktrees = path.join(repo, 'CONTEXT', 'worktrees', 'ship', 'demo');
@@ -68,8 +66,8 @@ test('ship-parallel fails closed on a blocking finding even when the reviewer sa
   }
 });
 
-test('ship-parallel accepts only ship/ branches, not the goals/ prefix', async () => {
-  const root = await makeTmpDir('ship-parallel-');
+test('ship accepts only ship/ branches, not the goals/ prefix', async () => {
+  const root = await makeTmpDir('ship-');
   try {
     const { repo, fake } = await setup(root);
     const worktrees = path.join(repo, 'CONTEXT', 'worktrees', 'ship', 'demo');
@@ -87,8 +85,8 @@ test('ship-parallel accepts only ship/ branches, not the goals/ prefix', async (
   }
 });
 
-test('ship-parallel requires exactly one T0 reviewer, unlike the two-reviewer fork', async () => {
-  const root = await makeTmpDir('ship-parallel-');
+test('ship requires exactly one T0 reviewer, unlike the two-reviewer fork', async () => {
+  const root = await makeTmpDir('ship-');
   try {
     const { repo, fake } = await setup(root);
     const worktrees = path.join(repo, 'CONTEXT', 'worktrees', 'ship', 'demo');

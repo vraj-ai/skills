@@ -27,7 +27,7 @@ test('the two state.mjs copies are byte-identical', async () => {
 test('the two parallel runners diverge only on their approved differences', async () => {
   const [base, fork] = await Promise.all([
     read('goals', 'scripts', 'parallel.mjs'),
-    read('ship-parallel', 'scripts', 'parallel.mjs'),
+    read('ship', 'scripts', 'parallel.mjs'),
   ]);
 
   const baseLines = new Set(base.split('\n'));
@@ -37,9 +37,9 @@ test('the two parallel runners diverge only on their approved differences', asyn
     ...[...forkLines].filter((l) => !baseLines.has(l)),
   ].filter((l) => l.trim().length > 1); // ignore lone braces the hunks drag along
 
-  // ship-parallel was forked deliberately so `goals` keeps two-reviewer review
-  // while `ship` runs one. Those are the only concerns allowed to differ; a
-  // change to any shared safety check must land in both copies.
+  // The runners diverge deliberately: `goals` keeps two-reviewer review while
+  // `ship` runs one. Those are the only concerns allowed to differ; a change
+  // to any shared safety check must land in both copies.
   const approved = [
     /(goals|ship)\\\/\[A-Za-z/,              // branch-prefix guard
     /strictIntegrationBranch\s*=/,           // integration branch prefix
@@ -60,17 +60,4 @@ test('the two parallel runners diverge only on their approved differences', asyn
 
   const unexpected = unique.filter((line) => !approved.some((re) => re.test(line)));
   assert.deepEqual(unexpected, [], 'unapproved drift between the parallel runners');
-});
-
-test('ship and ship-parallel agree that worktrees live under CONTEXT/worktrees/ship/<slug>/', async () => {
-  const [ship, fork] = await Promise.all([
-    read('ship', 'SKILL.md'),
-    read('ship-parallel', 'SKILL.md'),
-  ]);
-
-  assert.match(ship, /CONTEXT\/worktrees\/ship\/<slug>\//);
-  assert.match(
-    fork,
-    /git worktree add -b ship\/<slug>\/<id> CONTEXT\/worktrees\/ship\/<slug>\/<id>/,
-  );
 });

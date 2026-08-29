@@ -1,8 +1,8 @@
 ---
 name: ship
-version: 1.4.0
+version: 1.5.0
 description: Drive a published spec to verified, pushed completion through a resumable backlog, worktree-isolated parallel builds under a lazy-senior-dev ladder, gate-first review, a milestone reviewer, and a final adversarial teardown. Use when the user invokes /ship, asks to build out a spec autonomously, or resumes a ship run.
-dependencies: [ship-parallel, council-adversary]
+dependencies: [council-adversary]
 ---
 
 # Ship
@@ -36,16 +36,15 @@ alone owns those actions. Role names are host-neutral; do not use a host API,
 path, or provider name as a Role identity. Use `council` only for a genuinely
 contested fork, never for ordinary research, verification, or review.
 **`/ship` is the code review.** Every item passes its locked gate and one
-non-maker reviewer applying `ship-parallel`'s review rubric; the milestone gate
+non-maker reviewer applying Ship's review rubric; the milestone gate
 and T3 widen the same lenses. Running a separate review skill afterwards
 re-reads work that has already been reviewed.
 
 
 ## Farm brief
 
-`/ship` owns the worktree-isolated build farm. It composes the
-`ship-parallel` skill for compatibility while keeping this brief and a copy of
-the runner beside `/ship`. One item equals one branch and one worktree:
+`/ship` owns the worktree-isolated build farm. It keeps this brief and the
+runner beside `/ship`. One item equals one branch and one worktree:
 
 ```text
 git worktree add -b ship/<slug>/<id> CONTEXT/worktrees/ship/<slug>/<id>
@@ -375,7 +374,7 @@ Repeat until every item is `done` or `cancelled`.
    rewrite the backlog, then mirror the new state to their `goals:*` labels.
    The backlog write comes first: a crash between the two leaves a stale label,
    which Phase R corrects, whereas the reverse loses the state.
-3. Spawn up to `MAX_BATCH` `builder` Worker Roles through `ship-parallel` for
+3. Spawn up to `MAX_BATCH` `builder` Worker Roles through the farm runner for
    code items. Partial success is the default: one failed item must not sink
    green peers. Each builder commits only its item branch.
 4. Spawn a `researcher` Worker Role for each `research` item and a `builder`
@@ -395,7 +394,7 @@ build passes, no conflict or TODO or stub markers, every deliverable exists.
 
 Then spawn one read-only `reviewer` Worker Role for **integration scope only** —
 whether the merged items compose, cross-item coverage gaps, and drift from the
-spec, under the `structure` lens of `ship-parallel`'s review rubric: a special
+spec, under the `structure` lens of Ship's review rubric: a special
 case bolted into a flow that does not own it, feature logic in a shared path, a
 helper duplicating one the repo already has. Item-level `over-build` and
 `slop` were settled at the item gate and are not re-litigated here. Do not
@@ -411,7 +410,7 @@ stop and ask.
 
 Mandatory. Spawn one read-only `adversary` Worker Role on the full cumulative
 `MAIN_BRANCH` diff from the pre-ship merge base, reviewing merged paths as a
-composed system under all three lenses of `ship-parallel`'s review rubric, and
+composed system under all three lenses of Ship's review rubric, and
 closing with `net: -<N> lines possible.` Require `reviews/T3.json` with `SHIP`,
 `SHIP-WITH-FOLLOWUPS`, or `BLOCK`.
 
