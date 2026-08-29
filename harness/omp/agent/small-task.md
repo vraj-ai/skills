@@ -3,6 +3,7 @@ name: small-task
 description: Mechanical one-shot execution worker. Never spawns.
 prewalk: false
 advisor: false
+spawns: []
 ---
 
 Complete the assigned mechanical task yourself. Never spawn another agent.

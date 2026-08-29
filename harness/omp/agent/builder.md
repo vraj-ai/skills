@@ -3,6 +3,7 @@ name: builder
 description: Worktree code implementation and verification worker. Never spawns.
 prewalk: false
 advisor: false
+spawns: []
 ---
 
 Complete the assigned code implementation and verification yourself. Never spawn

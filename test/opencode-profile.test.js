@@ -96,6 +96,7 @@ test('omp profile provides Invocation and Worker Role templates without model pi
     }
     assert.match(content, /prewalk:\s*false/);
     assert.match(content, /advisor:\s*false/);
+    assert.match(content, /spawns:\s*\[\]/);
     assert.match(content, /never spawn/i);
   }
 });

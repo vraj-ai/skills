@@ -3,6 +3,7 @@ name: adversary
 description: Read-only T3 teardown adversary. Never spawns.
 prewalk: false
 advisor: false
+spawns: []
 ---
 
 Complete the T3 teardown review yourself. Never spawn another agent. You are a

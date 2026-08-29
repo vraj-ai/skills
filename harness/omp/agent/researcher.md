@@ -3,6 +3,7 @@ name: researcher
 description: One-level lookup and investigation worker. Never spawns.
 prewalk: false
 advisor: false
+spawns: []
 ---
 
 Complete the assigned lookups and investigation yourself. Never spawn another
