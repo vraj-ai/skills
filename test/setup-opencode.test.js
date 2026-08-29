@@ -103,10 +103,11 @@ test('omp profile installer copies all 10 Role files, is idempotent, and backs u
   }
 });
 
-test('a made-up harness name does not fail as an allowlist miss and runs research', async () => {
+test('a made-up harness name does not fail as an allowlist miss and does not claim research', async () => {
   const madeUpHarness = 'custom-agent-runner-xyz';
   const result = await execFileAsync(process.execPath, [harnessInstaller, madeUpHarness]);
-  assert.match(result.stdout, /Researched harness 'custom-agent-runner-xyz'/);
+  assert.match(result.stdout, /No bundled installer for 'custom-agent-runner-xyz'/);
+  assert.doesNotMatch(result.stdout, /Researched harness/);
   assert.doesNotMatch(result.stderr, /unknown harness/i);
   assert.doesNotMatch(result.stderr, /allowlist/i);
 
@@ -118,11 +119,9 @@ test('a made-up harness name does not fail as an allowlist miss and runs researc
   assert.equal(plan.harness, 'arbitrary-future-harness');
   assert.ok(Array.isArray(plan.supportedInvocations));
   assert.ok(plan.supportedInvocations.includes('grill'));
-  assert.ok(plan.supportedInvocations.includes('issues'));
-  assert.ok(plan.supportedInvocations.includes('ship'));
-  assert.ok(plan.supportedInvocations.includes('snapshot'));
 
   const installResult = await installHarness('arbitrary-future-harness');
-  assert.equal(installResult.status, 'researched');
+  assert.equal(installResult.status, 'manual');
   assert.equal(installResult.harness, 'arbitrary-future-harness');
+  assert.match(installResult.message, /did not research/i);
 });

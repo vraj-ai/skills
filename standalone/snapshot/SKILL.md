@@ -1,7 +1,8 @@
 ---
 name: snapshot
-version: 1.3.0
+version: 1.4.0
 description: User-invoked session close. Syncs CONTEXT/ and the issue tracker, writes a handoff, then commits and pushes under /snapshot authority. Use when the user runs /snapshot.
+dependencies: [push-handoff]
 disable-model-invocation: true
 argument-hint: "[next session focus]"
 ---
@@ -81,7 +82,7 @@ This file is not staged. If the project tracks its own handoff archive, stage th
 
 ## 4. Verify
 
-If this run changed code or skills, spawn a `small-task` Worker Role in an isolated lane to run the verification command after the final edit and return its verbatim output. For this skills repo that is `node --test 'test/*.test.js'` or the narrower tests that cover the change. A red gate does not push.
+If this run changed code or skills, spawn a `small-task` Worker Role in an isolated lane to run the verification command after the final edit and return its verbatim output. For this skills repo that is `npm test` or the narrower tests that cover the change. A red gate does not push.
 
 If this run only synced docs and tracker, the gate is: CONTEXT writes succeeded, and tracker writes either succeeded or were reported.
 
@@ -102,6 +103,9 @@ If there is nothing to commit, write the handoff, skip the push, and say so.
 
 Protected branch or PR-only `main`: push a named branch, open a PR, report that. Do not merge it.
 
+Then, if `docs/agents/issue-tracker.md` exists, write one tracker closeout review using its commands. Read issues, pull requests, and commits this session produced or touched. Post one comment on the parent spec or open PR (GitHub: `gh issue comment` / `gh pr comment`): SHA, docs written, remaining follow-ups. Do not create tickets. Do not rotate `goals:*` labels. A failed tracker write is a report, not a reason to undo the push.
+
+
 ## Recovery
 
 | Failure | Do this |
@@ -121,5 +125,6 @@ Remote: <origin/branch> @ <sha>   fetched readback, or skipped
 Gate: <command> pass or skipped
 Docs: <CONTEXT files written>
 Tracker: <issues updated / closed / skipped>
+Review: <spec/PR comment posted / skipped>
 Files: <staged paths>
 ```

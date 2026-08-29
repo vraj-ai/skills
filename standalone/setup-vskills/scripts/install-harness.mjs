@@ -161,11 +161,10 @@ export async function installHarness(harnessName, options = {}) {
     return { ...research, ...installed };
   }
 
-  // Any other harness: research was completed, return integration report
   return {
     ...research,
-    status: 'researched',
-    message: `Researched '${harnessName}': no bundled installer directory; see integration plan for manual or custom configuration.`,
+    status: 'manual',
+    message: `No bundled installer for '${harnessName}'. This script did not research it. The setup skill must research the harness and write the integration.`,
   };
 }
 
@@ -189,7 +188,8 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   } else if (result.harness === 'omp') {
     console.log(`Installed omp Role templates to ${result.agentsDir}.`);
   } else {
-    console.log(`Researched harness '${result.harness}'.`);
+    console.log(`No bundled installer for '${result.harness}'.`);
     console.log(result.message);
   }
+
 }

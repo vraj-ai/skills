@@ -57,8 +57,14 @@ test('grill issues and snapshot own CONTEXT paths and do not steal goal state', 
   assert.match(snapshot, /disable-model-invocation: true/);
   assert.match(snapshot, /\$TMPDIR|OS temp directory/);
   assert.match(snapshot, /push-handoff/);
+  assert.match(snapshot, /dependencies: \[push-handoff\]/);
+  assert.match(snapshot, /npm test/);
+  assert.doesNotMatch(snapshot, /node --test 'test\/\*\.test\.js'/);
   assert.match(snapshot, /remote SHA/);
   assert.match(snapshot, /Never write `CONTEXT\/progress\.md`/);
+  assert.match(snapshot, /tracker closeout review/i);
+  assert.match(grill, /gh pr comment/);
+  assert.match(issues, /gh pr comment/);
 });
 
 test('workflow skills use named one-level Worker Roles and host-neutral dispatch', async () => {
@@ -91,6 +97,8 @@ test('workflow skills use named one-level Worker Roles and host-neutral dispatch
   assert.match(docs.snapshot, /orchestrator alone[\s\S]{0,80}push/i);
   assert.match(docs.ship, /Orchestrator/);
   assert.match(docs.ship, /never write the backlog, lock, handoff, or push/);
+  assert.match(docs.ship, /Tracker closeout review/);
+  assert.match(docs.ship, /gh pr comment/);
   assert.match(docs.goals, /only delivery orchestrator[\s\S]{0,100}backlog[\s\S]{0,100}push/i);
 });
 

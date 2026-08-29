@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { discoverSkills, isDirectory } from '../discovery.js';
-import { adoptOne, ensureSymlink, installOne } from '../install.js';
+import { adoptOne, ensureSymlink, installOne, retireVanished } from '../install.js';
 import { hashDir } from '../hash.js';
 import { parseFrontmatter } from '../frontmatter.js';
 import { compareVersions } from '../version.js';
@@ -152,6 +152,16 @@ export async function runInit({ repoRoot, installRoot, targets, resolveConflicts
     }
   }
 
+  const vanished = await retireVanished({
+    discoveredNames: new Set(skills.keys()),
+    installRoot,
+    targets,
+    manifest,
+  });
+  results.push(...vanished.results);
+  messages.push(...vanished.messages);
+
   await writeManifest(installRoot, manifest);
   return { ok: linkFailures.length === 0, results, messages, linkFailures };
+
 }

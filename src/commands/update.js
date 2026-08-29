@@ -1,5 +1,5 @@
 import { discoverSkills } from '../discovery.js';
-import { installOne } from '../install.js';
+import { installOne, retireVanished } from '../install.js';
 import { readManifest, writeManifest } from '../manifest.js';
 
 export async function runUpdate({ names, repoRoot, installRoot, targets, force = false }) {
@@ -17,10 +17,7 @@ export async function runUpdate({ names, repoRoot, installRoot, targets, force =
       continue;
     }
     const skill = skills.get(name);
-    if (!skill) {
-      messages.push(`${name}: no longer exists in the repo — left installed as-is`);
-      continue;
-    }
+    if (!skill) continue;
     const { status, warnings, linkFailures: failures } = await installOne({
       skill, installRoot, targets, manifest, force,
     });
@@ -31,6 +28,16 @@ export async function runUpdate({ names, repoRoot, installRoot, targets, force =
       messages.push(`${name}: locally modified — skipped (use --force to overwrite)`);
     }
   }
+
+  const vanished = await retireVanished({
+    discoveredNames: new Set(skills.keys()),
+    installRoot,
+    targets,
+    manifest,
+    onlyNames: names.length > 0 ? new Set(names) : null,
+  });
+  results.push(...vanished.results);
+  messages.push(...vanished.messages);
 
   await writeManifest(installRoot, manifest);
   return { ok: linkFailures.length === 0, results, messages, discoveryWarnings, linkFailures };

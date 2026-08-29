@@ -1,6 +1,6 @@
 ---
 name: ship
-version: 1.5.0
+version: 1.6.0
 description: Drive a published spec to verified, pushed completion through a resumable backlog, worktree-isolated parallel builds under a lazy-senior-dev ladder, gate-first review, a milestone reviewer, and a final adversarial teardown. Use when the user invokes /ship, asks to build out a spec autonomously, or resumes a ship run.
 dependencies: [council-adversary]
 ---
@@ -426,6 +426,12 @@ after the final merge:
    cursor.
 2. `/push-handoff` — commit and push. Invoking `/ship` is the push authority its
    Step 0 requires. Report the fetched remote SHA as proof.
+3. Tracker closeout review. If `docs/agents/issue-tracker.md` exists, read the
+   issues, pull requests, and commits this run produced. Post one comment on
+   the parent spec or open PR using that file's commands (GitHub:
+   `gh issue comment` / `gh pr comment`): SHA, T3 verdict, remaining
+   follow-ups. Do not create tickets. Do not rotate `goals:*` labels. A failed
+   tracker write is a report, not a reason to undo the push.
 
 Release the lock.
 

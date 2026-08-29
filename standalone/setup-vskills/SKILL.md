@@ -1,6 +1,6 @@
 ---
 name: setup-vskills
-version: 1.9.0
+version: 1.10.0
 description: Sets up this skills repo on a new machine — installs the skills with the vskills CLI, then regenerates the local-only context docs (CONTEXT.md, docs/) that are deliberately not published in the public repo.
 ---
 
@@ -39,7 +39,7 @@ node standalone/setup-vskills/scripts/install-harness.mjs <harness>
 
 - **omp**: The installer copies the 10 canonical Role templates from `harness/omp/agent/` into `~/.omp/agent/agents/` (or `$OMP_AGENTS_DIR` when set for test isolation). This installs invocation templates (`grill`, `issues`, `ship`, `goals`, `snapshot`) and worker templates (`researcher`, `builder`, `reviewer`, `adversary`, `small-task`). You can also run `node standalone/setup-vskills/scripts/install-omp.mjs`.
 - **OpenCode**: The installer reads canonical agent and command files from `harness/opencode/` into `~/.config/opencode/` (or `$OPENCODE_CONFIG_DIR`). This installs selectable `goals` and read-only `council` primaries, the contributor, cost-aware Gemini/DeepSeek, council, and adversary subagents, and `/goal`. Goals remains the sole delivery/backlog authority inside a goal run. You can also run `node standalone/setup-vskills/scripts/install-opencode.mjs`.
-- **Any other harness**: Research how the harness defines agent roles, custom commands, prompt templates, and subagents. Document the research findings and write an integration plan mapping `grill`, `issues`, `ship`/`goals`, and `snapshot` to that harness. Never fail with an 'unknown harness' error from an allowlist.
+- **Any other harness**: The installer does not research and does not claim it did. You research how the harness defines agent roles, custom commands, prompt templates, and subagents. Write an integration plan mapping `grill`, `issues`, `ship`/`goals`, and `snapshot` to that harness. Never fail with an 'unknown harness' error from an allowlist.
 
 All template installations are atomic and idempotent. Differing existing files are moved to `.vskills-backup/` before replace. It does not modify credentials or core configuration files.
 
@@ -107,6 +107,10 @@ git check-ignore CONTEXT.md docs/invariants.md
 Both paths must be ignored. If `git status` shows any of the regenerated docs
 as untracked-and-addable, stop and fix `.gitignore` before committing
 anything.
+
+## Tracker closeout review
+
+After setup verification, if `docs/agents/issue-tracker.md` exists, write one review through that tracker using its commands. Read issues, pull requests, and commits this session produced or touched. Post one comment on the parent spec or open PR (GitHub: `gh issue comment` / `gh pr comment`). Cover what was installed, remaining follow-ups, and any contradiction with `CONTEXT/`. Do not create tickets. Do not rotate `goals:*` labels. If the tracker file is missing, skip and say so.
 
 ## Session handoff
 
