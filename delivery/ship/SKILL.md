@@ -55,7 +55,7 @@ git worktree add -b ship/<slug>/<id> CONTEXT/worktrees/ship/<slug>/<id>
   -> merge to MAIN_BRANCH or report failure
 ```
 
-The fixed contributor is `opencode-go/glm-5.2`. A model never reviews its own
+The farm runner pins one contributor model. A model never reviews its own
 code.
 
 ### The ladder
