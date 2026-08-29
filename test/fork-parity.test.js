@@ -26,7 +26,7 @@ test('the two state.mjs copies are byte-identical', async () => {
 
 test('the two parallel runners diverge only on their approved differences', async () => {
   const [base, fork] = await Promise.all([
-    read('parallel', 'scripts', 'parallel.mjs'),
+    read('goals', 'scripts', 'parallel.mjs'),
     read('ship-parallel', 'scripts', 'parallel.mjs'),
   ]);
 
