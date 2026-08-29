@@ -1,19 +1,32 @@
 ---
 name: goals
-version: 1.4.0
+version: 1.5.0
 description: Drive a plan document to verified completion through a resumable single-writer backlog, named Worker Role research and review, worktree-isolated parallel builds, milestone gates, and a final adversarial teardown. Use when the user invokes /goal, asks to execute an architecture plan autonomously, resumes a goal, or needs a large issue set delivered milestone by milestone.
-dependencies: [council, parallel, council-adversary]
+dependencies: [council, council-adversary]
 ---
 
 # Goals
 
 Within a goal run, `goals` is the only delivery orchestrator and the only
 writer of `CONTEXT/goals/<slug>/backlog.jsonl`, locks, and push. It composes
-`parallel` for code and named Worker Roles for ordinary research, verification,
-and review. Workers emit evidence; they never mutate the backlog.
+named Worker Roles for ordinary research, verification, and review, and drives
+its own worktree-isolated build farm for code. Workers emit evidence; they never
+mutate the backlog.
 
-**`goals` is the code review.** Two non-maker T0 reviewers apply `parallel`'s
-review rubric to every item, and T1, T2, and T3 widen the same lenses. Running
+One item equals one branch and one worktree:
+
+```text
+git worktree add -b goals/<slug>/<id> CONTEXT/worktrees/<slug>/<id>
+  -> contributor builds test-first and commits
+  -> two independent per-item T0 reviewers
+  -> merge to MAIN_BRANCH or report failure
+```
+
+The fixed contributor is `glm-5.2`. GLM may join research council
+rounds but cannot review GLM-authored code.
+
+**`goals` is the code review.** Two non-maker T0 reviewers apply the review
+rubric to every item, and T1, T2, and T3 widen the same lenses. Running
 a separate review skill afterwards re-reads work that has already been
 reviewed.
 
@@ -33,6 +46,51 @@ evidence and never write the backlog, lock, handoff, or push; the Orchestrator
 alone owns those actions. Role names are host-neutral; do not use a host API,
 path, or provider name as a Role identity. Use `council` only for a genuinely
 contested fork, never for ordinary research, verification, or review.
+
+## The review rubric
+
+Pass this to every reviewer, verbatim, after the correctness brief. Correctness,
+security, and data loss are judged first and keep their existing weight. What
+follows is the quality pass, and it has three lenses.
+
+> **over-build** — reinvented standard library, a dependency for what the
+> platform already ships, an abstraction with one implementation, a factory with
+> one product, config nobody sets, a wrapper that only delegates, a flag with one
+> caller.
+>
+> **slop** — a comment restating the line below it, a defensive `try/catch` on a
+> path that cannot fail, a cast that silences the compiler instead of fixing the
+> type, nesting where a guard clause would return early, code whose shape does
+> not match the file it was added to.
+>
+> **structure** — a new special case bolted into a flow that does not own it,
+> feature logic living in a shared path, a bespoke helper duplicating one this
+> repo already has, a file this diff pushed past the size the rest of the tree
+> keeps.
+>
+> **One line per finding:** `<file>:<line>: <lens>: <what to cut>. <replacement>.`
+>
+> **A finding is admissible when it names the replacement** — a standard-library
+> function, an existing symbol in this repo, a native platform feature, or
+> `delete, nothing replaces it`. Name the replacement and the finding stands.
+> Without one it is an opinion about taste, and taste does not block a merge.
+>
+> An admissible `over-build` or `structure` finding is **P1** and blocks the
+> merge. `slop` is **P2**. Cap the quality pass at **5 findings**, ranked biggest
+> cut first, and print `net: -<N> lines possible.` on its own line, or
+> `Lean already.` for a clean item. **It goes immediately before `VERDICT:`**,
+> never after `FOLLOWUPS:`: the result contract parses the last three lines, so
+> a trailing net line displaces the verdict and invalidates the whole review.
+>
+> One runnable check per piece of non-trivial logic (`assert`, `demo()`, or one
+> small test) is the required minimum and is never an `over-build` finding.
+> Missing trust-boundary validation, data-loss handling, security,
+> accessibility, or an unmet acceptance criterion stays P0/P1 under-build.
+
+The rubric is adapted from [ponytail-review](https://github.com/DietrichGebert/ponytail)
+(MIT, DietrichGebert), Cursor's `deslop` and `thermo-nuclear-code-quality-review`,
+and [@elithrar](https://github.com/elithrar)'s `simplify`. It is inlined here for
+the same reason the ladder is: worktree subagents may not load plugins.
 
 ## State contract
 
@@ -190,7 +248,7 @@ Repeat until every item is `done` or `cancelled`:
    boundary.
 2. Before spawning, flip the selected code ids to `in-progress` and atomically
    rewrite the backlog.
-3. Send up to `MAX_BATCH` code items to `parallel` as `builder` Worker Role
+3. Send up to `MAX_BATCH` code items to the build farm as `builder` Worker Role
    lanes. Partial success is the default; one failed item must not sink green
    peers. Each builder commits only its item branch.
 4. Spawn a `researcher` Worker Role for each ordinary `research` item and a
@@ -203,6 +261,94 @@ Repeat until every item is `done` or `cancelled`:
    source id retains its attempt count; findings do not receive a fresh budget.
    Cap attempts at 2 per `source_id`, then escalate.
 
+## Batch input
+
+`MAX_BATCH` defaults to 3 and is capped at 4. Goals marks all selected ids
+`in-progress` atomically before invoking the build farm. The CLI manifest is one
+line per item:
+
+```text
+<id>|<branch>|<model>|<task prompt>
+```
+
+The task contains the plan/item path, exact acceptance criteria, locked
+Verification-command, MAIN_BRANCH, and absolute worktree path. Set
+`TEST_CMDS_JSON` to a complete JSON map from id to its locked command;
+`TEST_CMD` is only accepted for a one-item batch. Reject any manifest model
+other than the fixed contributor pin.
+
+## CLI path
+
+When `OPENCODE_BIN`, `~/.opencode/bin/opencode`, or `opencode` on `PATH` is
+available, run:
+
+```bash
+delivery/goals/scripts/parallel.sh <repo-root> <worktree-root> <manifest>
+```
+
+The runner creates worktrees and launches one
+`opencode run --dir <worktree> --model <model>` process per item concurrently.
+CLI cannot directly select a `mode: subagent` agent, so each process uses the
+built-in Build primary with an injected `task: deny` permission; reviewer
+processes additionally receive `edit: deny`. It waits for committed worker
+results, runs the locked command, then launches pinned reviewer models
+concurrently per item in disposable detached review worktrees, so shell
+activity cannot alter the contributor branch. Full output goes to `.log` files;
+only result contracts return to goals.
+
+## In-session fallback
+
+If no OpenCode binary exists, goals creates every worktree, then sends one
+tool message containing one `contributor` task call per item. Each worker is
+told to operate only inside its absolute worktree, build test-first, run the
+locked command, and commit.
+
+After workers finish, goals sends one message containing two `reviewer` task
+calls per item. Review each item independently. A conflict gets one dedicated
+resolver call. Goals runs the locked command and passes its evidence to the
+shell-disabled, edit-disabled reviewers. The fallback emits the same JSON
+contract as the CLI path.
+
+## T0 and merge rules
+
+- Two reviewers per item, always. No verdict means no merge.
+- Any evidenced P0/P1 blocks even if a reviewer mistakenly prints `PASS`.
+- **Both reviewers apply the review rubric above** — the `over-build`, `slop`,
+  and `structure` lenses, the named-replacement admissibility rule, and the
+  `net: -<N>` close.
+- `HARDENED=1` adds one read-only `adversary` T0 pass.
+- Partial success is default: merge green/PASS peers and report failed ids.
+- `STRICT_BATCH=1` integrates on a temporary branch and fast-forwards
+  MAIN_BRANCH only when the whole batch succeeds, so a late failure cannot
+  leave earlier peers merged.
+- Goals alone integrates. Workers commit only their item branch; reviewers do
+  not edit; no child updates the backlog or issue labels.
+
+For overlap, begin a no-commit merge. Keep both unique non-overlapping hunks.
+For the same hunk, prefer the incoming branch only inside its declared
+`files_touched`; otherwise prefer HEAD. Remove markers and run `TEST_CMD`. If
+still red, `git merge --abort`, mark that item failed, and continue the wave.
+After a resolver edits the integration, materialize an immutable candidate
+commit and rerun two independent T0 reviews in separate detached worktrees
+before committing the same tree.
+
+## Results contract
+
+Every batch atomically writes:
+
+```json
+{"main_branch":"...","merged":[{"name":"...","branch":"...","sha":"...","verdict":"PASS"}],"blocked":[],"failed":[],"conflicts":[]}
+```
+
+Every item writes a compact one-line `<id>.digest.json`:
+
+```json
+{"id":"...","verdict":"PASS|FAIL","files_touched":[],"tests":{"pass":0,"fail":0,"cmd":"..."},"findings":[],"followups":[]}
+```
+
+Goals ingests only these files, never logs. `results.json`, digests, branch
+ancestry, and Git are producer truth for Phase R.
+
 ## T1: milestone gate
 
 After all milestone items finish, run cheap checks first: no new test failures
@@ -211,7 +357,7 @@ deliverable exists. Reject mechanically before spawning a reviewer.
 
 Then spawn one read-only `reviewer` Worker Role for integration scope only:
 composition, cross-item coverage gaps, and plan drift, under the `structure`
-lens of `parallel`'s review rubric. Item-level `over-build` and `slop` were
+lens of the review rubric above. Item-level `over-build` and `slop` were
 settled at T0 and are not re-litigated here. Do not reuse the same reviewer
 consecutively when the host exposes that choice, and never use the maker's
 implementation. Record `PASS`, `PASS-WITH-FOLLOWUPS`, or `FAIL` in
@@ -228,7 +374,7 @@ and spawns a `researcher` Worker Role for its facts sweep. A whole-deliverable
 
 T3 is mandatory after T2. Spawn one read-only `adversary` Worker Role on the
 full cumulative MAIN_BRANCH diff from the pre-goal merge base, under all three
-lenses of `parallel`'s review rubric, closing with `net: -<N> lines possible.`
+lenses of the review rubric above, closing with `net: -<N> lines possible.`
 Require `reviews/T3.json` with `SHIP`, `SHIP-WITH-FOLLOWUPS`, or `BLOCK`. Drain
 P0/P1 before completion; P2 may become labeled follow-up issues. A P0 `BLOCK`
 escalates to the human. Mark the goal complete only after T3 and the locked

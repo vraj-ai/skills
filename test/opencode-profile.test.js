@@ -53,12 +53,21 @@ test('OpenCode profile pins the selected models and a one-level spawn tree', asy
 
 test('workflow skills preserve the required phase and result contracts', async () => {
   const goals = await fs.readFile(skillPath(repo, 'goals', 'SKILL.md'), 'utf8');
-  for (const marker of ['Phase R', 'Phase 0', 'Phase B', 'Execution loop', 'T1:', 'T2 and T3', 'backlog.jsonl']) {
+  for (const marker of [
+    'Phase R',
+    'Phase 0',
+    'Phase B',
+    'Execution loop',
+    'T1:',
+    'T2 and T3',
+    'backlog.jsonl',
+    'MAX_BATCH',
+    'STRICT_BATCH',
+    'results.json',
+    '<id>.digest.json',
+    'glm-5.2',
+  ]) {
     assert.ok(goals.includes(marker), `goals skill is missing ${marker}`);
-  }
-  const parallel = await fs.readFile(skillPath(repo, 'parallel', 'SKILL.md'), 'utf8');
-  for (const marker of ['MAX_BATCH', 'STRICT_BATCH', 'results.json', '<id>.digest.json', 'opencode-go/glm-5.2']) {
-    assert.ok(parallel.includes(marker), `parallel skill is missing ${marker}`);
   }
 });
 

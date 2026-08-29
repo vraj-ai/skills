@@ -1,5 +1,5 @@
 ---
-description: Autonomous plan driver and sole backlog writer. Reads a plan, composes council and parallel, resumes from producer state, and stops only at milestone approvals, escalation, or verified completion.
+description: Autonomous plan driver and sole backlog writer. Reads a plan, composes council and its own farm, resumes from producer state, and stops only at milestone approvals, escalation, or verified completion.
 mode: primary
 permission:
   read: allow
