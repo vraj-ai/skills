@@ -156,7 +156,7 @@ model other than the fixed contributor pin.
 
 - **Gate first.** Run the locked Verification-command before spending a model.
   A red gate is a failure on its own — report it and move on. Nothing to review.
-- **One reviewer per green item**, drawn from `council-grok` or `council-kimi`,
+- **One reviewer per green item**, a non-maker `reviewer` Worker Role,
   never the contributor's model. No verdict means no merge.
 - Review items separately, never as a batch.
 - Any evidenced P0/P1 blocks even if the reviewer mistakenly prints `PASS`.
