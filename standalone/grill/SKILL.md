@@ -1,6 +1,6 @@
 ---
 name: grill
-version: 1.1.0
+version: 1.2.0
 description: User-invoked interview that stress-tests a plan and writes glossary, architecture, and ADRs into CONTEXT/. Use when the user runs /grill.
 disable-model-invocation: true
 argument-hint: "[topic]"
@@ -9,6 +9,19 @@ argument-hint: "[topic]"
 # Grill
 
 You were invoked by name. Interview until the design tree is empty. Write durable language and decisions into `CONTEXT/` as they lock. Do not publish tickets. Do not build.
+
+## Worker Roles
+
+The invoking Role is the orchestrator. It may spawn named Worker Roles one level
+deep through the host's native mechanism:
+
+- `researcher` — look up filesystem, code, tracker, or web facts.
+- `small-task` — perform a bounded lookup when a separate lane helps.
+
+Workers never spawn. Workers return findings only; `grill` remains the sole writer
+of its glossary, architecture, and ADR lanes. Do not use a host API, path, or
+provider name as a Role identity. The orchestrator alone writes any backlog or
+lock and performs any push; this skill normally owns none of those artifacts.
 
 If the user passed arguments, that is the topic.
 
@@ -44,7 +57,7 @@ A question whose answer depends on another question still open in this round bel
 ➡️ <your recommended answer>
 ```
 
-Finding facts is your job. When a frontier question needs a fact from the filesystem, code, or tools, look it up or dispatch a sub-agent. Do not ask the user anything you can observe. A running lookup is an unsettled prerequisite: ask the rest of the frontier now.
+Finding facts is your job. When a frontier question needs a fact from the filesystem, code, or tools, spawn a `researcher` Worker Role; use `small-task` only for a bounded lookup that benefits from a separate lane. Do not ask the user anything you can observe. A running lookup is an unsettled prerequisite: ask the rest of the frontier now.
 
 The decisions are the user's. Put each to them and wait.
 

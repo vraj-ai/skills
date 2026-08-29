@@ -61,6 +61,39 @@ test('grill issues and snapshot own CONTEXT paths and do not steal goal state', 
   assert.match(snapshot, /Never write `CONTEXT\/progress\.md`/);
 });
 
+test('workflow skills use named one-level Worker Roles and host-neutral dispatch', async () => {
+  const names = ['grill', 'issues', 'ship', 'snapshot', 'goals'];
+  const docs = Object.fromEntries(await Promise.all(
+    names.map(async (name) => [name, await readSkill(name, 'SKILL.md')]),
+  ));
+
+  for (const content of Object.values(docs)) {
+    assert.match(content, /Worker Roles/);
+    assert.match(content, /one level\s+deep/i);
+    assert.match(content, /Workers never spawn/i);
+    assert.doesNotMatch(content, /~\/\.omp\b|Task API|opencode-go\/|openrouter\//i);
+  }
+
+  for (const name of ['grill', 'issues', 'snapshot']) {
+    assert.match(docs[name], /`researcher`/);
+    assert.match(docs[name], /`small-task`/);
+  }
+  for (const name of ['ship', 'goals']) {
+    for (const role of ['researcher', 'builder', 'reviewer', 'adversary', 'small-task']) {
+      assert.match(docs[name], new RegExp(`\`${role}\``));
+    }
+    assert.doesNotMatch(docs[name], /run[\s\S]{0,60}(?:research|verify)[\s\S]{0,60}directly/i);
+    assert.match(docs[name], phrase('Use `council` only for a genuinely contested fork'));
+    assert.doesNotMatch(docs[name], /council-(?:grok|kimi|qwen|sol|gemini|deepseek|glm)\b/i);
+  }
+
+  assert.match(docs.grill, /sole writer[\s\S]{0,100}glossary/);
+  assert.match(docs.snapshot, /orchestrator alone[\s\S]{0,80}push/i);
+  assert.match(docs.ship, /Orchestrator/);
+  assert.match(docs.ship, /never write the backlog, lock, handoff, or push/);
+  assert.match(docs.goals, /only delivery orchestrator[\s\S]{0,100}backlog[\s\S]{0,100}push/i);
+});
+
 test('handoff compaction and delivery remain separate contracts', async () => {
   const [pushHandoff, readme] = await Promise.all([
     readSkill('push-handoff', 'SKILL.md'),

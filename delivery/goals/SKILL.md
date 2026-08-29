@@ -1,21 +1,38 @@
 ---
 name: goals
-version: 1.3.0
-description: Drive a plan document to verified completion through a resumable single-writer backlog, council research/review, worktree-isolated parallel builds, milestone gates, and a final adversarial teardown. Use when the user invokes /goal, asks to execute an architecture plan autonomously, resumes a goal, or needs a large issue set delivered milestone by milestone.
+version: 1.4.0
+description: Drive a plan document to verified completion through a resumable single-writer backlog, named Worker Role research and review, worktree-isolated parallel builds, milestone gates, and a final adversarial teardown. Use when the user invokes /goal, asks to execute an architecture plan autonomously, resumes a goal, or needs a large issue set delivered milestone by milestone.
 dependencies: [council, parallel, council-adversary]
 ---
 
 # Goals
 
 Within a goal run, `goals` is the only delivery orchestrator and the only
-writer of `CONTEXT/goals/<slug>/backlog.jsonl`. It composes `parallel` for code and
-`council` for contested research and review. Subagents emit evidence; they
-never mutate the backlog.
+writer of `CONTEXT/goals/<slug>/backlog.jsonl`, locks, and push. It composes
+`parallel` for code and named Worker Roles for ordinary research, verification,
+and review. Workers emit evidence; they never mutate the backlog.
 
 **`goals` is the code review.** Two non-maker T0 reviewers apply `parallel`'s
 review rubric to every item, and T1, T2, and T3 widen the same lenses. Running
 a separate review skill afterwards re-reads work that has already been
 reviewed.
+
+## Worker Roles
+
+The Goals Orchestrator may spawn named Worker Roles one level deep through the
+host's native mechanism:
+
+- `researcher` — settle ordinary research and fact lookups.
+- `builder` — complete each code item or isolated verification command.
+- `reviewer` — report item and milestone findings without editing them.
+- `adversary` — report read-only T2/T3 findings.
+- `small-task` — handle a bounded mechanical lookup or lane.
+
+Workers never spawn. A `builder` commits only its item branch. Workers return
+evidence and never write the backlog, lock, handoff, or push; the Orchestrator
+alone owns those actions. Role names are host-neutral; do not use a host API,
+path, or provider name as a Role identity. Use `council` only for a genuinely
+contested fork, never for ordinary research, verification, or review.
 
 ## State contract
 
@@ -77,9 +94,9 @@ rule a consumer project applies to its own tracked `CONTEXT/`.
 Rules:
 
 - **One owner per artifact.** `goals` is the sole writer of goal backlogs, the
-  handoff, `progress.md`, and review verdicts. `council`, reviewers, and
-  contributors report documentation impact only; they never edit a context
-  artifact or the backlog.
+  handoff, `progress.md`, and review verdicts. Worker Roles and contributors
+  report documentation impact only; they never edit a context artifact or the
+  backlog.
 - **Event-driven updates.** Rewrite an artifact only when its trigger fires.
   No polling, no autonomous broad rewrites, no speculative refresh of the
   whole context tree.
@@ -112,12 +129,8 @@ deliver a project-owned copy later, but handoff creation never pushes.
 
 Before mutation, verify the plan exists, the cwd is a Git worktree on a named
 branch, `CONTEXT/worktrees` is writable, the verification commands are
-runnable, and every configured model is reachable. Record the pre-goal merge
-base. `MAX_BATCH` defaults to 3 and may never exceed 4.
-
-For Desktop and terminal parity, resolve the CLI in this order:
-`OPENCODE_BIN`, `~/.opencode/bin/opencode`, then `opencode` on `PATH`. Pin the
-resolved value in `goal.md` and `handoff.md` when the CLI path is used.
+runnable, and every configured Worker Role is dispatchable. Record the pre-goal
+merge base. `MAX_BATCH` defaults to 3 and may never exceed 4.
 
 If project state is missing, create it without overwriting existing files.
 Apply the context ownership contract above: keep `AGENTS.md`,
@@ -151,8 +164,8 @@ Only when no backlog exists:
 1. Parse the plan into 3-7 thematic milestones and dependency-ordered `code`,
    `research`, and `verify` items.
 2. Every code item locks one runnable Verification-command in `acceptance`.
-3. Pin `MAIN_BRANCH`, `WORKTREE_ROOT`, pre-goal merge base, model roster, and
-   goal success criteria in both `goal.md` and `handoff.md`.
+3. Pin `MAIN_BRANCH`, `WORKTREE_ROOT`, pre-goal merge base, the Worker Role roster,
+   and goal success criteria in both `goal.md` and `handoff.md`.
 4. Present the milestone/ticket plan once for human approval. Do not build
    before approval.
 5. Atomically write the backlog, create/match GitHub Milestones and issues when
@@ -161,10 +174,11 @@ Only when no backlog exists:
 
 ## Phase B: backlog sanity
 
-Spawn exactly two council members (`council-grok` and `council-kimi`) in one
-parallel tool message. One independent round only: no debate and no vote.
-Both apply `COVERAGE / DUPLICATES / SCOPING / DEPENDENCIES / FEASIBILITY`.
-Apply findings mechanically; additive evidence wins. Allow at most one rerun.
+Spawn exactly two independent `reviewer` Worker Roles in one parallel dispatch.
+Run one round only: no debate and no vote. Both apply `COVERAGE / DUPLICATES /
+SCOPING / DEPENDENCIES / FEASIBILITY`. Apply findings mechanically; additive
+evidence wins. Allow at most one rerun. Do not use `council` here: it is reserved
+for a genuinely contested fork.
 
 ## Execution loop
 
@@ -176,33 +190,32 @@ Repeat until every item is `done` or `cancelled`:
    boundary.
 2. Before spawning, flip the selected code ids to `in-progress` and atomically
    rewrite the backlog.
-3. Send up to `MAX_BATCH` code items to `parallel`. Partial success is the
-   default; one failed item must not sink green peers.
-4. Run genuinely contested research through `council`. Do not council facts
-   that one primary-source lookup can settle.
-5. Run `verify` items directly. Tests and builds are deterministic work, not
-   council work.
-6. Ingest only `results.json` and `<id>.digest.json`, each kept to at most 30
+3. Send up to `MAX_BATCH` code items to `parallel` as `builder` Worker Role
+   lanes. Partial success is the default; one failed item must not sink green
+   peers. Each builder commits only its item branch.
+4. Spawn a `researcher` Worker Role for each ordinary `research` item and a
+   `builder` Worker Role for each `verify` item. Do not run ordinary research or
+   verification in the parent.
+5. Ingest only `results.json` and `<id>.digest.json`, each kept to at most 30
    lines. Never ingest worker/reviewer transcripts; `.log` files are for
    humans.
-7. Rewrite backlog and `handoff.md` atomically after every batch. A failed
-   source id retains its attempt count; findings do not receive a fresh
-   budget. Cap attempts at 2 per `source_id`, then escalate.
+6. Rewrite backlog and `handoff.md` atomically after every batch. A failed
+   source id retains its attempt count; findings do not receive a fresh budget.
+   Cap attempts at 2 per `source_id`, then escalate.
 
 ## T1: milestone gate
 
 After all milestone items finish, run cheap checks first: no new test failures
 against baseline, build passes, no conflict/TODO/stub markers, and every
-deliverable exists. Reject mechanically before spending a model review.
+deliverable exists. Reject mechanically before spawning a reviewer.
 
-Then invoke one rotating eligible council reviewer for integration scope only:
+Then spawn one read-only `reviewer` Worker Role for integration scope only:
 composition, cross-item coverage gaps, and plan drift, under the `structure`
 lens of `parallel`'s review rubric. Item-level `over-build` and `slop` were
-settled at T0 and are not re-litigated here. Rotate
-`council-grok -> council-kimi -> council-qwen -> council-sol`; never repeat the
-last reviewer and never use the GLM worker model. Record `PASS`,
-`PASS-WITH-FOLLOWUPS`, or `FAIL` in `reviews/M<n>.json` and
-`last_t1_reviewer` in the handoff.
+settled at T0 and are not re-litigated here. Do not reuse the same reviewer
+consecutively when the host exposes that choice, and never use the maker's
+implementation. Record `PASS`, `PASS-WITH-FOLLOWUPS`, or `FAIL` in
+`reviews/M<n>.json` and `last_t1_reviewer` in the handoff.
 
 After a passing T1, stop and show the milestone evidence. Wait for explicit
 human continuation before starting the next milestone.
@@ -210,14 +223,14 @@ human continuation before starting the next milestone.
 ## T2 and T3
 
 T2 reruns the final milestone mechanics against every plan success criterion
-and performs a facts sweep. A whole-deliverable `council-adversary` pass is
-optional at T2.
+and spawns a `researcher` Worker Role for its facts sweep. A whole-deliverable
+`adversary` pass is optional at T2.
 
-T3 is mandatory after T2. Invoke one read-only `council-adversary` on the full
-cumulative MAIN_BRANCH diff from the pre-goal merge base, under all three lenses
-of `parallel`'s review rubric, closing with `net: -<N> lines possible.` Require
-`reviews/T3.json` with `SHIP`, `SHIP-WITH-FOLLOWUPS`, or `BLOCK`. Drain P0/P1
-before completion; P2 may become labeled follow-up issues. A P0 `BLOCK`
+T3 is mandatory after T2. Spawn one read-only `adversary` Worker Role on the
+full cumulative MAIN_BRANCH diff from the pre-goal merge base, under all three
+lenses of `parallel`'s review rubric, closing with `net: -<N> lines possible.`
+Require `reviews/T3.json` with `SHIP`, `SHIP-WITH-FOLLOWUPS`, or `BLOCK`. Drain
+P0/P1 before completion; P2 may become labeled follow-up issues. A P0 `BLOCK`
 escalates to the human. Mark the goal complete only after T3 and the locked
 goal Verification-command both pass after the final edit/merge.
 

@@ -1,6 +1,6 @@
 ---
 name: ship
-version: 1.2.0
+version: 1.3.0
 description: Drive a published spec to verified, pushed completion through a resumable backlog, worktree-isolated parallel builds under a lazy-senior-dev ladder, gate-first review, a milestone reviewer, and a final adversarial teardown. Use when the user invokes /ship, asks to build out a spec autonomously, or resumes a ship run.
 dependencies: [ship-parallel, council-adversary]
 ---
@@ -10,14 +10,31 @@ dependencies: [ship-parallel, council-adversary]
 `/ship` takes a spec reference and builds it, unattended, until a final adversary
 says it can go — then pushes it.
 
-It is the lean pipeline. Where `goals` councils, gates, and stops at every
-milestone, `/ship` runs one contributor and one reviewer per item, checks the
-gate before spending either, and stops only for trouble. `goals` remains
-available for work that earns the ceremony.
+It is the lean pipeline. Where `goals` gates and stops at every milestone,
+`/ship` runs one builder and one reviewer per item, checks the gate before
+spending either, and stops only for trouble. `goals` remains available for work
+that earns the ceremony.
 
 Start `/ship` with the spec reference. The handoff and push happen inside
 `/ship`.
 
+
+## Worker Roles
+
+The Ship Orchestrator may spawn named Worker Roles one level deep through the
+host's native mechanism:
+
+- `researcher` — settle ordinary research and fact lookups.
+- `builder` — complete each code item or isolated verification command.
+- `reviewer` — report item and milestone findings without editing them.
+- `adversary` — report the read-only T3 verdict.
+- `small-task` — handle a bounded mechanical lookup or lane.
+
+Workers never spawn. A `builder` commits only its item branch. Workers return
+evidence and never write the backlog, lock, handoff, or push; the Orchestrator
+alone owns those actions. Role names are host-neutral; do not use a host API,
+path, or provider name as a Role identity. Use `council` only for a genuinely
+contested fork, never for ordinary research, verification, or review.
 **`/ship` is the code review.** Every item passes its locked gate and one
 non-maker reviewer applying `ship-parallel`'s review rubric; the milestone gate
 and T3 widen the same lenses. Running a separate review skill afterwards
@@ -124,11 +141,9 @@ Track `goal.md`, `handoff.md`, and `reviews/*.json`. Add the rest —
 ## Preflight
 
 Verify the spec resolves, the cwd is a Git worktree on a named branch,
-`CONTEXT/worktrees/ship` is writable, and every configured model is reachable.
+`CONTEXT/worktrees/ship` is writable, and every configured Worker Role is dispatchable.
 Record the pre-ship merge base. `MAX_BATCH` defaults to 4 and may not exceed 8.
 
-Resolve the CLI in this order: `OPENCODE_BIN`, `~/.opencode/bin/opencode`, then
-`opencode` on `PATH`. Pin the resolved value in `goal.md` and `handoff.md`.
 
 ## Phase R: resume first
 
@@ -177,8 +192,7 @@ Only when no backlog exists.
    workflow) and write a real command that exits 0 exactly when the item is
    done — e.g. `npm test -- auth.spec && tsc --noEmit`. An item with no runnable
    gate is not ready.
-4. Pin `MAIN_BRANCH`, `WORKTREE_ROOT`, the pre-ship merge base, the model
-   roster, and the success criteria in both `goal.md` and `handoff.md`.
+4. Pin `MAIN_BRANCH`, `WORKTREE_ROOT`, the pre-ship merge base, the Worker Role roster, and the success criteria in both `goal.md` and `handoff.md`.
 5. **Present the plan and its gates once, together, for approval.** Show every
    item with the command that will judge it. This is the only approval in the
    run — after it, the gates are locked and never re-asked.
@@ -197,10 +211,12 @@ Repeat until every item is `done` or `cancelled`.
    rewrite the backlog, then mirror the new state to their `goals:*` labels.
    The backlog write comes first: a crash between the two leaves a stale label,
    which Phase R corrects, whereas the reverse loses the state.
-3. Send up to `MAX_BATCH` code items to `ship-parallel`. Partial success is the
-   default: one failed item must not sink green peers.
-4. Run `research` and `verify` items directly. One primary-source lookup settles
-   most research; tests and builds are deterministic work.
+3. Spawn up to `MAX_BATCH` `builder` Worker Roles through `ship-parallel` for
+   code items. Partial success is the default: one failed item must not sink
+   green peers. Each builder commits only its item branch.
+4. Spawn a `researcher` Worker Role for each `research` item and a `builder`
+   Worker Role for each `verify` item. Do not run ordinary research or
+   verification in the parent; tests and builds are deterministic worker work.
 5. Ingest only `results.json` and `<id>.digest.json`, each at most 30 lines.
    Never ingest worker or reviewer transcripts; `.log` files are for humans.
 6. Rewrite the backlog and `handoff.md` atomically after every batch, then
@@ -210,27 +226,26 @@ Repeat until every item is `done` or `cancelled`.
 ## Milestone gate
 
 After all items in a milestone finish, run the cheap checks first and reject
-mechanically before spending a model: no new test failures against baseline,
+mechanically before spawning a reviewer: no new test failures against baseline,
 build passes, no conflict or TODO or stub markers, every deliverable exists.
 
-Then invoke one rotating reviewer for **integration scope only** — whether the
-merged items compose, cross-item coverage gaps, and drift from the spec, under
-the `structure` lens of `ship-parallel`'s review rubric: a special case bolted
-into a flow that does not own it, feature logic in a shared path, a helper
-duplicating one the repo already has. Item-level `over-build` and `slop` were
-settled at the item gate and are not re-litigated here. Rotate
-`council-grok -> council-kimi -> council-qwen -> council-sol`; never repeat the
-last reviewer, never use the contributor's model. Record `PASS`,
-`PASS-WITH-FOLLOWUPS`, or `FAIL` in `reviews/M<n>.json` and `last_reviewer` in
-the handoff. On `PASS` or `PASS-WITH-FOLLOWUPS`, close the milestone in that
-same step.
+Then spawn one read-only `reviewer` Worker Role for **integration scope only** —
+whether the merged items compose, cross-item coverage gaps, and drift from the
+spec, under the `structure` lens of `ship-parallel`'s review rubric: a special
+case bolted into a flow that does not own it, feature logic in a shared path, a
+helper duplicating one the repo already has. Item-level `over-build` and
+`slop` were settled at the item gate and are not re-litigated here. Do not
+reuse the same reviewer consecutively when the host exposes that choice, and
+never use the maker's implementation. Record `PASS`, `PASS-WITH-FOLLOWUPS`, or
+`FAIL` in `reviews/M<n>.json` and `last_reviewer` in the handoff. On `PASS` or
+`PASS-WITH-FOLLOWUPS`, close the milestone in that same step.
 
 **Continue straight into the next milestone.** A passing gate is not a reason to
 stop and ask.
 
 ## T3: final gate
 
-Mandatory. Invoke one read-only `council-adversary` on the full cumulative
+Mandatory. Spawn one read-only `adversary` Worker Role on the full cumulative
 `MAIN_BRANCH` diff from the pre-ship merge base, reviewing merged paths as a
 composed system under all three lenses of `ship-parallel`'s review rubric, and
 closing with `net: -<N> lines possible.` Require `reviews/T3.json` with `SHIP`,
@@ -257,13 +272,15 @@ Release the lock.
 
 - **T3 `BLOCK`** — report the P0 with its `file:line` evidence.
 - **Attempt cap** — a `source_id` failed twice. Report both failures verbatim.
-- **A hard blocker** — auth failure, unreachable model, unresolvable conflict.
+- **A hard blocker** — auth failure, unreachable Worker Role, unresolvable conflict.
 
 On a genuinely contested call — two defensible designs and no evidence
-separating them — do not decide silently and do not council by default. Stop and
-say: *"Contested: <the fork>. Recommend `/council` on this before I continue."*
-When a finding is disputed rather than a design, recommend `/council-adversary`
-instead. The user runs it; `/ship` resumes from Phase R with the answer.
+separating them — do not decide silently. Stop and say: *"Contested: <the
+fork>. Recommend `/council` on this before I continue."* `council` is only for
+that contested fork, never for ordinary research, verification, or review.
+When a finding is disputed rather than a design, spawn a fresh read-only
+`reviewer` or `adversary` Worker Role. The user runs it; `/ship` resumes from
+Phase R with the answer.
 
 After at least two batches, the session may checkpoint and stop cleanly with
 `Resume with Phase R`. Autonomy is multi-session, not infinite context. Keep

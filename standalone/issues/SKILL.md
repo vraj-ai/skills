@@ -1,6 +1,6 @@
 ---
 name: issues
-version: 1.1.0
+version: 1.2.0
 description: User-invoked. Sets up a project's tracker and CONTEXT/ once, then turns a grill into a spec and tracer-bullet tickets. Use when the user runs /issues.
 disable-model-invocation: true
 argument-hint: "[spec-ref]"
@@ -10,7 +10,23 @@ argument-hint: "[spec-ref]"
 
 You were invoked by name. Turn a locked grill (or a passed spec reference) into a published spec and tracer-bullet tickets. Do not interview. Do not build.
 
-If the user passed a spec path, issue number, or URL, fetch that and use it. Otherwise synthesize from this conversation and `CONTEXT/`.
+## Worker Roles
+
+The invoking Role is the orchestrator. It may spawn named Worker Roles one level
+deep through the host's native mechanism:
+
+- `researcher` — look up filesystem, code, tracker, or web facts.
+- `small-task` — perform a bounded lookup or mechanical task when a separate lane
+  helps.
+
+Workers never spawn. They return evidence only; `issues` remains responsible for
+its CONTEXT, spec, tracker, and ticket writes. Do not use a host API, path, or
+provider name as a Role identity. The orchestrator alone writes any backlog or
+lock and performs any push; this skill normally owns none of those artifacts.
+
+If role configuration is absent, mention once that the host's defaults will be used. Do not block or write host configuration unless the user asks in this run.
+
+If the user passed a spec path, issue number, or URL, spawn a `researcher` Worker Role to fetch and inspect it. Otherwise synthesize from this conversation and `CONTEXT/`.
 
 ## 0. Setup, once per project
 
@@ -49,7 +65,7 @@ Add only runtime paths to `.gitignore` if they are not already there: `CONTEXT/g
 
 If `setup-vskills` is installed, you may run its `scripts/init-context.mjs` against this project root instead of writing the three files by hand. It is create-if-missing. Still write `CONTEXT/glossary.md` lazily later, and still do 0b.
 
-If `~/.cursor/rules/pstack-models.mdc` is missing and pstack skills are present, mention once that model roles are unconfigured and the parent chat model will be used. Do not block. Do not write that file unless the user asks in this run.
+If role configuration is absent, mention once that the host's defaults will be used. Do not block or write host configuration unless the user asks in this run.
 
 ### 0b. Tracker and labels
 

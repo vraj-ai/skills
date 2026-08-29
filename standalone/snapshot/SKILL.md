@@ -1,6 +1,6 @@
 ---
 name: snapshot
-version: 1.2.0
+version: 1.3.0
 description: User-invoked session close. Syncs CONTEXT/ and the issue tracker, writes a handoff, then commits and pushes under /snapshot authority. Use when the user runs /snapshot.
 disable-model-invocation: true
 argument-hint: "[next session focus]"
@@ -9,6 +9,20 @@ argument-hint: "[next session focus]"
 # Snapshot
 
 You were invoked by name. Close the session. Docs are the source of truth. The tracker is a view. A handoff is not a push. This skill then delivers.
+
+## Worker Roles
+
+The invoking Role is the orchestrator. It may spawn named Worker Roles one level
+deep through the host's native mechanism:
+
+- `researcher` — look up filesystem, code, tracker, or web facts.
+- `small-task` — run a bounded command or prepare a mechanical draft in a
+  separate lane.
+
+Workers never spawn. They return evidence or drafts; `snapshot` applies its own
+CONTEXT flush and handoff writes. Do not use a host API, path, or provider name
+as a Role identity. The orchestrator alone writes any backlog or lock and
+performs any push.
 
 If the user passed arguments, that is what the next session will focus on.
 
@@ -32,7 +46,7 @@ If this repo's convention is PRs into `main`, do not push to `main`. Push a name
 
 ## 1. Flush CONTEXT/
 
-If a term or decision locked in this session and is not yet in `CONTEXT/`, write it now. Same rules as `/grill`: glossary is language only; architecture is purpose, locked decisions, invariants, non-goals, boundaries; ADRs only when hard to reverse, surprising, and a real trade-off.
+If a term or decision locked in this session and is not yet in `CONTEXT/`, spawn a `researcher` Worker Role to check the evidence, then write it now. Same rules as `/grill`: glossary is language only; architecture is purpose, locked decisions, invariants, non-goals, boundaries; ADRs only when hard to reverse, surprising, and a real trade-off.
 
 If a root `CONTEXT.md` exists as this clone's local glossary (vskills itself), update that file's Language section instead of inventing a second glossary.
 
@@ -67,7 +81,7 @@ This file is not staged. If the project tracks its own handoff archive, stage th
 
 ## 4. Verify
 
-If this run changed code or skills, run the verification command after the final edit and keep the verbatim output. For this skills repo that is `node --test 'test/*.test.js'` or the narrower tests that cover the change. A red gate does not push.
+If this run changed code or skills, spawn a `small-task` Worker Role in an isolated lane to run the verification command after the final edit and return its verbatim output. For this skills repo that is `node --test 'test/*.test.js'` or the narrower tests that cover the change. A red gate does not push.
 
 If this run only synced docs and tracker, the gate is: CONTEXT writes succeeded, and tracker writes either succeeded or were reported.
 
