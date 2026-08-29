@@ -41,7 +41,6 @@ in the harness. Reload the Agents tab with Ctrl+R. `/skill:grill` still works.
 Workers never spawn. The Invocation Role is the only writer of backlog, locks,
 and push.
 
-
 ## Two pipelines
 
 Both drive a plan to verified, merged code using isolated worktrees, locked
