@@ -21,17 +21,17 @@ const models = {
 };
 
 test('OpenCode profile pins the selected models and a one-level spawn tree', async () => {
-  const goals = await fs.readFile(path.join(repo, 'opencode', 'agent', 'goals.md'), 'utf8');
+  const goals = await fs.readFile(path.join(repo, 'harness', 'opencode', 'agent', 'goals.md'), 'utf8');
   assert.match(goals, /mode: primary/);
   assert.match(goals, /task: allow/);
-  const council = await fs.readFile(path.join(repo, 'opencode', 'agent', 'council.md'), 'utf8');
+  const council = await fs.readFile(path.join(repo, 'harness', 'opencode', 'agent', 'council.md'), 'utf8');
   assert.match(council, /mode: primary/);
   assert.match(council, /task: allow/);
   assert.match(council, /edit: deny/);
   assert.match(council, /bash: deny/);
 
   for (const [file, model] of Object.entries(models)) {
-    const content = await fs.readFile(path.join(repo, 'opencode', 'agent', file), 'utf8');
+    const content = await fs.readFile(path.join(repo, 'harness', 'opencode', 'agent', file), 'utf8');
     assert.match(content, /mode: subagent/);
     assert.match(content, /task: deny/);
     assert.ok(content.includes(`model: ${model}`));
@@ -45,26 +45,67 @@ test('OpenCode profile pins the selected models and a one-level spawn tree', asy
     }
   }
 
-  const adversary = await fs.readFile(path.join(repo, 'opencode', 'agent', 'council-adversary.md'), 'utf8');
+  const adversary = await fs.readFile(path.join(repo, 'harness', 'opencode', 'agent', 'council-adversary.md'), 'utf8');
   assert.match(adversary, /edit: deny/);
-  const contributor = await fs.readFile(path.join(repo, 'opencode', 'agent', 'contributor.md'), 'utf8');
+  const contributor = await fs.readFile(path.join(repo, 'harness', 'opencode', 'agent', 'contributor.md'), 'utf8');
   assert.match(contributor, /edit: allow/);
 });
 
 test('workflow skills preserve the required phase and result contracts', async () => {
   const goals = await fs.readFile(skillPath(repo, 'goals', 'SKILL.md'), 'utf8');
-  for (const marker of ['Phase R', 'Phase 0', 'Phase B', 'Execution loop', 'T1:', 'T2 and T3', 'backlog.jsonl']) {
+  for (const marker of [
+    'Phase R',
+    'Phase 0',
+    'Phase B',
+    'Execution loop',
+    'T1:',
+    'T2 and T3',
+    'backlog.jsonl',
+    'MAX_BATCH',
+    'STRICT_BATCH',
+    'results.json',
+    '<id>.digest.json',
+    'glm-5.2',
+  ]) {
     assert.ok(goals.includes(marker), `goals skill is missing ${marker}`);
-  }
-  const parallel = await fs.readFile(skillPath(repo, 'parallel', 'SKILL.md'), 'utf8');
-  for (const marker of ['MAX_BATCH', 'STRICT_BATCH', 'results.json', '<id>.digest.json', 'opencode-go/glm-5.2']) {
-    assert.ok(parallel.includes(marker), `parallel skill is missing ${marker}`);
   }
 });
 
 test('OpenCode profile exposes goal as a command and council as a selectable primary', async () => {
-  const goal = await fs.readFile(path.join(repo, 'opencode', 'command', 'goal.md'), 'utf8');
+  const goal = await fs.readFile(path.join(repo, 'harness', 'opencode', 'command', 'goal.md'), 'utf8');
   assert.match(goal, /agent: goals/);
-  await assert.doesNotReject(fs.access(path.join(repo, 'opencode', 'agent', 'council.md')));
-  await assert.rejects(fs.access(path.join(repo, 'opencode', 'command', 'council.md')));
+  await assert.doesNotReject(fs.access(path.join(repo, 'harness', 'opencode', 'agent', 'council.md')));
+  await assert.rejects(fs.access(path.join(repo, 'harness', 'opencode', 'command', 'council.md')));
+});
+
+test('omp profile provides Invocation and Worker Role templates without model pins', async () => {
+  const invocations = ['grill', 'issues', 'ship', 'snapshot', 'goals'];
+  const workers = ['researcher', 'builder', 'reviewer', 'adversary', 'small-task'];
+  const ompAgentDir = path.join(repo, 'harness', 'omp', 'agent');
+
+  for (const name of invocations) {
+    const file = path.join(ompAgentDir, `${name}.md`);
+    await assert.doesNotReject(fs.access(file));
+    const content = await fs.readFile(file, 'utf8');
+    assert.doesNotMatch(content, /^model:/m);
+    assert.doesNotMatch(content, /^thinking-level:/m);
+    assert.match(content, new RegExp(`autoloadSkills:\\s*\\[${name}\\]`));
+    assert.match(content, /prewalk:\s*false/);
+    assert.match(content, /advisor:\s*false/);
+  }
+
+  for (const name of workers) {
+    const file = path.join(ompAgentDir, `${name}.md`);
+    await assert.doesNotReject(fs.access(file));
+    const content = await fs.readFile(file, 'utf8');
+    assert.doesNotMatch(content, /^model:/m);
+    assert.doesNotMatch(content, /^thinking-level:/m);
+    for (const inv of invocations) {
+      assert.doesNotMatch(content, new RegExp(`autoloadSkills:.*\\b${inv}\\b`));
+    }
+    assert.match(content, /prewalk:\s*false/);
+    assert.match(content, /advisor:\s*false/);
+    assert.match(content, /spawns:\s*\[\]/);
+    assert.match(content, /never spawn/i);
+  }
 });

@@ -10,7 +10,7 @@ import { skillPath } from './helpers.js';
 
 const execFileAsync = promisify(execFile);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const runner = skillPath(path.resolve(__dirname, '..'), 'parallel', 'scripts', 'parallel.mjs');
+const runner = skillPath(path.resolve(__dirname, '..'), 'goals', 'scripts', 'parallel.mjs');
 
 
 test('parallel runner builds, reviews, verifies, and merges one isolated item', async () => {

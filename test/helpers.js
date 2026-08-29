@@ -26,9 +26,8 @@ export async function cleanup(...dirs) {
 
 const execFileAsync = promisify(execFile);
 
-// Shared by every parallel-runner fork's suite. `parallel/` and `ship-parallel/`
-// are near-identical forks (see #30), so the fixture that exercises them has to
-// be one copy — duplicating it is how the fork went untested in the first place.
+// Shared by the ship and goals parallel-runner suites. The fixture stays in
+// one place so the suites exercise the same repository setup.
 export async function git(repo, ...args) {
   return execFileAsync('git', ['-C', repo, ...args]);
 }

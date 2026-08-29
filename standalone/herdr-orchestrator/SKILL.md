@@ -1,10 +1,10 @@
 ---
 name: herdr-orchestrator
-version: 1.0.0
+version: 1.1.0
 description: "Interactive Herdr setup and orchestration for a Grok pane coordinating Codex and three non-OpenCode Council agents."
 disable-model-invocation: true
 argument-hint: "[optional goal or milestone]"
-dependencies: [goals, council, parallel]
+dependencies: [goals, council]
 ---
 
 # Herdr Orchestrator
@@ -152,11 +152,11 @@ Setup completion requires a fresh workspace/tab/pane/agent snapshot proving:
 
 Use these skills inside this orchestrator:
 
-- $goals: durable goal state, locks, milestone cursor, handoff, continuation.
+- $goals: durable goal state, locks, milestone cursor, handoff, continuation,
+  and the worktree farm for independent code items.
 - $council: independent planning and review using exactly three allowed Council
   agents; exclude OpenCode.
-- $parallel: only for independent, bounded worktree items approved by goals.
-  Never parallelize one goal writer, shared files, pane setup, or Herdr control.
+- Never parallelize one goal writer, shared files, pane setup, or Herdr control.
 
 Do not infer goal progress from chat. Read the durable handoff/backlog first.
 

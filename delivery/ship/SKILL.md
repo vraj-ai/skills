@@ -1,8 +1,8 @@
 ---
 name: ship
-version: 1.2.0
+version: 1.6.0
 description: Drive a published spec to verified, pushed completion through a resumable backlog, worktree-isolated parallel builds under a lazy-senior-dev ladder, gate-first review, a milestone reviewer, and a final adversarial teardown. Use when the user invokes /ship, asks to build out a spec autonomously, or resumes a ship run.
-dependencies: [ship-parallel, council-adversary]
+dependencies: [council-adversary]
 ---
 
 # Ship
@@ -10,18 +10,198 @@ dependencies: [ship-parallel, council-adversary]
 `/ship` takes a spec reference and builds it, unattended, until a final adversary
 says it can go — then pushes it.
 
-It is the lean pipeline. Where `goals` councils, gates, and stops at every
-milestone, `/ship` runs one contributor and one reviewer per item, checks the
-gate before spending either, and stops only for trouble. `goals` remains
-available for work that earns the ceremony.
+It is the lean pipeline. Where `goals` gates and stops at every milestone,
+`/ship` runs one builder and one reviewer per item, checks the gate before
+spending either, and stops only for trouble. `goals` remains available for work
+that earns the ceremony.
 
 Start `/ship` with the spec reference. The handoff and push happen inside
 `/ship`.
 
+
+## Worker Roles
+
+The Ship Orchestrator may spawn named Worker Roles one level deep through the
+host's native mechanism:
+
+- `researcher` — settle ordinary research and fact lookups.
+- `builder` — complete each code item or isolated verification command.
+- `reviewer` — report item and milestone findings without editing them.
+- `adversary` — report the read-only T3 verdict.
+- `small-task` — handle a bounded mechanical lookup or lane.
+
+Workers never spawn. A `builder` commits only its item branch. Workers return
+evidence and never write the backlog, lock, handoff, or push; the Orchestrator
+alone owns those actions. Role names are host-neutral; do not use a host API,
+path, or provider name as a Role identity. Use `council` only for a genuinely
+contested fork, never for ordinary research, verification, or review.
 **`/ship` is the code review.** Every item passes its locked gate and one
-non-maker reviewer applying `ship-parallel`'s review rubric; the milestone gate
+non-maker reviewer applying Ship's review rubric; the milestone gate
 and T3 widen the same lenses. Running a separate review skill afterwards
 re-reads work that has already been reviewed.
+
+
+## Farm brief
+
+`/ship` owns the worktree-isolated build farm. It keeps this brief and the
+runner beside `/ship`. One item equals one branch and one worktree:
+
+```text
+git worktree add -b ship/<slug>/<id> CONTEXT/worktrees/ship/<slug>/<id>
+  -> contributor builds to the ladder, commits
+  -> ship runs the locked Verification-command
+  -> green? one non-maker reviewer. red? straight back, no model spent
+  -> merge to MAIN_BRANCH or report failure
+```
+
+The farm runner pins one contributor model. A model never reviews its own
+code.
+
+### The ladder
+
+Pass this to every contributor, verbatim. It is the whole build brief.
+
+> **Work down these rungs in order. Stop at the first one that solves it.**
+>
+> 1. **Necessity** — does this need to exist at all? (YAGNI)
+> 2. **Codebase reuse** — is it already implemented in this project?
+> 3. **Standard library** — does the stdlib solve it?
+> 4. **Native platform** — can built-in features (CSS, HTML5 inputs, DB constraints) handle it?
+> 5. **Existing dependencies** — use what is installed before adding anything
+> 6. **One-liner** — can this be a single line?
+> 7. **Minimal implementation** — only now, write the smallest thing that works
+>
+> **Never simplify away:** input validation at trust boundaries, error handling
+> that prevents data loss, security measures, accessibility, or anything the
+> acceptance criteria explicitly asked for. Lazy is not negligent.
+>
+> **Tests:** non-trivial logic requires at least one minimal runnable check
+> (`assert`, `demo()`, or a single small test). Trivial code gets none. The
+> locked Verification-command must pass. Write nothing beyond that.
+>
+> **No speculative abstractions** — no interface, factory, or config for a
+> single call site. Fix root causes in shared code, not symptoms in callers.
+> Prefer the compact diff and the fewest files.
+>
+> Mark deliberate trade-offs with a `ship:` comment naming the upgrade path.
+> Report as: `[what you built] → skipped: [X], add when [Y].`
+
+The ladder is adapted from [ponytail](https://github.com/DietrichGebert/ponytail)
+(MIT, DietrichGebert). Interactive sessions can invoke the plugin directly;
+this copy exists because worktree subagents may not load plugins.
+
+### The review rubric
+
+Pass this to every reviewer, verbatim, after the correctness brief. Correctness,
+security, and data loss are judged first and keep their existing weight. What
+follows is the quality pass, and it has three lenses.
+
+> **over-build** — reinvented standard library, a dependency for what the
+> platform already ships, an abstraction with one implementation, a factory with
+> one product, config nobody sets, a wrapper that only delegates, a flag with one
+> caller.
+>
+> **slop** — a comment restating the line below it, a defensive `try/catch` on a
+> path that cannot fail, a cast that silences the compiler instead of fixing the
+> type, nesting where a guard clause would return early, code whose shape does
+> not match the file it was added to.
+>
+> **structure** — a new special case bolted into a flow that does not own it,
+> feature logic living in a shared path, a bespoke helper duplicating one this
+> repo already has, a file this diff pushed past the size the rest of the tree
+> keeps.
+>
+> **One line per finding:** `<file>:<line>: <lens>: <what to cut>. <replacement>.`
+>
+> **A finding is admissible when it names the replacement** — a standard-library
+> function, an existing symbol in this repo, a native platform feature, or
+> `delete, nothing replaces it`. Name the replacement and the finding stands.
+> Without one it is an opinion about taste, and taste does not block a merge.
+>
+> An admissible `over-build` or `structure` finding is **P1** and blocks the
+> merge. `slop` is **P2**. Cap the quality pass at **5 findings**, ranked biggest
+> cut first, and print `net: -<N> lines possible.` on its own line, or
+> `Lean already.` for a clean item. **It goes immediately before `VERDICT:`**,
+> never after `FOLLOWUPS:`: the result contract parses the last three lines, so
+> a trailing net line displaces the verdict and invalidates the whole review.
+>
+> One runnable check per piece of non-trivial logic (`assert`, `demo()`, or one
+> small test) is the required minimum and is never an `over-build` finding.
+> Missing trust-boundary validation, data-loss handling, security,
+> accessibility, or an unmet acceptance criterion stays P0/P1 under-build.
+
+The rubric is adapted from [ponytail-review](https://github.com/DietrichGebert/ponytail)
+(MIT, DietrichGebert), Cursor's `deslop` and `thermo-nuclear-code-quality-review`,
+and [@elithrar](https://github.com/elithrar)'s `simplify`. It is inlined here for
+the same reason the ladder is: worktree subagents may not load plugins.
+
+### Batch input
+
+`MAX_BATCH` defaults to 4 and is capped at 8. `/ship` marks all selected ids
+`in-progress` atomically before invoking the farm. The CLI manifest is one line
+per item:
+
+```text
+<id>|<branch>|<model>|<task prompt>
+```
+
+The task carries the plan/item path, exact acceptance criteria, the locked
+Verification-command, `MAIN_BRANCH`, the absolute worktree path, and the ladder
+above. Set `TEST_CMDS_JSON` to a complete JSON map from id to its locked
+command; `TEST_CMD` is only accepted for a one-item batch. Reject any manifest
+model other than the fixed contributor pin.
+
+### Gate-first review and merge
+
+- **Gate first.** Run the locked Verification-command before spending a model.
+  A red gate is a failure on its own — report it and move on. Nothing to review.
+- **One reviewer per green item**, a non-maker `reviewer` Worker Role,
+  never the contributor's model. No verdict means no merge.
+- Review items separately, never as a batch.
+- Any evidenced P0/P1 blocks even if the reviewer mistakenly prints `PASS`.
+- **Every reviewer applies the review rubric above** — the `over-build`, `slop`,
+  and `structure` lenses, the named-replacement admissibility rule, and the
+  `net: -<N>` close.
+- `HARDENED=1` adds one read-only `council-adversary` pass on top.
+- Partial success is default: merge green/PASS peers and report failed ids.
+- `STRICT_BATCH=1` integrates on a temporary branch and fast-forwards
+  `MAIN_BRANCH` only when the whole batch succeeds, so a late failure cannot
+  leave earlier peers merged.
+- `/ship` alone integrates. Workers commit only their item branch; reviewers do
+  not edit; no child updates the backlog or issue labels.
+
+Each reviewer emits:
+
+```text
+VERDICT: PASS | FAIL
+FINDINGS: [{"severity":"P0|P1|P2|P3","file":"path:line","trigger":"...","wrong_behavior":"..."}]
+FOLLOWUPS: []
+```
+
+For overlap, begin a no-commit merge. Keep both unique non-overlapping hunks.
+For the same hunk, prefer the incoming branch only inside its declared
+`files_touched`; otherwise prefer HEAD. Remove markers and run the locked
+Verification-command. If still red, `git merge --abort`, mark that item failed,
+and continue the wave. After a resolver edits the integration, materialize an
+immutable candidate commit and rerun the review in a separate detached worktree
+before committing the same tree.
+
+### Results contract
+
+Every batch atomically writes:
+
+```json
+{"main_branch":"...","merged":[{"name":"...","branch":"...","sha":"...","verdict":"PASS"}],"blocked":[],"failed":[],"conflicts":[]}
+```
+
+Every item writes a compact one-line `<id>.digest.json`:
+
+```json
+{"id":"...","verdict":"PASS|FAIL","files_touched":[],"tests":{"pass":0,"fail":0,"cmd":"..."},"findings":[],"followups":[]}
+```
+
+`/ship` ingests only these files, never logs. `results.json`, digests, branch
+ancestry, and Git are producer truth for Phase R.
 
 ## Input
 
@@ -124,11 +304,9 @@ Track `goal.md`, `handoff.md`, and `reviews/*.json`. Add the rest —
 ## Preflight
 
 Verify the spec resolves, the cwd is a Git worktree on a named branch,
-`CONTEXT/worktrees/ship` is writable, and every configured model is reachable.
+`CONTEXT/worktrees/ship` is writable, and every configured Worker Role is dispatchable.
 Record the pre-ship merge base. `MAX_BATCH` defaults to 4 and may not exceed 8.
 
-Resolve the CLI in this order: `OPENCODE_BIN`, `~/.opencode/bin/opencode`, then
-`opencode` on `PATH`. Pin the resolved value in `goal.md` and `handoff.md`.
 
 ## Phase R: resume first
 
@@ -177,8 +355,7 @@ Only when no backlog exists.
    workflow) and write a real command that exits 0 exactly when the item is
    done — e.g. `npm test -- auth.spec && tsc --noEmit`. An item with no runnable
    gate is not ready.
-4. Pin `MAIN_BRANCH`, `WORKTREE_ROOT`, the pre-ship merge base, the model
-   roster, and the success criteria in both `goal.md` and `handoff.md`.
+4. Pin `MAIN_BRANCH`, `WORKTREE_ROOT`, the pre-ship merge base, the Worker Role roster, and the success criteria in both `goal.md` and `handoff.md`.
 5. **Present the plan and its gates once, together, for approval.** Show every
    item with the command that will judge it. This is the only approval in the
    run — after it, the gates are locked and never re-asked.
@@ -197,10 +374,12 @@ Repeat until every item is `done` or `cancelled`.
    rewrite the backlog, then mirror the new state to their `goals:*` labels.
    The backlog write comes first: a crash between the two leaves a stale label,
    which Phase R corrects, whereas the reverse loses the state.
-3. Send up to `MAX_BATCH` code items to `ship-parallel`. Partial success is the
-   default: one failed item must not sink green peers.
-4. Run `research` and `verify` items directly. One primary-source lookup settles
-   most research; tests and builds are deterministic work.
+3. Spawn up to `MAX_BATCH` `builder` Worker Roles through the farm runner for
+   code items. Partial success is the default: one failed item must not sink
+   green peers. Each builder commits only its item branch.
+4. Spawn a `researcher` Worker Role for each `research` item and a `builder`
+   Worker Role for each `verify` item. Do not run ordinary research or
+   verification in the parent; tests and builds are deterministic worker work.
 5. Ingest only `results.json` and `<id>.digest.json`, each at most 30 lines.
    Never ingest worker or reviewer transcripts; `.log` files are for humans.
 6. Rewrite the backlog and `handoff.md` atomically after every batch, then
@@ -210,29 +389,28 @@ Repeat until every item is `done` or `cancelled`.
 ## Milestone gate
 
 After all items in a milestone finish, run the cheap checks first and reject
-mechanically before spending a model: no new test failures against baseline,
+mechanically before spawning a reviewer: no new test failures against baseline,
 build passes, no conflict or TODO or stub markers, every deliverable exists.
 
-Then invoke one rotating reviewer for **integration scope only** — whether the
-merged items compose, cross-item coverage gaps, and drift from the spec, under
-the `structure` lens of `ship-parallel`'s review rubric: a special case bolted
-into a flow that does not own it, feature logic in a shared path, a helper
-duplicating one the repo already has. Item-level `over-build` and `slop` were
-settled at the item gate and are not re-litigated here. Rotate
-`council-grok -> council-kimi -> council-qwen -> council-sol`; never repeat the
-last reviewer, never use the contributor's model. Record `PASS`,
-`PASS-WITH-FOLLOWUPS`, or `FAIL` in `reviews/M<n>.json` and `last_reviewer` in
-the handoff. On `PASS` or `PASS-WITH-FOLLOWUPS`, close the milestone in that
-same step.
+Then spawn one read-only `reviewer` Worker Role for **integration scope only** —
+whether the merged items compose, cross-item coverage gaps, and drift from the
+spec, under the `structure` lens of Ship's review rubric: a special
+case bolted into a flow that does not own it, feature logic in a shared path, a
+helper duplicating one the repo already has. Item-level `over-build` and
+`slop` were settled at the item gate and are not re-litigated here. Do not
+reuse the same reviewer consecutively when the host exposes that choice, and
+never use the maker's implementation. Record `PASS`, `PASS-WITH-FOLLOWUPS`, or
+`FAIL` in `reviews/M<n>.json` and `last_reviewer` in the handoff. On `PASS` or
+`PASS-WITH-FOLLOWUPS`, close the milestone in that same step.
 
 **Continue straight into the next milestone.** A passing gate is not a reason to
 stop and ask.
 
 ## T3: final gate
 
-Mandatory. Invoke one read-only `council-adversary` on the full cumulative
+Mandatory. Spawn one read-only `adversary` Worker Role on the full cumulative
 `MAIN_BRANCH` diff from the pre-ship merge base, reviewing merged paths as a
-composed system under all three lenses of `ship-parallel`'s review rubric, and
+composed system under all three lenses of Ship's review rubric, and
 closing with `net: -<N> lines possible.` Require `reviews/T3.json` with `SHIP`,
 `SHIP-WITH-FOLLOWUPS`, or `BLOCK`.
 
@@ -248,6 +426,12 @@ after the final merge:
    cursor.
 2. `/push-handoff` — commit and push. Invoking `/ship` is the push authority its
    Step 0 requires. Report the fetched remote SHA as proof.
+3. Tracker closeout review. If `docs/agents/issue-tracker.md` exists, read the
+   issues, pull requests, and commits this run produced. Post one comment on
+   the parent spec or open PR using that file's commands (GitHub:
+   `gh issue comment` / `gh pr comment`): SHA, T3 verdict, remaining
+   follow-ups. Do not create tickets. Do not rotate `goals:*` labels. A failed
+   tracker write is a report, not a reason to undo the push.
 
 Release the lock.
 
@@ -257,13 +441,15 @@ Release the lock.
 
 - **T3 `BLOCK`** — report the P0 with its `file:line` evidence.
 - **Attempt cap** — a `source_id` failed twice. Report both failures verbatim.
-- **A hard blocker** — auth failure, unreachable model, unresolvable conflict.
+- **A hard blocker** — auth failure, unreachable Worker Role, unresolvable conflict.
 
 On a genuinely contested call — two defensible designs and no evidence
-separating them — do not decide silently and do not council by default. Stop and
-say: *"Contested: <the fork>. Recommend `/council` on this before I continue."*
-When a finding is disputed rather than a design, recommend `/council-adversary`
-instead. The user runs it; `/ship` resumes from Phase R with the answer.
+separating them — do not decide silently. Stop and say: *"Contested: <the
+fork>. Recommend `/council` on this before I continue."* `council` is only for
+that contested fork, never for ordinary research, verification, or review.
+When a finding is disputed rather than a design, spawn a fresh read-only
+`reviewer` or `adversary` Worker Role. The user runs it; `/ship` resumes from
+Phase R with the answer.
 
 After at least two batches, the session may checkpoint and stop cleanly with
 `Resume with Phase R`. Autonomy is multi-session, not infinite context. Keep

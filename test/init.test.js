@@ -305,3 +305,42 @@ test('an overwritten conflict backs up the previous copy first', async () => {
     await cleanup(repo, installRoot, target);
   }
 });
+
+test('init retires managed skills that vanished from the repo', async () => {
+  const { repo, installRoot, target } = await setup();
+  try {
+    await writeSkill(repo, 'gone', { name: 'gone', description: 'Gone.' });
+    await runInit({ repoRoot: repo, installRoot, targets: [target] });
+    await fs.rm(path.join(repo, 'gone'), { recursive: true, force: true });
+
+    const result = await runInit({ repoRoot: repo, installRoot, targets: [target] });
+    assert.ok(result.results.some((r) => r.name === 'gone' && r.status === 'retired'));
+    await assert.rejects(fs.access(path.join(installRoot, 'gone')));
+    const manifest = await readManifest(installRoot);
+    assert.equal(manifest.skills.gone, undefined);
+    await assert.rejects(fs.access(path.join(target, 'gone')));
+    const backups = await fs.readdir(path.join(installRoot, '.vskills-backup'));
+    assert.ok(backups.some((name) => name.startsWith('gone-')));
+  } finally {
+    await cleanup(repo, installRoot, target);
+  }
+});
+
+test('init leaves a drifted vanished skill installed', async () => {
+  const { repo, installRoot, target } = await setup();
+  try {
+    await writeSkill(repo, 'gone', { name: 'gone', description: 'Gone.' });
+    await runInit({ repoRoot: repo, installRoot, targets: [target] });
+    await fs.appendFile(path.join(installRoot, 'gone', 'SKILL.md'), '\nlocal edit\n');
+    await fs.rm(path.join(repo, 'gone'), { recursive: true, force: true });
+
+    const result = await runInit({ repoRoot: repo, installRoot, targets: [target] });
+    assert.ok(result.results.some((r) => r.name === 'gone' && r.status === 'retired-skipped-drift'));
+    await fs.access(path.join(installRoot, 'gone'));
+    const manifest = await readManifest(installRoot);
+    assert.ok(manifest.skills.gone);
+  } finally {
+    await cleanup(repo, installRoot, target);
+  }
+});
+

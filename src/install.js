@@ -1,4 +1,4 @@
-import { cp, lstat, mkdir, realpath, rename, rm, symlink } from 'node:fs/promises';
+import { cp, lstat, mkdir, readlink, realpath, rename, rm, symlink } from 'node:fs/promises';
 import path from 'node:path';
 import { hashDir } from './hash.js';
 import { isDirectory } from './discovery.js';
@@ -182,4 +182,63 @@ export async function installOne({ skill, installRoot, targets, manifest, force 
   };
 
   return { status: 'installed', warnings, linkFailures };
+}
+
+// Removes managed skills that vanished from the repo. Drifted copies stay.
+// vskills-owned symlinks to the install dir are removed; real files and
+// foreign symlinks stay. Matching copies are backed up, then the install dir
+// is removed.
+export async function retireVanished({ discoveredNames, installRoot, targets, manifest, onlyNames = null }) {
+  const results = [];
+  const messages = [];
+  const backupRoot = path.join(installRoot, BACKUP_DIR_NAME);
+
+  for (const name of Object.keys(manifest.skills)) {
+    if (discoveredNames.has(name)) continue;
+    if (onlyNames && !onlyNames.has(name)) continue;
+
+    const installedDir = path.join(installRoot, name);
+    const entry = manifest.skills[name];
+    const installedExists = await isDirectory(installedDir);
+
+    if (installedExists) {
+      const currentHash = await hashDir(installedDir);
+      if (currentHash !== entry.contentHash) {
+        messages.push(`${name}: no longer in the repo, locally modified — left installed`);
+        results.push({ name, status: 'retired-skipped-drift' });
+        continue;
+      }
+      await mkdir(backupRoot, { recursive: true });
+      const backupDir = path.join(backupRoot, `${name}-${timestamp()}`);
+      await rename(installedDir, backupDir);
+      messages.push(`${name}: retired — previous copy backed up to ${backupDir}`);
+    }
+
+    for (const target of targets) {
+      const linkPath = path.join(target, name);
+      let existing;
+      try {
+        existing = await lstat(linkPath);
+      } catch (err) {
+        if (err.code === 'ENOENT') continue;
+        throw err;
+      }
+      if (!existing.isSymbolicLink()) {
+        messages.push(`${linkPath}: exists and is not a symlink vskills created — left untouched`);
+        continue;
+      }
+      const dest = await readlink(linkPath);
+      const destAbs = path.resolve(path.dirname(linkPath), dest);
+      if (destAbs === installedDir) {
+        await rm(linkPath);
+      } else {
+        messages.push(`${linkPath}: is a symlink to somewhere else — left untouched`);
+      }
+    }
+
+    delete manifest.skills[name];
+    results.push({ name, status: 'retired' });
+  }
+
+  return { results, messages };
 }

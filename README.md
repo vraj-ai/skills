@@ -15,6 +15,7 @@ Same command on macOS, Linux, and Windows PowerShell.
 
 | Step | What it does |
 |---|---|
+| `/setup-vskills` | First on a new machine. Asks which harness you use, researches it, installs Roles |
 | `/grill` | Stress-tests the plan and writes glossary, architecture, and ADRs into `CONTEXT/` |
 | `/issues` | Sets up the tracker once, then publishes a spec and tracer-bullet tickets |
 | `/ship <spec>` | Builds it, reviews it, pushes it. Use `/goals` when you want more review |
@@ -22,28 +23,23 @@ Same command on macOS, Linux, and Windows PowerShell.
 
 There is no separate review step. `/ship` and `/goals` review their own output at
 three widths: the item gate, the milestone gate, and a read-only adversary over
-the whole diff. `/ship-parallel` is the item gate, one non-maker model per green
-item. `/grill`, `/issues`, and `/snapshot` are this repo's planning and closeout
-skills. Matt Pocock's originals remain available, see
+the whole diff. `/grill`, `/issues`, and `/snapshot` are this repo's planning and
+closeout skills. Matt Pocock's originals remain available, see
 [Skills from elsewhere](#skills-from-elsewhere).
 
 ## Agents
 
-The planning skills are user-only, so a general omp session will not start them.
-Put task agents in the User bucket so spawning one *is* the workflow.
+The author runs this workflow in omp. The skills themselves stay harness-agnostic:
+any client that can load a `SKILL.md` can run them, with any model.
 
-Files: `~/.omp/agent/agents/{grill,issues,ship}.md`. Reload the Agents tab with
-Ctrl+R. `/skill:grill` still works; the tab agent is the better start because
-it autoloads the skill and pins model plus effort.
+`/setup-vskills` writes Invocation Roles (`grill`, `issues`, `ship`, `snapshot`,
+`goals`) and Worker Roles (`researcher`, `builder`, `reviewer`, `adversary`,
+`small-task`) into the harness it researched. On omp that is
+`~/.omp/agent/agents/`. Role templates leave model and effort unset; assign those
+in the harness. Reload the Agents tab with Ctrl+R. `/skill:grill` still works.
 
-| Agent | Model | Effort | What it does |
-|---|---|---|---|
-| `grill` | `@plan` (opus-5:medium) | high | Interview; writes `CONTEXT/` |
-| `issues` | `@default` (grok-4.6:high) | medium | Setup once, then spec and tickets |
-| `ship` | `@slow` (opus-5:medium) | high | Lean build-to-push |
-
-`/snapshot` is a skill, not an Agents-tab entry. Closeout stays a named
-invocation.
+Workers never spawn. The Invocation Role is the only writer of backlog, locks,
+and push.
 
 ## Two pipelines
 
@@ -105,10 +101,8 @@ on a clean final gate. `/snapshot` pushes because you invoked it.
 
 | Skill | Use when |
 |---|---|
-| `ship` | Spec to pushed code, gate-first review, runs unattended |
-| `ship-parallel` | Worktree build farm with the ladder and one reviewer |
-| `goals` | Wider-net plan driver with milestone stops |
-| `parallel` | Worktree build farm with two reviewers |
+| `ship` | Spec to pushed code, gate-first review, owns its farm |
+| `goals` | Wider-net plan driver with milestone stops, owns its farm |
 | `council` | Independent research, debate, and scoped review |
 | `council-adversary` | Read-only teardown of a converged diff |
 
@@ -230,21 +224,18 @@ bin/              the vskills CLI entrypoint
 src/              vskills implementation
 test/             vskills test suite (node --test)
 
-delivery/         ship, ship-parallel, goals, parallel, council, council-adversary
+delivery/         ship, goals, council, council-adversary
 standalone/       grill, issues, snapshot, push-handoff, hands-free, loop-engineer,
                   gauntlet-loop, multi-agent-review, herdr-orchestrator,
                   setup-obsidian, setup-vskills
 pipeline/         reusable delivery disciplines
 legacy-workflow/  the preserved planner/coder/debugger/reviewer chain
-opencode/         global OpenCode agent and command definitions
+harness/          per-client Role and profile templates (omp, opencode, ...)
 ```
 
-OpenCode loads `opencode/agent/` from `~/.config/opencode/agent/` when you still
-use that client. Delivery farm: contributor pinned to `opencode-go/glm-5.2`.
-Council members are Grok 4.5, Kimi K3, Qwen 3.8 Max, GPT-5.6 Sol, Gemini 3.6
-Flash, DeepSeek V4 Flash, and GLM 5.2, with a read-only Grok adversary. The
-omp path for grill, issues, and ship is the User bucket above, not these
-OpenCode primaries.
+`/setup-vskills` copies `harness/<name>/` after it researches the named harness.
+OpenCode profiles live under `harness/opencode/` and install to
+`~/.config/opencode/`. omp Role templates live under `harness/omp/agent/`.
 
 ## Credits
 
