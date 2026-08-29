@@ -1,6 +1,6 @@
 ---
 name: setup-vskills
-version: 1.7.0
+version: 1.8.0
 description: Sets up this skills repo on a new machine — installs the skills with the vskills CLI, then regenerates the local-only context docs (CONTEXT.md, docs/) that are deliberately not published in the public repo.
 ---
 
@@ -29,8 +29,8 @@ Confirm with `node bin/vskills.js list` and run the test suite once:
 
 ## Step 1.1 — Install the global OpenCode profile
 
-The installer prefers canonical agent and command files under
-`harness/opencode/`, falling back to `opencode/` for older checkouts:
+The installer reads canonical agent and command files from
+`harness/opencode/`:
 
 ```bash
 node standalone/setup-vskills/scripts/install-opencode.mjs
@@ -172,7 +172,7 @@ Ownership rules carry across skills:
   repo. They are local-only by design.
 - Never edit installed copies under the install root — edit the repo source
   and re-run `node bin/vskills.js init`.
-- Never edit the installed OpenCode agent copies directly — edit `opencode/`
+- Never edit the installed OpenCode agent copies directly — edit `harness/opencode/`
   and rerun `install-opencode.mjs`.
 - Bump the `version:` in a skill's frontmatter whenever you change its
   content; init uses versions to auto-resolve otherwise-ambiguous updates.

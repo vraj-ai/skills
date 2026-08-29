@@ -21,17 +21,17 @@ const models = {
 };
 
 test('OpenCode profile pins the selected models and a one-level spawn tree', async () => {
-  const goals = await fs.readFile(path.join(repo, 'opencode', 'agent', 'goals.md'), 'utf8');
+  const goals = await fs.readFile(path.join(repo, 'harness', 'opencode', 'agent', 'goals.md'), 'utf8');
   assert.match(goals, /mode: primary/);
   assert.match(goals, /task: allow/);
-  const council = await fs.readFile(path.join(repo, 'opencode', 'agent', 'council.md'), 'utf8');
+  const council = await fs.readFile(path.join(repo, 'harness', 'opencode', 'agent', 'council.md'), 'utf8');
   assert.match(council, /mode: primary/);
   assert.match(council, /task: allow/);
   assert.match(council, /edit: deny/);
   assert.match(council, /bash: deny/);
 
   for (const [file, model] of Object.entries(models)) {
-    const content = await fs.readFile(path.join(repo, 'opencode', 'agent', file), 'utf8');
+    const content = await fs.readFile(path.join(repo, 'harness', 'opencode', 'agent', file), 'utf8');
     assert.match(content, /mode: subagent/);
     assert.match(content, /task: deny/);
     assert.ok(content.includes(`model: ${model}`));
@@ -45,9 +45,9 @@ test('OpenCode profile pins the selected models and a one-level spawn tree', asy
     }
   }
 
-  const adversary = await fs.readFile(path.join(repo, 'opencode', 'agent', 'council-adversary.md'), 'utf8');
+  const adversary = await fs.readFile(path.join(repo, 'harness', 'opencode', 'agent', 'council-adversary.md'), 'utf8');
   assert.match(adversary, /edit: deny/);
-  const contributor = await fs.readFile(path.join(repo, 'opencode', 'agent', 'contributor.md'), 'utf8');
+  const contributor = await fs.readFile(path.join(repo, 'harness', 'opencode', 'agent', 'contributor.md'), 'utf8');
   assert.match(contributor, /edit: allow/);
 });
 
@@ -63,10 +63,10 @@ test('workflow skills preserve the required phase and result contracts', async (
 });
 
 test('OpenCode profile exposes goal as a command and council as a selectable primary', async () => {
-  const goal = await fs.readFile(path.join(repo, 'opencode', 'command', 'goal.md'), 'utf8');
+  const goal = await fs.readFile(path.join(repo, 'harness', 'opencode', 'command', 'goal.md'), 'utf8');
   assert.match(goal, /agent: goals/);
-  await assert.doesNotReject(fs.access(path.join(repo, 'opencode', 'agent', 'council.md')));
-  await assert.rejects(fs.access(path.join(repo, 'opencode', 'command', 'council.md')));
+  await assert.doesNotReject(fs.access(path.join(repo, 'harness', 'opencode', 'agent', 'council.md')));
+  await assert.rejects(fs.access(path.join(repo, 'harness', 'opencode', 'command', 'council.md')));
 });
 
 test('omp profile provides Invocation and Worker Role templates without model pins', async () => {

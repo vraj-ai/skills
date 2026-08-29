@@ -10,7 +10,9 @@ import { skillPath } from './helpers.js';
 
 const execFileAsync = promisify(execFile);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const installer = skillPath(path.resolve(__dirname, '..'), 'setup-vskills', 'scripts', 'install-opencode.mjs');
+const repo = path.resolve(__dirname, '..');
+const installer = skillPath(repo, 'setup-vskills', 'scripts', 'install-opencode.mjs');
+const profileRoot = path.join(repo, 'harness', 'opencode');
 
 test('OpenCode profile installer is idempotent and backs up conflicts', async () => {
   const configRoot = await makeTmpDir('opencode-profile-');
@@ -34,6 +36,10 @@ the council.
     assert.match(first.stdout, /installed\s+agent\/council-gemini\.md/);
     assert.match(first.stdout, /installed\s+agent\/council-deepseek\.md/);
     await assert.doesNotReject(fs.access(path.join(configRoot, 'command', 'goal.md')));
+    assert.equal(
+      await fs.readFile(path.join(configRoot, 'agent', 'goals.md'), 'utf8'),
+      await fs.readFile(path.join(profileRoot, 'agent', 'goals.md'), 'utf8'),
+    );
     await assert.rejects(fs.access(path.join(configRoot, 'command', 'council.md')));
 
     const second = await execFileAsync(process.execPath, [installer], { env });

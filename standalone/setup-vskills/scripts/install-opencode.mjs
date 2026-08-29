@@ -20,8 +20,7 @@ function findRepoRoot(from) {
 }
 
 const repoRoot = findRepoRoot(scriptDir);
-const harnessSourceRoot = path.join(repoRoot, 'harness', 'opencode');
-const sourceRoot = existsSync(harnessSourceRoot) ? harnessSourceRoot : path.join(repoRoot, 'opencode');
+const sourceRoot = path.join(repoRoot, 'harness', 'opencode');
 const configRoot = process.env.OPENCODE_CONFIG_DIR || path.join(os.homedir(), '.config', 'opencode');
 
 function timestamp() {
