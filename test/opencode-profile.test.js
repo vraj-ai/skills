@@ -68,3 +68,34 @@ test('OpenCode profile exposes goal as a command and council as a selectable pri
   await assert.doesNotReject(fs.access(path.join(repo, 'opencode', 'agent', 'council.md')));
   await assert.rejects(fs.access(path.join(repo, 'opencode', 'command', 'council.md')));
 });
+
+test('omp profile provides Invocation and Worker Role templates without model pins', async () => {
+  const invocations = ['grill', 'issues', 'ship', 'snapshot', 'goals'];
+  const workers = ['researcher', 'builder', 'reviewer', 'adversary', 'small-task'];
+  const ompAgentDir = path.join(repo, 'harness', 'omp', 'agent');
+
+  for (const name of invocations) {
+    const file = path.join(ompAgentDir, `${name}.md`);
+    await assert.doesNotReject(fs.access(file));
+    const content = await fs.readFile(file, 'utf8');
+    assert.doesNotMatch(content, /^model:/m);
+    assert.doesNotMatch(content, /^thinking-level:/m);
+    assert.match(content, new RegExp(`autoloadSkills:\\s*\\[${name}\\]`));
+    assert.match(content, /prewalk:\s*false/);
+    assert.match(content, /advisor:\s*false/);
+  }
+
+  for (const name of workers) {
+    const file = path.join(ompAgentDir, `${name}.md`);
+    await assert.doesNotReject(fs.access(file));
+    const content = await fs.readFile(file, 'utf8');
+    assert.doesNotMatch(content, /^model:/m);
+    assert.doesNotMatch(content, /^thinking-level:/m);
+    for (const inv of invocations) {
+      assert.doesNotMatch(content, new RegExp(`autoloadSkills:.*\\b${inv}\\b`));
+    }
+    assert.match(content, /prewalk:\s*false/);
+    assert.match(content, /advisor:\s*false/);
+    assert.match(content, /never spawn/i);
+  }
+});
