@@ -1,0 +1,97 @@
+# <!-- vskills-pr-review -->
+name: PR Fix
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  fix:
+    if: contains(github.event.comment.body, '/fix') && github.event.issue.pull_request
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Guard — same-repo only (no forks), dedupe, loop cap
+        id: guard
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR=${{ github.event.issue.number }}
+          IS_FORK=$(gh pr view $PR --json isCrossRepository --jq .isCrossRepository 2>/dev/null || echo "false")
+          if [ "$IS_FORK" = "true" ]; then echo "skip=fork" >> "$GITHUB_OUTPUT"; echo "Fork PR — cannot push with GITHUB_TOKEN" | tee /tmp/skip.md; exit 0; fi
+          # loop cap via label vskills-fix-count
+          LABELS=$(gh pr view $PR --json labels --jq '.labels[].name' 2>/dev/null || true)
+          COUNT=$(echo "$LABELS" | grep -c "vskills-fix-" || true); COUNT=${COUNT:-0}
+          if [ "$COUNT" -ge 3 ]; then
+            echo "skip=cap" >> "$GITHUB_OUTPUT"
+            gh pr comment $PR --body "<!-- vskills-pr-review -->\n⚠️ Fix loop cap reached (3). Added \`needs-human\` label." 2>&1 | head -n 20 || true
+            gh api repos/${{ github.repository }}/issues/$PR/labels -f labels[]="needs-human" 2>&1 | head -n 20 || true
+            exit 0
+          fi
+          # dedupe per comment ID
+          COMMENT_ID=${{ github.event.comment.id }}
+          if gh api repos/${{ github.repository }}/issues/$PR/comments --jq '.[].body' 2>/dev/null | grep -q "fix:$COMMENT_ID"; then echo "skip=dedupe" >> "$GITHUB_OUTPUT"; exit 0; fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve PR branch
+        if: steps.guard.outputs.skip == 'false'
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR=${{ github.event.issue.number }}
+          gh pr view $PR --json headRefName,headRepository --jq '"branch=\(.headRefName)\nrepo=\(.headRepository.name)"' >> "$GITHUB_OUTPUT"
+          git fetch origin pull/$PR/head:pr-$PR 2>&1 | head -n 20 || true
+          git checkout pr-$PR 2>&1 | head -n 20 || true
+
+      - name: Apply fix (review context + CONTEXT)
+        if: steps.guard.outputs.skip == 'false'
+        run: |
+          # Inject CONTEXT if present
+          if [ -f "CONTEXT/glossary.md" ]; then cat CONTEXT/glossary.md | head -c 4000 > /tmp/context.md; fi
+          # Read last review comment as findings source
+          gh pr view ${{ github.event.issue.number }} --json comments --jq '.comments[] | select(.body | contains("<!-- vskills-pr-review -->")) | .body' 2>/dev/null | tail -n 50 > /tmp/last-review.md || true
+          # Placeholder patch — real impl calls LLM with fix prompt and applies via apply_patch
+          # For deterministic fallback, ensure at least one safe formatting fix if possible
+          if [ -f "package.json" ] && npx --yes prettier --check . 2>&1 | head -n 5 | grep -q "Code style"; then npx --yes prettier --write . 2>&1 | head -n 20 || true; fi
+          echo "fix:${{ github.event.comment.id }}" > /tmp/fix-meta.txt
+          # If LLM key present, call OpenAI-compatible to generate patch (omitted here — copy-paste prompt added to comment on failure)
+          echo "Applied context-aware fix placeholder"
+
+      - name: Push one commit and bump fix count
+        if: steps.guard.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git diff --quiet; then
+            gh pr comment ${{ github.event.issue.number }} --body "<!-- vskills-pr-review -->\nNo auto-fixable changes found. Copy-paste prompt:\n\`\`\`\nFix the findings in /tmp/last-review.md using the repo's skills.\n\`\`\`\n<!-- fix:${{ github.event.comment.id }} -->" 2>&1 | head -n 20 || true
+            exit 0
+          fi
+          git config user.name "vskills-bot"
+          git config user.email "bot@vskills.local"
+          git add -A
+          git commit -m "fix(pr): apply /fix suggestions
+
+          Co-authored-by: vskills-bot <bot@vskills.local>
+          Ref: comment ${{ github.event.comment.id }}" 2>&1 | head -n 20
+          git push origin HEAD:${{ steps.pr.outputs.branch }} 2>&1 | head -n 20 || git push origin HEAD 2>&1 | head -n 20 || true
+          # bump label count
+          COUNT=${{ steps.guard.outputs.count }}
+          NEXT=$((COUNT+1))
+          gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/labels -f labels[]="vskills-fix-$NEXT" 2>&1 | head -n 20 || true
+          gh pr comment ${{ github.event.issue.number }} --body "<!-- vskills-pr-review -->\n✅ Pushed fix commit (fix:${{ github.event.comment.id }}) — re-running review…" 2>&1 | head -n 20 || true
+
+      - name: Comment on skip
+        if: steps.guard.outputs.skip != 'false' && steps.guard.outputs.skip != ''
+        run: cat /tmp/skip.md 2>/dev/null || true

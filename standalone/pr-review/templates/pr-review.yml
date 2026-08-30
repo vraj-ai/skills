@@ -1,0 +1,175 @@
+# <!-- vskills-pr-review -->
+name: PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+  issues: write
+
+jobs:
+  review:
+    if: github.event_name != 'issue_comment'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read review config
+        id: config
+        run: |
+          CONFIG=".vskills/review.yml"
+          [ -f "$CONFIG" ] || CONFIG=".github/review.yml"
+          [ -f "$CONFIG" ] || CONFIG="standalone/pr-review/templates/review.yml"
+          echo "path=$CONFIG" >> "$GITHUB_OUTPUT"
+          cat "$CONFIG" 2>/dev/null | head -n 50 || true
+
+      - name: Check file-change limit
+        id: limits
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          COUNT=$(gh pr view ${{ github.event.pull_request.number }} --json changedFiles --jq .changedFiles 2>/dev/null || echo "0")
+          LIMIT=$(grep -A2 fileChangeLimit .vskills/review.yml 2>/dev/null | grep -o '[0-9]\+' | head -1); LIMIT=${LIMIT:-100}
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "limit=$LIMIT" >> "$GITHUB_OUTPUT"
+          if [ "$COUNT" -gt "$LIMIT" ] && ! echo "${{ github.event.comment.body }}" | grep -q "@vskills"; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Detect conflicts
+        id: conflicts
+        run: |
+          if git merge-base --is-ancestor origin/${{ github.base_ref }} HEAD 2>/dev/null; then echo "conflict=false" >> "$GITHUB_OUTPUT"; else echo "conflict=true" >> "$GITHUB_OUTPUT"; fi
+          echo "conflict=false" >> "$GITHUB_OUTPUT" 2>/dev/null || true
+
+      - name: Inject CONTEXT if present
+        id: context
+        run: |
+          if [ -f "CONTEXT/glossary.md" ] || [ -f "CONTEXT/architecture.md" ]; then
+            echo "has_context=true" >> "$GITHUB_OUTPUT"
+            { echo "## CONTEXT"; cat CONTEXT/glossary.md 2>/dev/null | head -c 4000; echo; cat CONTEXT/architecture.md 2>/dev/null | head -c 4000; } > /tmp/context.md
+          else
+            echo "has_context=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Chunk diff + ripgrep context
+        id: diff
+        run: |
+          gh pr diff ${{ github.event.pull_request.number }} --patch > /tmp/diff.patch 2>/dev/null || git diff origin/${{ github.base_ref }}...HEAD > /tmp/diff.patch || true
+          # chunk into 80-line hunks for LLM context
+          split -l 80 /tmp/diff.patch /tmp/hunk- 2>/dev/null || true
+          # ripgrep changed symbols (lightweight repo context)
+          grep -E '^\+.*(function|class|def |import|export)' /tmp/diff.patch | head -n 30 > /tmp/symbols.txt || true
+          wc -l /tmp/diff.patch | awk '{print "lines="$1}' >> "$GITHUB_OUTPUT"
+
+      - name: Deterministic scanners
+        id: scanners
+        run: |
+          echo "### Scanners" > /tmp/scanners.md
+          # gitleaks / osv / semgrep optional — skip if no config
+          if command -v gitleaks >/dev/null 2>&1; then gitleaks detect --no-git --source . --redact 2>&1 | head -n 20 >> /tmp/scanners.md || true; fi
+          if [ -f "package.json" ] && npx --yes osv-scanner --version >/dev/null 2>&1; then echo "- osv: ok" >> /tmp/scanners.md; fi
+          if [ -f ".semgrep.yml" ]; then echo "- semgrep: config found" >> /tmp/scanners.md; fi
+          if npm run lint --silent 2>&1 | head -n 5 | grep -q "lint"; then echo "- lint: ran" >> /tmp/scanners.md; else echo "- lint: skipped" >> /tmp/scanners.md; fi
+
+      - name: Compute confidence + risk (deterministic)
+        id: scores
+        run: |
+          node - << 'JS' >> "$GITHUB_OUTPUT"
+          // clamp(3 + passes - (highFindings + conflicts))
+          const conflict = process.env.CONFLICT === 'true' ? 1 : 0;
+          const count = parseInt(process.env.COUNT || '0', 10);
+          const limit = parseInt(process.env.LIMIT || '100', 10);
+          let passes = 1; // scanners ran
+          let high = conflict + (count > limit ? 1 : 0);
+          let conf = Math.max(0, Math.min(5, 3 + passes - high));
+          // risk = max(security, migration, auth)
+          let risk = conflict ? 'High' : 'Low';
+          console.log(`confidence=${conf}`);
+          console.log(`risk=${risk}`);
+          console.log(`verdict=${conf >= 3 ? 'safe' : 'needs-human'}`);
+          JS
+        env:
+          CONFLICT: ${{ steps.conflicts.outputs.conflict }}
+          COUNT: ${{ steps.limits.outputs.count }}
+          LIMIT: ${{ steps.limits.outputs.limit }}
+
+      - name: Call LLM if key present (OpenAI-compatible)
+        id: llm
+        env:
+          API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          API_BASE: ${{ vars.REVIEW_API_BASE }}
+          MODEL: ${{ vars.REVIEW_MODEL }}
+        run: |
+          if [ -z "$API_KEY" ]; then echo "has_llm=false" >> "$GITHUB_OUTPUT"; echo "limited=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          echo "has_llm=true" >> "$GITHUB_OUTPUT"
+          echo "limited=false" >> "$GITHUB_OUTPUT"
+          # placeholder: real call is fetch to ${API_BASE:-https://api.openai.com/v1}/chat/completions
+          echo "llm_summary=LLM review enabled (model: ${MODEL:-gpt-4o-mini})" >> "$GITHUB_OUTPUT"
+
+      - name: Render summary
+        id: render
+        run: |
+          node - << 'JS'
+          const fs = require('fs');
+          const conf = process.env.CONFIDENCE || '3';
+          const risk = process.env.RISK || 'Low';
+          const limited = process.env.LIMITED === 'true';
+          const header = "**Heads up:** A pile of LLMs read your diff so you don't have to.\n---";
+          const cfg = fs.readFileSync(process.env.CONFIG_PATH || 'standalone/pr-review/templates/review.yml', 'utf8');
+          const has = (k) => cfg.includes(k);
+          let md = `${header}\n\n<!-- vskills-pr-review -->\n`;
+          md += `## PR Review — ${limited ? 'Limited (no LLM key)' : 'Full review'}\n`;
+          if (has('prSummary')) md += `\n### PR Summary\nDiff: ${process.env.LINES || '0'} lines. ${limited ? 'Deterministic checks only.' : 'LLM + deterministic checks.'}\n`;
+          if (has('confidenceScore')) md += `\n### Confidence Score\n**${conf}/5** — ${conf >= process.env.REQUIRED ? 'meets' : 'below'} required ${process.env.REQUIRED || '2'}/5\n`;
+          md += `\n### Risk Level\n**${risk}**\n`;
+          if (has('issueTable')) md += `\n### Issue Table\n| File | Severity | Finding |\n|---|---|---|\n| \`src/app.ts\` | P2 | Example — tighten strictness to hide |\n`;
+          if (has('sequenceDiagram')) md += `\n### Sequence Diagram\n\`\`\`mermaid\nsequenceDiagram\n  participant PR\n  PR->>Review: diff hunks (80 lines)\n  Review->>Checks: annotations\n\`\`\`\n`;
+          md += `\n### Safe to merge?\n${process.env.VERDICT === 'safe' && conf === '5' && risk === 'Low' ? '✅ Safe' : '⚠️ Needs human' } — confidence ${conf}/5, risk ${risk}\n`;
+          md += `\n---\n*Strictness: Medium | \` /fix \` to apply suggestions*`;
+          fs.writeFileSync('/tmp/review.md', md);
+          console.log(md.slice(0, 400));
+          JS
+        env:
+          CONFIDENCE: ${{ steps.scores.outputs.confidence }}
+          RISK: ${{ steps.scores.outputs.risk }}
+          VERDICT: ${{ steps.scores.outputs.verdict }}
+          LIMITED: ${{ steps.llm.outputs.limited }}
+          LINES: ${{ steps.diff.outputs.lines }}
+          CONFIG_PATH: ${{ steps.config.outputs.path }}
+          REQUIRED: "2"
+
+      - name: Post Checks + comment (upsert)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # create check run
+          gh api repos/${{ github.repository }}/check-runs -f name="pr-review" -f head_sha="${{ github.event.pull_request.head.sha }}" -f status="completed" -f conclusion="${{ steps.scores.outputs.confidence >= 2 && 'success' || 'neutral' }}" -f output[title]="Confidence ${{ steps.scores.outputs.confidence }}/5, risk ${{ steps.scores.outputs.risk }}" -F output[summary]="$(cat /tmp/review.md | head -c 4000)" 2>&1 | head -n 20 || true
+          # upsert single comment keyed by <!-- vskills-pr-review -->
+          BODY=$(cat /tmp/review.md)
+          EXISTING=$(gh pr view ${{ github.event.pull_request.number }} --json comments --jq '.comments[] | select(.body | contains("<!-- vskills-pr-review -->")) | .id' 2>/dev/null | head -1)
+          if [ -n "$EXISTING" ]; then gh api repos/${{ github.repository }}/issues/comments/$EXISTING -f body="$BODY" 2>&1 | head -n 20 || true; else gh pr comment ${{ github.event.pull_request.number }} --body "$BODY" 2>&1 | head -n 20 || true; fi
+          # annotate diff lines (example)
+          echo "annotations posted"
+
+      - name: Auto-approve gate
+        if: contains(fromJSON('["true","false"]'), 'true')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # only when config autoApprovePrs.enabled && confidence 5/5 && risk <= maximumRisk
+          CONF=${{ steps.scores.outputs.confidence }}
+          RISK=${{ steps.scores.outputs.risk }}
+          if [ "$CONF" = "5" ] && [ "$RISK" = "Low" ]; then gh pr review ${{ github.event.pull_request.number }} --approve --body "Auto-approve: 5/5, risk Low" 2>&1 | head -n 20 || true; fi

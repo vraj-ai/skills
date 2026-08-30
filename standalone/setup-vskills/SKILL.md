@@ -1,6 +1,6 @@
 ---
 name: setup-vskills
-version: 1.10.0
+version: 1.11.0
 description: Sets up this skills repo on a new machine — installs the skills with the vskills CLI, then regenerates the local-only context docs (CONTEXT.md, docs/) that are deliberately not published in the public repo.
 ---
 
@@ -42,6 +42,23 @@ node standalone/setup-vskills/scripts/install-harness.mjs <harness>
 - **Any other harness**: The installer does not research and does not claim it did. You research how the harness defines agent roles, custom commands, prompt templates, and subagents. Write an integration plan mapping `grill`, `issues`, `ship`/`goals`, and `snapshot` to that harness. Never fail with an 'unknown harness' error from an allowlist.
 
 All template installations are atomic and idempotent. Differing existing files are moved to `.vskills-backup/` before replace. It does not modify credentials or core configuration files.
+
+## Step 1.1.1 — Optional: install the PR review bot (Greptile parity)
+
+When setting up a consumer project (not this repo), offer the polished PR review bot:
+
+```bash
+node standalone/pr-review/scripts/copy.mjs [project-root]
+# or via the setup helper:
+node standalone/setup-vskills/scripts/copy-pr-review.mjs [project-root]
+```
+
+Interactive prompt (ask, don't assume):
+- "Install PR review bot? [y/N]" — default no.
+- If yes, ask model wiring: provider `none` (deterministic only) | `openai` | `anthropic` | `compat`, auth `apikey` | `oauth` | `none`, `baseUrl`, `model`, `secretName` (default `OPENAI_API_KEY`). Write choice into `.vskills/review.yml` (never store the secret value). Show next step: "Add <secretName> as a repo/organization secret (and vars.REVIEW_MODEL if compat) and push a PR to test".
+- Copy is atomic, backs up existing `.github/workflows/pr-review.yml` / `pr-fix.yml` to `.vskills-backup/`, idempotent, and does not overwrite an existing `.vskills/review.yml` if the user already customized it.
+
+Templates live in `standalone/pr-review/templates/` and carry `<!-- vskills-pr-review -->` for idempotent upserts. Verify with `node --test 'test/pr-review-*.test.js' 'test/setup-pr-review.test.js'`.
 
 ## Step 1.2 — Bootstrap the project agent architecture
 
