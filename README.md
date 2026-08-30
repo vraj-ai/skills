@@ -121,7 +121,14 @@ on a clean final gate. `/snapshot` pushes because you invoked it.
 | `herdr-orchestrator` | Run `/goals` through Codex and three council agents across live [Herdr](https://herdr.dev) panes |
 | `setup-obsidian` | Turn a docs folder into a retrieval graph |
 | `setup-vskills` | Set this repo up on a new machine |
+| `browser-control` | Manual-only browser navigation, inspection, and local web testing |
+| `github-workflow` | Manual-only GitHub orientation, review, CI, and explicit publish workflow |
+| `pi-usage-maintenance` | Manual-only Pi usage/index/report maintenance |
+| `pi-setup-maintenance` | Manual-only, reversible Pi setup maintenance |
 
+The Ponytail family is vendored under `standalone/` (MIT, pinned to v4.9.0):
+`ponytail`, `ponytail-review`, `ponytail-audit`, `ponytail-debt`,
+`ponytail-gain`, and `ponytail-help`.
 `pipeline/` holds reusable disciplines you can pull in on their own:
 `codebase-audit`, `invariant-evidence-review`, `provider-integration-tdd`,
 `ticket-implementation-tdd`, worktree safety, subagent batching, pipeline
@@ -148,10 +155,12 @@ want his originals. This repo's chain is `/grill` → `/issues` → `/ship` or `
 
 Plugins install through Claude Code's `/plugin` command, not `vskills`.
 
-[ponytail](https://github.com/DietrichGebert/ponytail) is the one to start with.
-It forces the laziest solution that works and ships `/ponytail`,
-`/ponytail-review`, and `/ponytail-audit`. The build ladder is adapted from it.
-From the [official marketplace](https://github.com/anthropics/claude-plugins-official):
+[ponytail](https://github.com/DietrichGebert/ponytail) is vendored as a
+standalone family here, so `vskills` installs all six skills without duplicate
+local names. The optional Claude plugin remains useful for hosts that support
+marketplace plugins. It forces the laziest solution that works; the build
+ladder is adapted from it. From the
+[official marketplace](https://github.com/anthropics/claude-plugins-official):
 `superpowers` for brainstorming, TDD, systematic debugging, and worktrees;
 `skill-creator` for writing skills; `frontend-design` for UI work.
 
@@ -227,7 +236,8 @@ test/             vskills test suite (node --test)
 delivery/         ship, goals, council, council-adversary
 standalone/       grill, issues, snapshot, push-handoff, hands-free, loop-engineer,
                   gauntlet-loop, multi-agent-review, herdr-orchestrator,
-                  setup-obsidian, setup-vskills
+                  setup-obsidian, setup-vskills, browser-control, github-workflow,
+                  pi-usage-maintenance, pi-setup-maintenance, ponytail family
 pipeline/         reusable delivery disciplines
 legacy-workflow/  the preserved planner/coder/debugger/reviewer chain
 harness/          per-client Role and profile templates (omp, opencode, ...)
@@ -239,7 +249,14 @@ OpenCode profiles live under `harness/opencode/` and install to
 
 ## Credits
 
-- [ponytail](https://github.com/DietrichGebert/ponytail) by DietrichGebert (MIT): the decision ladder, and the `delete / stdlib / native / yagni / shrink` shape of the rubric.
+- [ponytail](https://github.com/DietrichGebert/ponytail) by DietrichGebert (MIT,
+  v4.9.0, commit
+  `0a4dd63ad4541f4f655c4108a295916f3c1d8fda`): the vendored decision ladder
+  and the `delete / stdlib / native / yagni / shrink` rubric.
+- [OpenAI skills catalog](https://github.com/openai/skills) (reference commit
+  `49f948faa9258a0c61caceaf225e179651397431`): reviewed as inspiration for
+  the original Vraj-authored MIT browser-control and github-workflow skills;
+  see VENDORED.md for provenance.
 - [mattpocock/skills](https://github.com/mattpocock/skills) by Matt Pocock: `/grill-with-docs`, `/to-spec`, `/handoff`, `/to-tickets`, and the shape of the workflow. `/grill`, `/issues`, and `/snapshot` are this repo's versions, writing `CONTEXT/` and combining setup, spec, tickets, and closeout.
 - [pstack](https://github.com/backnotprop/pstack) by poteto (MIT): exhaust the design space, prove safety by running code, expand-contract for wide blast radius, and settle caller usage before module shape.
 

@@ -14,6 +14,17 @@ async function trackedFiles() {
   return new Set(stdout.split('\n').filter(Boolean));
 }
 
+async function localSkillFiles(root) {
+  const entries = await fs.readdir(root, { withFileTypes: true });
+  const files = [];
+  for (const entry of entries) {
+    const absolute = path.join(root, entry.name);
+    if (entry.isDirectory()) files.push(...await localSkillFiles(absolute));
+    else if (entry.isFile() && entry.name === 'SKILL.md') files.push(absolute);
+  }
+  return files;
+}
+
 // #31: this repo publishes to npm, and npmjs.com resolves the README's relative
 // links against the `repository` field. A link to an untracked path — `docs/` is
 // gitignored, and `docs/invariants.md` never existed at all — becomes a 404 on
@@ -32,6 +43,38 @@ test('every relative README link points at something that actually ships', async
   });
 
   assert.deepEqual(broken, [], 'README links to paths that are not in the published package');
+});
+
+test('relative SKILL.md references resolve to skills in the published tree', async () => {
+  const tracked = await trackedFiles();
+  const skillMd = new Set([...tracked].filter((file) => file.endsWith('/SKILL.md')));
+
+  // Include an untracked standalone skill while the change is under review;
+  // once committed it is already covered by the tracked-file set.
+  for (const absolute of await localSkillFiles(path.join(repo, 'standalone'))) {
+    skillMd.add(path.relative(repo, absolute));
+  }
+
+  const broken = [];
+  const reference = /(?:^|[\s(`])((?:\.\.?\/)*(?:[A-Za-z0-9._-]+\/)*SKILL\.md(?:#[A-Za-z0-9._-]+)?)/gm;
+  for (const rel of skillMd) {
+    const body = await fs.readFile(path.join(repo, rel), 'utf8');
+    for (const [, ref] of body.matchAll(reference)) {
+      const target = path.resolve(path.dirname(path.join(repo, rel)), ref.split('#')[0]);
+      const insideRepo = target === repo || target.startsWith(`${repo}${path.sep}`);
+      let isFile = false;
+      if (insideRepo) {
+        try {
+          isFile = (await fs.stat(target)).isFile();
+        } catch {
+          isFile = false;
+        }
+      }
+      if (!insideRepo || !isFile) broken.push(`${rel} -> ${ref}`);
+    }
+  }
+
+  assert.deepEqual(broken, [], 'a shipped skill references a missing relative SKILL.md');
 });
 
 test('the declared license ships as a LICENSE file', async () => {
@@ -69,7 +112,15 @@ test('shipped skills never invoke a skill this repo does not ship', async () => 
   // agent skill sets. The point of the allowlist is the ratchet: a NEW
   // unshipped reference fails this gate, which is how `/handoff` reached the
   // published package unnoticed (#31).
-  const external = new Set(['goal', 'loop', 'schedule', 'code-review', 'wayfinder']);
+  const external = new Set([
+    'goal',
+    'loop',
+    'schedule',
+    'code-review',
+    'wayfinder',
+    'plugin',
+    'reload-plugins',
+  ]);
 
   const offenders = [];
   for (const md of skillMd) {
