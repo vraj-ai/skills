@@ -50,7 +50,7 @@ statusChecks:
 model:
   provider: openrouter  # openrouter | openai | anthropic | compat
   baseUrl: "https://openrouter.ai/api/v1"
-  model: "qwen/qwen-3-8b"  # primary low-medium; council can escalate to Hy4 preview, GLM 5.3 Flash, Muse Spark 1.2, DeepSeek V4 Flash 0731 via OpenRouter
+  model: "qwen/qwen3.8-flash"  # primary low-medium; council can escalate to Hy4 preview, GLM 5.3 Flash, Muse Spark 1.2, DeepSeek V4 Flash 0731 via OpenRouter
   auth: apikey  # apikey | oauth
   secretName: "OPENROUTER_API_KEY"
 

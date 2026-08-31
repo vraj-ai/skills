@@ -137,7 +137,7 @@ jobs:
           BASE="$API_BASE"
           if [ -z "$BASE" ]; then BASE="https://openrouter.ai/api/v1"; fi
           MOD="$MODEL"
-          if [ -z "$MOD" ]; then MOD="qwen/qwen-3-8b"; fi
+          if [ -z "$MOD" ]; then MOD="qwen/qwen3.8-flash"; fi
           echo "has_llm=true" >> "$GITHUB_OUTPUT"
           echo "limited=false" >> "$GITHUB_OUTPUT"
           echo "model=$MOD" >> "$GITHUB_OUTPUT"
