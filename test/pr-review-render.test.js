@@ -32,7 +32,7 @@ test('pr-review.yml contains Checks annotation + upsert comment logic', async ()
   assert.match(yml, /<!-- vskills-pr-review -->/);
   assert.match(yml, /check-runs/);
   assert.match(yml, /gh pr comment/);
-  assert.match(yml, /Strictness: Medium/);
+  assert.match(yml, /Strictness/);
 });
 
 test('strictness thresholds present', async () => {

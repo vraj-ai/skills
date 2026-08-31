@@ -61,7 +61,6 @@ jobs:
           for f in AGENTS.md CONTEXT.md CLAUDE.md CONTEXT/glossary.md CONTEXT/architecture.md CONTEXT/progress.md .vskills/review.yml; do
             [ -f "$f" ] && CONTEXT_FILES="$CONTEXT_FILES $f"
           done
-          # also collect top-level docs if small
           for f in docs/agents/*.md README.md; do [ -f "$f" ] && [ $(wc -c < "$f" 2>/dev/null || echo 99999) -lt 8000 ] && CONTEXT_FILES="$CONTEXT_FILES $f"; done
           if [ -n "$CONTEXT_FILES" ]; then
             echo "has_context=true" >> "$GITHUB_OUTPUT"
@@ -70,7 +69,6 @@ jobs:
               echo "# Repo Context"
               for f in $CONTEXT_FILES; do
                 echo "## $f"
-                # cap each file to 4k
                 head -c 4000 "$f" 2>/dev/null
                 echo
                 echo "---"
@@ -82,7 +80,6 @@ jobs:
             echo "has_context=false" >> "$GITHUB_OUTPUT"
             echo "files=" >> "$GITHUB_OUTPUT"
           fi
-          # chunked hunks already done in diff step, ensure context-trunc exists
           [ -f /tmp/context-trunc.md ] || echo "no context" > /tmp/context-trunc.md
 
       - name: Chunk diff + ripgrep context
@@ -127,79 +124,66 @@ jobs:
           COUNT: ${{ steps.limits.outputs.count }}
           LIMIT: ${{ steps.limits.outputs.limit }}
 
-            - name: Call LLM via OpenRouter (low-medium reasoning)
+      - name: Call LLM via OpenRouter (low-medium reasoning)
         id: llm
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           API_BASE: ${{ vars.REVIEW_API_BASE }}
           MODEL: ${{ vars.REVIEW_MODEL }}
         run: |
-          # prefer OPENROUTER, fallback to OPENAI_API_KEY for compat
           if [ -z "$OPENROUTER_API_KEY" ] && [ -z "${{ secrets.OPENAI_API_KEY }}" ]; then echo "has_llm=false" >> "$GITHUB_OUTPUT"; echo "limited=true" >> "$GITHUB_OUTPUT"; exit 0; fi
-          API_KEY="${OPENROUTER_API_KEY:-${{ secrets.OPENAI_API_KEY }}}"
-          BASE="${API_BASE:-https://openrouter.ai/api/v1}"
-          MOD="${MODEL:-openai/gpt-4o-mini}"
+          API_KEY="$OPENROUTER_API_KEY"
+          if [ -z "$API_KEY" ]; then API_KEY="${{ secrets.OPENAI_API_KEY }}"; fi
+          BASE="$API_BASE"
+          if [ -z "$BASE" ]; then BASE="https://openrouter.ai/api/v1"; fi
+          MOD="$MODEL"
+          if [ -z "$MOD" ]; then MOD="qwen/qwen-3-8b"; fi
           echo "has_llm=true" >> "$GITHUB_OUTPUT"
           echo "limited=false" >> "$GITHUB_OUTPUT"
           echo "model=$MOD" >> "$GITHUB_OUTPUT"
           echo "base=$BASE" >> "$GITHUB_OUTPUT"
-          # Build prompt: repo context + diff hunks (low-medium reasoning)
           SYSTEM=$(cat standalone/pr-review/templates/prompt/system.md 2>/dev/null | head -c 3000)
           CONTEXT=$(cat /tmp/context-trunc.md 2>/dev/null | head -c 8000)
           DIFF=$(head -c 12000 /tmp/diff.patch 2>/dev/null)
           SYMBOLS=$(cat /tmp/symbols.txt 2>/dev/null)
-          # call OpenRouter chat/completions with low temperature
-          PAYLOAD=$(jq -n --arg sys "$SYSTEM" --arg ctx "$CONTEXT" --arg diff "$DIFF" --arg sym "$SYMBOLS" --arg model "$MOD" '{
-            model: $model,
-            temperature: 0.2,
-            max_tokens: 1800,
-            messages: [
-              {role:"system", content: $sys},
-              {role:"user", content: ("Repo context:
-" + $ctx + "
-
-Changed symbols:
-" + $sym + "
-
-Diff (truncated, 80-line hunks):
-" + $diff)}
-            ]
-          }')
+          PAYLOAD=$(jq -n --arg sys "$SYSTEM" --arg ctx "$CONTEXT" --arg diff "$DIFF" --arg sym "$SYMBOLS" --arg model "$MOD" '{model: $model, temperature: 0.2, max_tokens: 1800, messages: [{role:"system", content: $sys}, {role:"user", content: ("Repo context:\n" + $ctx + "\n\nChanged symbols:\n" + $sym + "\n\nDiff (truncated, 80-line hunks):\n" + $diff)}]}')
           RESP=$(curl -s "$BASE/chat/completions" -H "Authorization: Bearer $API_KEY" -H "Content-Type: application/json" -H "HTTP-Referer: https://github.com/vraj-ai/skills" -H "X-Title: vskills-pr-review" -d "$PAYLOAD" 2>&1 | head -c 20000)
           echo "$RESP" > /tmp/llm-raw.json
-          # extract JSON content
           CONTENT=$(jq -r '.choices[0].message.content // empty' /tmp/llm-raw.json 2>/dev/null)
-          if [ -n "$CONTENT" ]; then
-            echo "$CONTENT" > /tmp/llm.json
-            echo "llm_summary=ok" >> "$GITHUB_OUTPUT"
-          else
-            echo "llm_summary=failed" >> "$GITHUB_OUTPUT"
-            echo "has_llm=false" >> "$GITHUB_OUTPUT"
-            echo "limited=true" >> "$GITHUB_OUTPUT"
-          fi
+          if [ -n "$CONTENT" ]; then echo "$CONTENT" > /tmp/llm.json; echo "llm_summary=ok" >> "$GITHUB_OUTPUT"; else echo "llm_summary=failed" >> "$GITHUB_OUTPUT"; echo "has_llm=false" >> "$GITHUB_OUTPUT"; echo "limited=true" >> "$GITHUB_OUTPUT"; fi
 
-      - name: Render summary
+      - name: Render polished summary (Greptile + Devin)
         id: render
         run: |
           node - << 'JS'
           const fs = require('fs');
           const conf = process.env.CONFIDENCE || '3';
           const risk = process.env.RISK || 'Low';
+          const verdict = process.env.VERDICT || 'needs-human';
           const limited = process.env.LIMITED === 'true';
-          const header = "**Heads up:** A pile of LLMs read your diff so you don't have to.\n---";
-          const cfg = fs.readFileSync(process.env.CONFIG_PATH || 'standalone/pr-review/templates/review.yml', 'utf8');
-          const has = (k) => cfg.includes(k);
-          let md = `${header}\n\n<!-- vskills-pr-review -->\n`;
-          md += `## PR Review — ${limited ? 'Limited (no LLM key)' : 'Full review'}\n`;
-          if (has('prSummary')) md += `\n### PR Summary\nDiff: ${process.env.LINES || '0'} lines. ${limited ? 'Deterministic checks only.' : 'LLM + deterministic checks.'}\n`;
-          if (has('confidenceScore')) md += `\n### Confidence Score\n**${conf}/5** — ${conf >= process.env.REQUIRED ? 'meets' : 'below'} required ${process.env.REQUIRED || '2'}/5\n`;
-          md += `\n### Risk Level\n**${risk}**\n`;
-          if (has('issueTable')) md += `\n### Issue Table\n| File | Severity | Finding |\n|---|---|---|\n| \`src/app.ts\` | P2 | Example — tighten strictness to hide |\n`;
-          if (has('sequenceDiagram')) md += `\n### Sequence Diagram\n\`\`\`mermaid\nsequenceDiagram\n  participant PR\n  PR->>Review: diff hunks (80 lines)\n  Review->>Checks: annotations\n\`\`\`\n`;
-          md += `\n### Safe to merge?\n${process.env.VERDICT === 'safe' && conf === '5' && risk === 'Low' ? '✅ Safe' : '⚠️ Needs human' } — confidence ${conf}/5, risk ${risk}\n`;
-          md += `\n---\n*Strictness: Medium | \` /fix \` to apply suggestions*`;
+          const lines = process.env.LINES || '0';
+          const prNum = process.env.PR_NUMBER || '';
+          const cfgPath = process.env.CONFIG_PATH || 'standalone/pr-review/templates/review.yml';
+          let cfg=''; try{ cfg=fs.readFileSync(cfgPath,'utf8'); }catch{};
+          const has = (k)=> cfg.includes(k);
+          let llm=null; try{ llm=JSON.parse(fs.readFileSync('/tmp/llm.json','utf8')); }catch{}
+          let llmText=''; try{ llmText=fs.readFileSync('/tmp/llm.json','utf8'); }catch{}
+          let files=[]; try{ const diff=fs.readFileSync('/tmp/diff.patch','utf8'); const set=new Set(); for(const m of diff.matchAll(/^\+\+\+ b\/(.+)$/gm)) set.add(m[1]); for(const m of diff.matchAll(/^diff --git a\/(.+) b\//gm)) set.add(m[1]); files=[...set].slice(0,10); }catch{}
+          const safe = verdict==='safe' && conf==='5' && risk==='Low';
+          const headerEmoji = safe ? '✅' : (parseInt(conf)>=4 ? '🟢' : '🔍');
+          const headerTitle = safe ? 'vskills Review: No Issues Found' : `vskills Review: ${limited ? 'Limited review' : 'Findings'}`;
+          let md=''; md+=`<!-- vskills-pr-review -->\n`; md+=`# ${headerEmoji} ${headerTitle}\n`;
+          try{ const h = cfg.match(/header:\s*"([^"]+)"/); if(h) md+=`${h[1].replace(/\\n/g,'\n')}\n`; else md+=`**Heads up:** A pile of LLMs read your diff so you don't have to.\n`; }catch{ md+=`**Heads up:** A pile of LLMs read your diff so you don't have to.\n`; }
+          md+=`---\n\n`;
+          if(has('prSummary')){ md+=`## Summary\n`; if(llm && llm.summary) md+=`${llm.summary}\n\n`; else if(llmText && llmText.length>20 && !llmText.includes('No auto-fixable')) md+=`${llmText.slice(0,1200)}\n\n`; else { md+=`Adds a review for PR #${prNum} with ${lines} lines across ${files.length} files.\n`; if(files.length) md+=`- Changed: ${files.map(f=>'`'+f+'`').join(', ')}\n`; md+=`- Modes: ${limited ? 'deterministic checks only (no LLM key)' : 'LLM + deterministic checks'}\n`; md+=`- Context: ${process.env.HAS_CONTEXT==='true' ? 'AGENTS/CONTEXT injected' : 'no repo context found'}\n\n`; } }
+          if(has('confidenceScore')){ md+=`## Confidence Score: ${conf}/5\n`; const req = process.env.REQUIRED || '2'; const meets = parseInt(conf) >= parseInt(req); if(llm && llm.confidence_reason) md+=`${llm.confidence_reason}\n\n`; else { if(conf==='5') md+=`The PR appears safe to merge. Deterministic scanners and ${limited ? 'no LLM' : 'LLM'} review found no High/Critical risk and no conflicts.\n\n`; else if(parseInt(conf)>=3) md+=`The PR looks reasonable at ${conf}/5. ${meets ? 'Meets' : 'Below'} required ${req}/5. Review findings below.\n\n`; else md+=`Low confidence ${conf}/5 (required ${req}/5). Needs human review.\n\n`; } md+=`> Required: ${req}/5 — ${meets ? '✅ meets' : '⚠️ below'}\n\n`; }
+          md+=`## Risk Level\n**${risk}** — ${risk==='Low' ? 'low-risk change' : risk+' risk'}${process.env.CONFLICT==='true' ? ' (conflict detected)' : ''}\n\n`;
+          if(has('issueTable')){ md+=`## Important Files Changed\n`; md+=`| Filename | Overview |\n`; md+=`|---|---|\n`; if(files.length===0){ md+=`| — | No file list (diff too small) |\n`; } else { for(const f of files.slice(0,8)){ let ov=''; if(llm && llm.findings){ const found=llm.findings.find(x=> x.file && f.includes(x.file)); ov = found ? found.message.slice(0,90) : 'No actionable issues.'; } else { ov = f.endsWith('.md') ? 'Docs/marker — no runtime impact.' : 'Reviewed — no High findings.'; } md+=`| \`${f}\` | ${ov} |\n`; } } md+=`\n`; }
+          if(llm && llm.findings && llm.findings.length){ md+=`## Findings\n`; for(const ff of llm.findings.slice(0,6)){ const sev = ff.severity || 'P2'; const badge = sev==='P1' ? '🔴 P1' : '🟡 P2'; md+=`- **${badge}** \`${ff.file||''}:${ff.line||''}\` — ${ff.message}\n`; if(ff.suggestion) md+=`  > Suggestion: \`${ff.suggestion.slice(0,120)}\`\n`; } md+=`\n`; }
+          if(has('sequenceDiagram')){ let mermaid= llm && llm.sequenceMermaid ? llm.sequenceMermaid : `sequenceDiagram\n  participant PR\n  PR->>Review: diff hunks (80 lines, ripgrep context)\n  Review->>Checks: annotations`; md+=`## Sequence Diagram\n`; md+=`\`\`\`mermaid\n${mermaid}\n\`\`\`\n\n`; }
+          md+=`## Safe to merge?\n`; md+=`${safe ? '✅ **Safe**' : '⚠️ **Needs human**'} — confidence ${conf}/5, risk ${risk}${process.env.CONFLICT==='true' ? ', conflict' : ''}\n\n`; md+=`---\n`; md+=`Reviews (1): Last reviewed commit: "${process.env.COMMIT_MSG||'head'}" | [Re-trigger vskills](https://github.com/${process.env.GITHUB_REPOSITORY||'vraj-ai/skills'}/actions)\n`; md+=`*Strictness: ${cfg.match(/strictness:\s*(\w+)/)?.[1] || 'Medium'} | \`/fix\` to apply suggestions*\n`;
           fs.writeFileSync('/tmp/review.md', md);
-          console.log(md.slice(0, 400));
+          console.log(md.slice(0,700));
           JS
         env:
           CONFIDENCE: ${{ steps.scores.outputs.confidence }}
@@ -207,8 +191,16 @@ Diff (truncated, 80-line hunks):
           VERDICT: ${{ steps.scores.outputs.verdict }}
           LIMITED: ${{ steps.llm.outputs.limited }}
           LINES: ${{ steps.diff.outputs.lines }}
+          COUNT: ${{ steps.limits.outputs.count }}
           CONFIG_PATH: ${{ steps.config.outputs.path }}
           REQUIRED: "2"
+          HAS_CONTEXT: ${{ steps.context.outputs.has_context }}
+          CONFLICT: ${{ steps.conflicts.outputs.conflict }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          COMMIT_MSG: ${{ github.event.pull_request.title }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
 
       - name: Post Checks + comment (upsert)
         env:

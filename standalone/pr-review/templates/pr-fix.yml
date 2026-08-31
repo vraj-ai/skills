@@ -34,10 +34,7 @@ jobs:
           COUNT=$(echo "$LABELS" | grep -c "vskills-fix-" || true); COUNT=${COUNT:-0}
           if [ "$COUNT" -ge 3 ]; then
             echo "skip=cap" >> "$GITHUB_OUTPUT"
-            cat > /tmp/cap.md << 'MD'
-<!-- vskills-pr-review -->
-⚠️ Fix loop cap reached (3). Added `needs-human` label.
-MD
+            printf '%s\n' '<!-- vskills-pr-review -->' '⚠️ Fix loop cap reached (3). Added `needs-human` label.' > /tmp/cap.md
             gh pr comment $PR --body-file /tmp/cap.md 2>&1 | head -n 20 || true
             gh api repos/${{ github.repository }}/issues/$PR/labels -f labels[]="needs-human" 2>&1 | head -n 20 || true
             exit 0
@@ -79,17 +76,7 @@ MD
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if git diff --quiet; then
-            cat > /tmp/nofix.md << 'MD'
-<!-- vskills-pr-review -->
-
-No auto-fixable changes found. Copy-paste prompt:
-
-```
-Fix the findings in /tmp/last-review.md using the repo's skills.
-```
-
-<!-- fix:${{ github.event.comment.id }} -->
-MD
+            printf '%s\n' '<!-- vskills-pr-review -->' '' 'No auto-fixable changes found. Copy-paste prompt:' '' '```' 'Fix the findings in /tmp/last-review.md using the repo'\''s skills.' '```' '' '<!-- fix:${{ github.event.comment.id }} -->' > /tmp/nofix.md
             gh pr comment ${{ github.event.issue.number }} --body-file /tmp/nofix.md 2>&1 | head -n 20 || true
             exit 0
           fi
@@ -105,12 +92,8 @@ MD
           COUNT=${{ steps.guard.outputs.count }}
           NEXT=$((COUNT+1))
           gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/labels -f labels[]="vskills-fix-$NEXT" 2>&1 | head -n 20 || true
-          cat > /tmp/pushed.md << 'MD'
-<!-- vskills-pr-review -->
-
-✅ Pushed fix commit (fix:${{ github.event.comment.id }}) — re-running review…
-MD
-          gh pr comment ${{ github.event.issue.number }} --body-file /tmp/pushed.md 2>&1 | head -n 20 || true
+            printf '%s\n' '<!-- vskills-pr-review -->' '' '✅ Pushed fix commit (fix:${{ github.event.comment.id }}) — re-running review…' > /tmp/pushed.md
+            gh pr comment ${{ github.event.issue.number }} --body-file /tmp/pushed.md 2>&1 | head -n 20 || true
 
       - name: Comment on skip
         if: steps.guard.outputs.skip != 'false' && steps.guard.outputs.skip != ''
