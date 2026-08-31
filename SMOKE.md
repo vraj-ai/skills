@@ -1,4 +1,3 @@
 # smoke test 2026-08-31T12:10:55Z
 llm verify 2026-08-31T13:45:42Z with reasoning low
-polish test 2026-08-31T13:15:38Z
-final verify 2026-08-31T13:45:42Z with qwen3.8 flash
+talk verify 2026-08-31T14:18:03Z - test /fix should talk
