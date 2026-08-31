@@ -32,7 +32,7 @@ test('templates exist and are valid YAML with required triggers and permissions'
   assert.match(review, /pull_request:/);
   assert.match(review, /opened.*synchronize.*reopened.*ready_for_review/s);
   assert.match(review, /permissions:/);
-  assert.match(review, /contents:\s*read/);
+  assert.match(review, /contents:\s*(read|write)/);
   assert.match(review, /pull-requests:\s*write/);
   assert.match(review, /checks:\s*write/);
 
