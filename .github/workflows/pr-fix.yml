@@ -57,12 +57,15 @@ jobs:
       - name: Collect context for fix
         if: steps.guard.outputs.skip == 'false'
         id: ctx
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           COMMENT_BODY='${{ github.event.comment.body }}'
           # Escape single quotes for shell
           printf '%s' "$COMMENT_BODY" > /tmp/fix-comment.txt
           gh pr view ${{ github.event.issue.number }} --json comments --jq '.comments[] | select(.body | contains("<!-- vskills-pr-review -->")) | .body' 2>/dev/null | tail -n 80 > /tmp/last-review.md || true
-          gh pr diff ${{ github.event.issue.number }} --patch > /tmp/diff.patch 2>/dev/null || git diff origin/${{ github.base_ref }}...HEAD > /tmp/diff.patch 2>/dev/null || true
+          git fetch origin ${{ github.base_ref }} 2>&1 | head -n 20 || true
+          gh pr diff ${{ github.event.issue.number }} --patch > /tmp/diff.patch 2>/dev/null || git diff origin/${{ github.base_ref }}...HEAD > /tmp/diff.patch 2>/dev/null || git diff HEAD~1...HEAD > /tmp/diff.patch 2>/dev/null || true
           head -c 12000 /tmp/diff.patch > /tmp/diff-trunc.patch
           grep -E '^\+.*(function|class|def |import|export)' /tmp/diff.patch 2>/dev/null | head -n 30 > /tmp/symbols.txt || true
           CONTEXT_FILES=""
