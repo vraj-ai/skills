@@ -9,7 +9,7 @@ on:
     types: [created]
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
   checks: write
   issues: write
@@ -53,6 +53,39 @@ jobs:
         run: |
           if git merge-base --is-ancestor origin/${{ github.base_ref }} HEAD 2>/dev/null; then echo "conflict=false" >> "$GITHUB_OUTPUT"; else echo "conflict=true" >> "$GITHUB_OUTPUT"; fi
           echo "conflict=false" >> "$GITHUB_OUTPUT" 2>/dev/null || true
+
+      - name: Auto-fix conflicts (seamless)
+        if: steps.conflicts.outputs.conflict == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR=${{ github.event.pull_request.number }}
+          BASE=${{ github.base_ref }}
+          HEAD_SHA=${{ github.event.pull_request.head.sha }}
+          echo "Conflict detected for PR $PR against $BASE"
+          git fetch origin $BASE 2>&1 | head -n 20
+          BRANCH=$(gh pr view $PR --json headRefName --jq .headRefName 2>/dev/null)
+          echo "PR branch: $BRANCH"
+          git fetch origin pull/$PR/head:pr-$PR 2>&1 | head -n 20 || true
+          git checkout pr-$PR 2>&1 | head -n 20 || git checkout -b pr-$PR 2>&1 | head -n 20
+          if git merge origin/$BASE --no-edit --strategy ort 2>&1 | tee /tmp/merge.log; then
+            echo "Merge succeeded without conflicts"
+            git push origin HEAD:$BRANCH 2>&1 | head -n 20 || git push origin HEAD 2>&1 | head -n 20 || true
+            printf '%s\n' '<!-- vskills-pr-review -->' '' '✅ Auto-fixed merge conflicts by merging `'"$BASE"'` into this branch. Re-running review…' > /tmp/conflict-fix.md
+            gh pr comment $PR --body-file /tmp/conflict-fix.md 2>&1 | head -n 20 || true
+          else
+            echo "Merge conflicts need manual resolution"
+            cat /tmp/merge.log 2>&1 | head -n 50
+            git merge --abort 2>&1 | head -n 20 || true
+            if gh api repos/${{ github.repository }}/pulls/$PR -f mergeable 2>&1 | head -n 20 | grep -q true; then
+              gh api --method PUT repos/${{ github.repository }}/pulls/$PR/update-branch -f expected_head_sha="$HEAD_SHA" 2>&1 | head -n 20 || true
+              printf '%s\n' '<!-- vskills-pr-review -->' '' '⚠️ Conflicts detected. Attempted auto-merge but manual resolution may be needed. Click "Update branch" or run `git merge origin/'"$BASE"'` locally.' > /tmp/conflict-need.md
+              gh pr comment $PR --body-file /tmp/conflict-need.md 2>&1 | head -n 20 || true
+            else
+              printf '%s\n' '<!-- vskills-pr-review -->' '' '⚠️ Merge conflicts detected and could not be auto-fixed seamlessly. Please resolve manually: `git fetch origin && git merge origin/'"$BASE"'`.' > /tmp/conflict-manual.md
+              gh pr comment $PR --body-file /tmp/conflict-manual.md 2>&1 | head -n 20 || true
+            fi
+          fi
 
       - name: Inject repo context (AGENTS, CONTEXT, docs)
         id: context
