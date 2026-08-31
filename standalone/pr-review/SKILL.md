@@ -1,7 +1,7 @@
 ---
 name: pr-review
 version: 1.0.0
-description: GitHub Actions PR review bot with Greptile parity — confidence 0-5, risk gates, checks annotations, and /fix loop. Install via setup-vskills.
+description: GitHub Actions PR review bot with Greptile parity — confidence 0-5, risk gates, checks annotations, and fix loop. Install via setup-vskills.
 ---
 
 # PR Review
@@ -11,12 +11,12 @@ Polished GitHub-Actions review bot. Copy the templates into any repo with `setup
 ## What it installs
 
 - `.github/workflows/pr-review.yml` — diff-aware review, status checks, collapsible summary (PR Summary, Confidence Score 0-5, Issue Table, Sequence Diagram, Comments Outside Diff)
-- `.github/workflows/pr-fix.yml` — `/fix` comment trigger, one commit per comment, max 3 loops then `needs-human`
+- `.github/workflows/pr-fix.yml` — fix comment trigger, one commit per comment, max 3 loops then `needs-human`
 - `.vskills/review.yml` — all toggles: when to review, file-change limit (100), filters, strictness Low/Med/High, comment header, status checks (requiredConfidence 0-5), auto-approve (maximumRisk Low/Med/High/Critical)
 
 ## Triggers
 
-- `pull_request: [opened, synchronize, reopened, ready_for_review]` + `workflow_dispatch` and tag `/review` or `@vskills`
+- `pull_request: [opened, synchronize, reopened, ready_for_review]` + `workflow_dispatch` and tag review or `@vskills`
 - `issue_comment: created` with `contains(body,'/fix')` on a PR, same-repo only (no forks)
 
 ## BYOK model

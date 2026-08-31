@@ -1,0 +1,61 @@
+# vskills PR review config — Greptile parity, versioned with standalone/pr-review/templates/review.yml
+# Copy is at .vskills/review.yml (fallback .github/review.yml). `setup-vskills` writes this interactively.
+
+when:
+  autoReviewOnNewCommits: true
+  reviewDraftPrs: false
+  fileChangeLimit: 100
+  filters: []  # [{ if: "head_branch == 'main'", skip: true }]
+
+summary:
+  prSummary:
+    enabled: true
+    collapsible: false
+    defaultOpen: true
+  confidenceScore:
+    enabled: true
+    collapsible: false
+    defaultOpen: true
+  issueTable:
+    enabled: true
+    collapsible: false
+    defaultOpen: true
+  sequenceDiagram:
+    enabled: true
+    collapsible: false
+    defaultOpen: false
+  commentsOutsideDiff:
+    enabled: true
+    collapsible: false
+    defaultOpen: false
+
+comments:
+  strictness: Medium  # Low | Medium | High — High hides P2s
+  header: "**Heads up:** A pile of LLMs read your diff so you don't have to.\n---"
+  promptToFixWithAI: true
+
+fix:
+  agent: null  # e.g. Claude, Codex — adds one-click Fix buttons in comments when set
+
+statusChecks:
+  useStatusChecks: true
+  requiredConfidence: 2  # 0-5; 0 never fails on confidence
+  postStatusComments: true
+  autoApprovePrs:
+    enabled: false
+    maximumRisk: Low  # Low | Medium | High | Critical
+    customInstructions: ""
+    filters: []
+
+model:
+  provider: none  # none | openai | anthropic | compat
+  baseUrl: ""
+  model: "gpt-4o-mini"
+  auth: none  # none | apikey | oauth
+  secretName: "OPENAI_API_KEY"
+
+context:
+  useContextFolder: true
+  maxTokens: 8000
+
+# <!-- vskills-pr-review -->
