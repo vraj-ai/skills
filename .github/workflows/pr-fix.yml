@@ -34,7 +34,11 @@ jobs:
           COUNT=$(echo "$LABELS" | grep -c "vskills-fix-" || true); COUNT=${COUNT:-0}
           if [ "$COUNT" -ge 3 ]; then
             echo "skip=cap" >> "$GITHUB_OUTPUT"
-            gh pr comment $PR --body "<!-- vskills-pr-review -->\n⚠️ Fix loop cap reached (3). Added \`needs-human\` label." 2>&1 | head -n 20 || true
+            cat > /tmp/cap.md << 'MD'
+<!-- vskills-pr-review -->
+⚠️ Fix loop cap reached (3). Added `needs-human` label.
+MD
+            gh pr comment $PR --body-file /tmp/cap.md 2>&1 | head -n 20 || true
             gh api repos/${{ github.repository }}/issues/$PR/labels -f labels[]="needs-human" 2>&1 | head -n 20 || true
             exit 0
           fi
@@ -75,7 +79,18 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if git diff --quiet; then
-            gh pr comment ${{ github.event.issue.number }} --body "<!-- vskills-pr-review -->\nNo auto-fixable changes found. Copy-paste prompt:\n\`\`\`\nFix the findings in /tmp/last-review.md using the repo's skills.\n\`\`\`\n<!-- fix:${{ github.event.comment.id }} -->" 2>&1 | head -n 20 || true
+            cat > /tmp/nofix.md << 'MD'
+<!-- vskills-pr-review -->
+
+No auto-fixable changes found. Copy-paste prompt:
+
+```
+Fix the findings in /tmp/last-review.md using the repo's skills.
+```
+
+<!-- fix:${{ github.event.comment.id }} -->
+MD
+            gh pr comment ${{ github.event.issue.number }} --body-file /tmp/nofix.md 2>&1 | head -n 20 || true
             exit 0
           fi
           git config user.name "vskills-bot"
@@ -90,7 +105,12 @@ jobs:
           COUNT=${{ steps.guard.outputs.count }}
           NEXT=$((COUNT+1))
           gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/labels -f labels[]="vskills-fix-$NEXT" 2>&1 | head -n 20 || true
-          gh pr comment ${{ github.event.issue.number }} --body "<!-- vskills-pr-review -->\n✅ Pushed fix commit (fix:${{ github.event.comment.id }}) — re-running review…" 2>&1 | head -n 20 || true
+          cat > /tmp/pushed.md << 'MD'
+<!-- vskills-pr-review -->
+
+✅ Pushed fix commit (fix:${{ github.event.comment.id }}) — re-running review…
+MD
+          gh pr comment ${{ github.event.issue.number }} --body-file /tmp/pushed.md 2>&1 | head -n 20 || true
 
       - name: Comment on skip
         if: steps.guard.outputs.skip != 'false' && steps.guard.outputs.skip != ''

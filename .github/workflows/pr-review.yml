@@ -54,15 +54,36 @@ jobs:
           if git merge-base --is-ancestor origin/${{ github.base_ref }} HEAD 2>/dev/null; then echo "conflict=false" >> "$GITHUB_OUTPUT"; else echo "conflict=true" >> "$GITHUB_OUTPUT"; fi
           echo "conflict=false" >> "$GITHUB_OUTPUT" 2>/dev/null || true
 
-      - name: Inject CONTEXT if present
+      - name: Inject repo context (AGENTS, CONTEXT, docs)
         id: context
         run: |
-          if [ -f "CONTEXT/glossary.md" ] || [ -f "CONTEXT/architecture.md" ]; then
+          CONTEXT_FILES=""
+          for f in AGENTS.md CONTEXT.md CLAUDE.md CONTEXT/glossary.md CONTEXT/architecture.md CONTEXT/progress.md .vskills/review.yml; do
+            [ -f "$f" ] && CONTEXT_FILES="$CONTEXT_FILES $f"
+          done
+          # also collect top-level docs if small
+          for f in docs/agents/*.md README.md; do [ -f "$f" ] && [ $(wc -c < "$f" 2>/dev/null || echo 99999) -lt 8000 ] && CONTEXT_FILES="$CONTEXT_FILES $f"; done
+          if [ -n "$CONTEXT_FILES" ]; then
             echo "has_context=true" >> "$GITHUB_OUTPUT"
-            { echo "## CONTEXT"; cat CONTEXT/glossary.md 2>/dev/null | head -c 4000; echo; cat CONTEXT/architecture.md 2>/dev/null | head -c 4000; } > /tmp/context.md
+            echo "files=$CONTEXT_FILES" >> "$GITHUB_OUTPUT"
+            {
+              echo "# Repo Context"
+              for f in $CONTEXT_FILES; do
+                echo "## $f"
+                # cap each file to 4k
+                head -c 4000 "$f" 2>/dev/null
+                echo
+                echo "---"
+              done
+            } > /tmp/context.md
+            echo "context_chars=$(wc -c < /tmp/context.md)" >> "$GITHUB_OUTPUT"
+            head -c 8000 /tmp/context.md > /tmp/context-trunc.md
           else
             echo "has_context=false" >> "$GITHUB_OUTPUT"
+            echo "files=" >> "$GITHUB_OUTPUT"
           fi
+          # chunked hunks already done in diff step, ensure context-trunc exists
+          [ -f /tmp/context-trunc.md ] || echo "no context" > /tmp/context-trunc.md
 
       - name: Chunk diff + ripgrep context
         id: diff
@@ -106,18 +127,56 @@ jobs:
           COUNT: ${{ steps.limits.outputs.count }}
           LIMIT: ${{ steps.limits.outputs.limit }}
 
-      - name: Call LLM if key present (OpenAI-compatible)
+            - name: Call LLM via OpenRouter (low-medium reasoning)
         id: llm
         env:
-          API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           API_BASE: ${{ vars.REVIEW_API_BASE }}
           MODEL: ${{ vars.REVIEW_MODEL }}
         run: |
-          if [ -z "$API_KEY" ]; then echo "has_llm=false" >> "$GITHUB_OUTPUT"; echo "limited=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          # prefer OPENROUTER, fallback to OPENAI_API_KEY for compat
+          if [ -z "$OPENROUTER_API_KEY" ] && [ -z "${{ secrets.OPENAI_API_KEY }}" ]; then echo "has_llm=false" >> "$GITHUB_OUTPUT"; echo "limited=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          API_KEY="${OPENROUTER_API_KEY:-${{ secrets.OPENAI_API_KEY }}}"
+          BASE="${API_BASE:-https://openrouter.ai/api/v1}"
+          MOD="${MODEL:-openai/gpt-4o-mini}"
           echo "has_llm=true" >> "$GITHUB_OUTPUT"
           echo "limited=false" >> "$GITHUB_OUTPUT"
-          # placeholder: real call is fetch to ${API_BASE:-https://api.openai.com/v1}/chat/completions
-          echo "llm_summary=LLM review enabled (model: ${MODEL:-gpt-4o-mini})" >> "$GITHUB_OUTPUT"
+          echo "model=$MOD" >> "$GITHUB_OUTPUT"
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          # Build prompt: repo context + diff hunks (low-medium reasoning)
+          SYSTEM=$(cat standalone/pr-review/templates/prompt/system.md 2>/dev/null | head -c 3000)
+          CONTEXT=$(cat /tmp/context-trunc.md 2>/dev/null | head -c 8000)
+          DIFF=$(head -c 12000 /tmp/diff.patch 2>/dev/null)
+          SYMBOLS=$(cat /tmp/symbols.txt 2>/dev/null)
+          # call OpenRouter chat/completions with low temperature
+          PAYLOAD=$(jq -n --arg sys "$SYSTEM" --arg ctx "$CONTEXT" --arg diff "$DIFF" --arg sym "$SYMBOLS" --arg model "$MOD" '{
+            model: $model,
+            temperature: 0.2,
+            max_tokens: 1800,
+            messages: [
+              {role:"system", content: $sys},
+              {role:"user", content: ("Repo context:
+" + $ctx + "
+
+Changed symbols:
+" + $sym + "
+
+Diff (truncated, 80-line hunks):
+" + $diff)}
+            ]
+          }')
+          RESP=$(curl -s "$BASE/chat/completions" -H "Authorization: Bearer $API_KEY" -H "Content-Type: application/json" -H "HTTP-Referer: https://github.com/vraj-ai/skills" -H "X-Title: vskills-pr-review" -d "$PAYLOAD" 2>&1 | head -c 20000)
+          echo "$RESP" > /tmp/llm-raw.json
+          # extract JSON content
+          CONTENT=$(jq -r '.choices[0].message.content // empty' /tmp/llm-raw.json 2>/dev/null)
+          if [ -n "$CONTENT" ]; then
+            echo "$CONTENT" > /tmp/llm.json
+            echo "llm_summary=ok" >> "$GITHUB_OUTPUT"
+          else
+            echo "llm_summary=failed" >> "$GITHUB_OUTPUT"
+            echo "has_llm=false" >> "$GITHUB_OUTPUT"
+            echo "limited=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Render summary
         id: render
@@ -157,10 +216,9 @@ jobs:
         run: |
           # create check run
           gh api repos/${{ github.repository }}/check-runs -f name="pr-review" -f head_sha="${{ github.event.pull_request.head.sha }}" -f status="completed" -f conclusion="${{ steps.scores.outputs.confidence >= 2 && 'success' || 'neutral' }}" -f output[title]="Confidence ${{ steps.scores.outputs.confidence }}/5, risk ${{ steps.scores.outputs.risk }}" -F output[summary]="$(cat /tmp/review.md | head -c 4000)" 2>&1 | head -n 20 || true
-          # upsert single comment keyed by <!-- vskills-pr-review -->
-          BODY=$(cat /tmp/review.md)
+          # upsert single comment keyed by <!-- vskills-pr-review --> (polished, no \n escapes)
           EXISTING=$(gh pr view ${{ github.event.pull_request.number }} --json comments --jq '.comments[] | select(.body | contains("<!-- vskills-pr-review -->")) | .id' 2>/dev/null | head -1)
-          if [ -n "$EXISTING" ]; then gh api repos/${{ github.repository }}/issues/comments/$EXISTING -f body="$BODY" 2>&1 | head -n 20 || true; else gh pr comment ${{ github.event.pull_request.number }} --body "$BODY" 2>&1 | head -n 20 || true; fi
+          if [ -n "$EXISTING" ]; then gh api repos/${{ github.repository }}/issues/comments/$EXISTING --method PATCH -F body=@/tmp/review.md 2>&1 | head -n 20 || true; else gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review.md 2>&1 | head -n 20 || true; fi
           # annotate diff lines (example)
           echo "annotations posted"
 

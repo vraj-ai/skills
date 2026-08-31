@@ -48,11 +48,11 @@ statusChecks:
     filters: []
 
 model:
-  provider: none  # none | openai | anthropic | compat
-  baseUrl: ""
-  model: "gpt-4o-mini"
-  auth: none  # none | apikey | oauth
-  secretName: "OPENAI_API_KEY"
+  provider: openrouter  # openrouter | openai | anthropic | compat
+  baseUrl: "https://openrouter.ai/api/v1"
+  model: "openai/gpt-4o-mini"  # low latency, openrouter council can escalate to anthropic/claude-3.5-sonnet or google/gemini-2.0-flash at medium
+  auth: apikey  # apikey | oauth
+  secretName: "OPENROUTER_API_KEY"
 
 context:
   useContextFolder: true
