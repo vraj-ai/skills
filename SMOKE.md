@@ -1,2 +1,4 @@
 # smoke test 2026-08-31T12:10:55Z
-final verify 2026-08-31T13:34:56Z with qwen3.8 flash
+llm verify 2026-08-31T13:45:42Z with reasoning low
+polish test 2026-08-31T13:15:38Z
+final verify 2026-08-31T13:45:42Z with qwen3.8 flash
