@@ -105,7 +105,7 @@ jobs:
           BASE="$API_BASE"
           if [ -z "$BASE" ]; then BASE="https://openrouter.ai/api/v1"; fi
           MOD="$MODEL"
-          if [ -z "$MOD" ]; then MOD="qwen/qwen3.8-flash"; fi
+          if [ -z "$MOD" ]; then MOD="z-ai/glm-5.3-flash"; fi
           echo "model=$MOD" >> "$GITHUB_OUTPUT"
           USER_MSG="User /fix comment:\n$COMMENT_BODY\n\nLast review:\n$REVIEW\n\nDiff (truncated):\n$DIFF\n\nSymbols:\n$SYMBOLS"
           PAYLOAD=$(jq -n --arg sys "$SYSTEM" --arg ctx "$CONTEXT" --arg user "$USER_MSG" --arg model "$MOD" '{model: $model, temperature: 0.3, max_tokens: 2500, reasoning: {effort: "low"}, messages: [{role:"system", content: $sys}, {role:"user", content: ("Repo context:\n" + $ctx + "\n\n" + $user)}]}')
@@ -134,9 +134,16 @@ jobs:
           REPLY=$(jq -r '.reply // empty' /tmp/fix-content.json 2>/dev/null || true)
           PATCH=$(jq -r '.patch // empty' /tmp/fix-content.json 2>/dev/null || true)
           if [ -z "$REPLY" ]; then
-            # Content was not JSON, treat whole content as reply
-            REPLY="$CONTENT"
-            PATCH=""
+            # Content was not JSON, try to extract JSON from it, else treat as reply
+            EXTRACTED=$(echo "$CONTENT" | sed -n 's/.*{.*\"reply\".*}/&/p' | head -c 2000)
+            if [ -n "$EXTRACTED" ] && echo "$EXTRACTED" | jq -e . >/dev/null 2>&1; then
+              REPLY=$(echo "$EXTRACTED" | jq -r '.reply // empty')
+              PATCH=$(echo "$EXTRACTED" | jq -r '.patch // empty')
+              if [ -z "$REPLY" ]; then REPLY="$CONTENT"; fi
+            else
+              REPLY="$CONTENT"
+              PATCH=""
+            fi
           fi
           # Save reply markdown
           {
