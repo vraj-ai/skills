@@ -193,6 +193,7 @@ jobs:
           echo "$RESP" > /tmp/llm-raw.json
           CONTENT=$(jq -r '.choices[0].message.content // empty' /tmp/llm-raw.json 2>/dev/null | sed -e 's/^```json//' -e 's/^```//' -e 's/```$//')
           if [ -z "$CONTENT" ]; then CONTENT=$(jq -r '.choices[0].message.reasoning // empty' /tmp/llm-raw.json 2>/dev/null | head -c 3000); fi
+          if [ -z "$CONTENT" ]; then echo "LLM empty, raw:"; cat /tmp/llm-raw.json 2>/dev/null | head -c 2000; echo ""; fi
           if [ -n "$CONTENT" ]; then echo "$CONTENT" > /tmp/llm.json; echo "llm_summary=ok" >> "$GITHUB_OUTPUT"; else echo "llm_summary=failed" >> "$GITHUB_OUTPUT"; echo "has_llm=false" >> "$GITHUB_OUTPUT"; echo "limited=true" >> "$GITHUB_OUTPUT"; fi
 
       - name: Render polished summary (Greptile + Devin)
