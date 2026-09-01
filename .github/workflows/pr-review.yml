@@ -2,91 +2,163 @@
 name: PR Review
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review]
-  workflow_dispatch:
   issue_comment:
     types: [created]
 
 permissions:
-  contents: write
-  pull-requests: write
-  checks: write
-  issues: write
+  contents: read
+
+concurrency:
+  group: pr-review-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
+  rerun:
+    if: github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '@vskills')
+    permissions:
+      actions: write
+      contents: read
+      pull-requests: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Rerun latest PR review
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          COMMENT_AUTHOR_ASSOCIATION: ${{ github.event.comment.author_association }}
+        run: |
+          case "$COMMENT_AUTHOR_ASSOCIATION" in OWNER|MEMBER|COLLABORATOR) ;; *) exit 0 ;; esac
+          printf '%s\n' "$COMMENT_BODY" | grep -Eqi '^[[:space:]]*@vskills[[:space:]]+(review|rerun)([[:space:]]|$)' || exit 0
+          HEAD_SHA=$(gh pr view ${{ github.event.issue.number }} --json headRefOid --jq .headRefOid)
+          RUN_ID=$(gh run list --workflow "PR Review" --commit "$HEAD_SHA" --event pull_request_target --status completed --limit 1 --json databaseId --jq '.[0].databaseId')
+          if [ -n "$RUN_ID" ] && gh run rerun "$RUN_ID"; then
+            exit 0
+          fi
+          printf '%s\n' '<!-- vskills-pr-review-rerun -->' '' "I couldn't rerun a completed PR Review for \`$HEAD_SHA\`. Push a commit to start the first review." > /tmp/rerun-missing.md
+          gh pr comment ${{ github.event.issue.number }} --body-file /tmp/rerun-missing.md
+
   review:
-    if: github.event_name != 'issue_comment'
+    if: github.event_name == 'pull_request_target'
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: write
+      issues: write
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
+
+      - name: Stage trusted review assets
+        run: |
+          mkdir -p /tmp/vskills-pr-review
+          cp .vskills/pr-review/parse-review-config.mjs /tmp/vskills-pr-review/parse-review-config.mjs
+          cp .vskills/pr-review/system.md /tmp/vskills-pr-review/system.md
+          CONFIG=.vskills/review.yml
+          [ -f "$CONFIG" ] || CONFIG=.github/review.yml
+          cp "$CONFIG" /tmp/vskills-pr-review/review.yml
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
 
       - name: Read review config
         id: config
         run: |
-          CONFIG=".vskills/review.yml"
-          [ -f "$CONFIG" ] || CONFIG=".github/review.yml"
-          [ -f "$CONFIG" ] || CONFIG="standalone/pr-review/templates/review.yml"
+          CONFIG=/tmp/vskills-pr-review/review.yml
           echo "path=$CONFIG" >> "$GITHUB_OUTPUT"
-          cat "$CONFIG" 2>/dev/null | head -n 50 || true
+          PARSER=/tmp/vskills-pr-review/parse-review-config.mjs
+          node "$PARSER" "$CONFIG" /tmp/review-config.json
+          node - <<'JS' >> "$GITHUB_OUTPUT"
+          const config = require('/tmp/review-config.json');
+          console.log(`file_limit=${config.when?.fileChangeLimit ?? 100}`);
+          console.log(`review_drafts=${config.when?.reviewDraftPrs ?? false}`);
+          console.log(`auto_review_commits=${config.when?.autoReviewOnNewCommits ?? true}`);
+          console.log(`required_confidence=${config.statusChecks?.requiredConfidence ?? 2}`);
+          console.log(`use_status_checks=${config.statusChecks?.useStatusChecks ?? true}`);
+          console.log(`post_status_comments=${config.statusChecks?.postStatusComments ?? true}`);
+          console.log(`auto_approve=${config.statusChecks?.autoApprovePrs?.enabled ?? false}`);
+          console.log(`maximum_risk=${config.statusChecks?.autoApprovePrs?.maximumRisk ?? 'Low'}`);
+          console.log(`strictness=${config.comments?.strictness ?? 'Medium'}`);
+          JS
 
       - name: Check file-change limit
         id: limits
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IS_DRAFT: ${{ github.event.pull_request.draft }}
+          ACTION: ${{ github.event.action }}
+          REVIEW_DRAFTS: ${{ steps.config.outputs.review_drafts }}
+          AUTO_REVIEW_COMMITS: ${{ steps.config.outputs.auto_review_commits }}
         run: |
           COUNT=$(gh pr view ${{ github.event.pull_request.number }} --json changedFiles --jq .changedFiles 2>/dev/null || echo "0")
-          LIMIT=$(grep -A2 fileChangeLimit .vskills/review.yml 2>/dev/null | grep -o '[0-9]\+' | head -1); LIMIT=${LIMIT:-100}
+          LIMIT=${{ steps.config.outputs.file_limit }}
           echo "count=$COUNT" >> "$GITHUB_OUTPUT"
           echo "limit=$LIMIT" >> "$GITHUB_OUTPUT"
-          if [ "$COUNT" -gt "$LIMIT" ] && ! echo "${{ github.event.comment.body }}" | grep -q "@vskills"; then
+          if [ "$COUNT" -gt "$LIMIT" ] || { [ "$IS_DRAFT" = "true" ] && [ "$REVIEW_DRAFTS" != "true" ]; } || { [ "$ACTION" = "synchronize" ] && [ "$AUTO_REVIEW_COMMITS" != "true" ]; }; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Detect conflicts
-        id: conflicts
-        run: |
-          if git merge-base --is-ancestor origin/${{ github.base_ref }} HEAD 2>/dev/null; then echo "conflict=false" >> "$GITHUB_OUTPUT"; else echo "conflict=true" >> "$GITHUB_OUTPUT"; fi
-
-      - name: Auto-fix conflicts (seamless)
-        if: steps.conflicts.outputs.conflict == 'true'
+      - name: Report skipped review
+        if: steps.limits.outputs.skip == 'true' && steps.config.outputs.post_status_comments == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR=${{ github.event.pull_request.number }}
-          BASE=${{ github.base_ref }}
-          HEAD_SHA=${{ github.event.pull_request.head.sha }}
-          echo "Conflict detected for PR $PR against $BASE"
-          git fetch origin $BASE 2>&1 | head -n 20
-          BRANCH=$(gh pr view $PR --json headRefName --jq .headRefName 2>/dev/null)
-          echo "PR branch: $BRANCH"
-          git fetch origin pull/$PR/head:pr-$PR 2>&1 | head -n 20 || true
-          git checkout pr-$PR 2>&1 | head -n 20 || git checkout -b pr-$PR 2>&1 | head -n 20
-          if git merge origin/$BASE --no-edit --strategy ort 2>&1 | tee /tmp/merge.log; then
-            echo "Merge succeeded without conflicts"
-            git push origin HEAD:$BRANCH 2>&1 | head -n 20 || git push origin HEAD 2>&1 | head -n 20 || true
-            printf '%s\n' '<!-- vskills-pr-review -->' '' '✅ Auto-fixed merge conflicts by merging `'"$BASE"'` into this branch. Re-running review…' > /tmp/conflict-fix.md
-            gh pr comment $PR --body-file /tmp/conflict-fix.md 2>&1 | head -n 20 || true
+          printf '%s\n' '<!-- vskills-pr-review-skip -->' '' "Review skipped by \`.vskills/review.yml\` (draft, new-commit, or file limit policy)." > /tmp/review-skipped.md
+          EXISTING=$(gh api --paginate repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments --jq '.[] | select(.body | contains("<!-- vskills-pr-review-skip -->")) | .id' | head -1)
+          if [ -n "$EXISTING" ]; then gh api repos/${{ github.repository }}/issues/comments/$EXISTING --method PATCH -F body=@/tmp/review-skipped.md >/dev/null; else gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review-skipped.md >/dev/null; fi
+
+      - name: Detect conflicts
+        if: steps.limits.outputs.skip == 'false'
+        id: conflicts
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch origin "$BASE_REF"
+          if git merge-tree --write-tree "origin/$BASE_REF" HEAD >/tmp/merge-tree.txt 2>/tmp/merge-tree-error.txt; then
+            echo "conflict=false" >> "$GITHUB_OUTPUT"
+          elif grep -Eq 'CONFLICT|Auto-merging' /tmp/merge-tree.txt /tmp/merge-tree-error.txt; then
+            echo "conflict=true" >> "$GITHUB_OUTPUT"
           else
-            echo "Merge conflicts need manual resolution"
-            cat /tmp/merge.log 2>&1 | head -n 50
-            git merge --abort 2>&1 | head -n 20 || true
-            if gh api repos/${{ github.repository }}/pulls/$PR -f mergeable 2>&1 | head -n 20 | grep -q true; then
-              gh api --method PUT repos/${{ github.repository }}/pulls/$PR/update-branch -f expected_head_sha="$HEAD_SHA" 2>&1 | head -n 20 || true
-              printf '%s\n' '<!-- vskills-pr-review -->' '' '⚠️ Conflicts detected. Attempted auto-merge but manual resolution may be needed. Click "Update branch" or run `git merge origin/'"$BASE"'` locally.' > /tmp/conflict-need.md
-              gh pr comment $PR --body-file /tmp/conflict-need.md 2>&1 | head -n 20 || true
-            else
-              printf '%s\n' '<!-- vskills-pr-review -->' '' '⚠️ Merge conflicts detected and could not be auto-fixed seamlessly. Please resolve manually: `git fetch origin && git merge origin/'"$BASE"'`.' > /tmp/conflict-manual.md
-              gh pr comment $PR --body-file /tmp/conflict-manual.md 2>&1 | head -n 20 || true
-            fi
+            cat /tmp/merge-tree-error.txt >&2
+            exit 1
+          fi
+
+      - name: Auto-fix conflicts (seamless)
+        if: steps.conflicts.outputs.conflict == 'true' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          gh auth setup-git
+          git checkout -B pr-head "$HEAD_SHA"
+          if git merge "origin/$BASE_REF" --no-edit --strategy ort; then
+            git push origin "HEAD:$PR_BRANCH"
+            LOCAL_SHA=$(git rev-parse HEAD)
+            REMOTE_SHA=$(git ls-remote origin "refs/heads/$PR_BRANCH" | cut -f1)
+            if [ "$LOCAL_SHA" != "$REMOTE_SHA" ]; then echo "Remote branch did not advance to the merge commit." >&2; exit 1; fi
+            printf '%s\n' '<!-- vskills-pr-review -->' '' "Updated this branch by merging \`$BASE_REF\`. The review will run again on \`$(git rev-parse --short HEAD)\`." > /tmp/conflict-fix.md
+            gh pr comment "$PR_NUMBER" --body-file /tmp/conflict-fix.md
+          else
+            git merge --abort || true
+            printf '%s\n' '<!-- vskills-pr-review -->' '' "This branch conflicts with \`$BASE_REF\`, and the automatic merge was not clean. Resolve it manually, then push the branch to rerun review." > /tmp/conflict-manual.md
+            gh pr comment "$PR_NUMBER" --body-file /tmp/conflict-manual.md
           fi
 
       - name: Inject repo context (AGENTS, CONTEXT, docs)
+        if: steps.limits.outputs.skip == 'false'
         id: context
         run: |
           CONTEXT_FILES=""
@@ -107,7 +179,7 @@ jobs:
               done
             } > /tmp/context.md
             echo "context_chars=$(wc -c < /tmp/context.md)" >> "$GITHUB_OUTPUT"
-            head -c 8000 /tmp/context.md > /tmp/context-trunc.md
+            head -c 4000 /tmp/context.md > /tmp/context-trunc.md
           else
             echo "has_context=false" >> "$GITHUB_OUTPUT"
             echo "files=" >> "$GITHUB_OUTPUT"
@@ -115,7 +187,10 @@ jobs:
           [ -f /tmp/context-trunc.md ] || echo "no context" > /tmp/context-trunc.md
 
       - name: Chunk diff + ripgrep context
+        if: steps.limits.outputs.skip == 'false'
         id: diff
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr diff ${{ github.event.pull_request.number }} --patch > /tmp/diff.patch 2>/dev/null || git diff origin/${{ github.base_ref }}...HEAD > /tmp/diff.patch || true
           # chunk into 80-line hunks for LLM context
@@ -125,28 +200,33 @@ jobs:
           wc -l /tmp/diff.patch | awk '{print "lines="$1}' >> "$GITHUB_OUTPUT"
 
       - name: Deterministic scanners
+        if: steps.limits.outputs.skip == 'false'
         id: scanners
         run: |
-          echo "### Scanners" > /tmp/scanners.md
-          # gitleaks / osv / semgrep optional — skip if no config
-          if command -v gitleaks >/dev/null 2>&1; then gitleaks detect --no-git --source . --redact 2>&1 | head -n 20 >> /tmp/scanners.md || true; fi
-          if [ -f "package.json" ] && npx --yes osv-scanner --version >/dev/null 2>&1; then echo "- osv: ok" >> /tmp/scanners.md; fi
-          if [ -f ".semgrep.yml" ]; then echo "- semgrep: config found" >> /tmp/scanners.md; fi
-          if npm run lint --silent 2>&1 | head -n 5 | grep -q "lint"; then echo "- lint: ran" >> /tmp/scanners.md; else echo "- lint: skipped" >> /tmp/scanners.md; fi
+          echo "### Deterministic diff checks" > /tmp/scanners.md
+          if grep -E '^\+.*(AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|gh[pousr]_[A-Za-z0-9_]{30,}|sk-[A-Za-z0-9]{20,})' /tmp/diff.patch >/tmp/secret-findings.txt; then
+            echo "secret=true" >> "$GITHUB_OUTPUT"
+            echo "- Possible credential added in the diff." >> /tmp/scanners.md
+          else
+            echo "secret=false" >> "$GITHUB_OUTPUT"
+            echo "- No common credential pattern found in added lines." >> /tmp/scanners.md
+          fi
+          echo "No PR-controlled scripts were executed in this write-capable job." >> /tmp/scanners.md
 
       - name: Compute confidence + risk (deterministic)
+        if: steps.limits.outputs.skip == 'false'
         id: scores
         run: |
           node - << 'JS' >> "$GITHUB_OUTPUT"
           // clamp(3 + passes - (highFindings + conflicts))
           const conflict = process.env.CONFLICT === 'true' ? 1 : 0;
+          const secret = process.env.SECRET === 'true';
           const count = parseInt(process.env.COUNT || '0', 10);
           const limit = parseInt(process.env.LIMIT || '100', 10);
-          let passes = 1; // scanners ran
-          let high = conflict + (count > limit ? 1 : 0);
+          let passes = 1;
+          let high = conflict + (count > limit ? 1 : 0) + (secret ? 2 : 0);
           let conf = Math.max(0, Math.min(5, 3 + passes - high));
-          // risk = max(security, migration, auth)
-          let risk = conflict ? 'High' : 'Low';
+          let risk = secret ? 'Critical' : conflict ? 'High' : 'Low';
           console.log(`confidence=${conf}`);
           console.log(`risk=${risk}`);
           console.log(`verdict=${conf >= 3 ? 'safe' : 'needs-human'}`);
@@ -155,104 +235,197 @@ jobs:
           CONFLICT: ${{ steps.conflicts.outputs.conflict }}
           COUNT: ${{ steps.limits.outputs.count }}
           LIMIT: ${{ steps.limits.outputs.limit }}
+          SECRET: ${{ steps.scanners.outputs.secret }}
 
       - name: Call LLM via OpenRouter (low-medium reasoning)
+        if: steps.limits.outputs.skip == 'false'
         id: llm
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           API_BASE: ${{ vars.REVIEW_API_BASE }}
           MODEL: ${{ vars.REVIEW_MODEL }}
         run: |
-          if [ -z "$OPENROUTER_API_KEY" ] && [ -z "${{ secrets.OPENAI_API_KEY }}" ]; then echo "has_llm=false" >> "$GITHUB_OUTPUT"; echo "limited=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ -z "$OPENROUTER_API_KEY" ] && [ -z "$OPENAI_API_KEY" ]; then echo "has_llm=false" >> "$GITHUB_OUTPUT"; echo "limited=true" >> "$GITHUB_OUTPUT"; exit 0; fi
           API_KEY="$OPENROUTER_API_KEY"
-          if [ -z "$API_KEY" ]; then API_KEY="${{ secrets.OPENAI_API_KEY }}"; fi
+          if [ -z "$API_KEY" ]; then API_KEY="$OPENAI_API_KEY"; fi
           BASE="$API_BASE"
           if [ -z "$BASE" ]; then BASE="https://openrouter.ai/api/v1"; fi
           MOD="$MODEL"
-          if [ -z "$MOD" ]; then MOD="qwen/qwen3.8-flash"; fi
-          echo "has_llm=true" >> "$GITHUB_OUTPUT"
-          echo "limited=false" >> "$GITHUB_OUTPUT"
-          echo "model=$MOD" >> "$GITHUB_OUTPUT"
-          echo "base=$BASE" >> "$GITHUB_OUTPUT"
-          SYSTEM=$(cat standalone/pr-review/templates/prompt/system.md 2>/dev/null | head -c 3000)
-          CONTEXT=$(cat /tmp/context-trunc.md 2>/dev/null | head -c 8000)
-          DIFF=$(head -c 12000 /tmp/diff.patch 2>/dev/null)
+          if [ -z "$MOD" ]; then MOD="z-ai/glm-5.3-flash"; fi
+          SYSTEM=$(cat /tmp/vskills-pr-review/system.md)
+          SYSTEM=$(printf '%s' "$SYSTEM" | head -c 3000)
+          CONTEXT=$(head -c 4000 /tmp/context-trunc.md 2>/dev/null)
+          DIFF=$(head -c 50000 /tmp/diff.patch 2>/dev/null)
           SYMBOLS=$(cat /tmp/symbols.txt 2>/dev/null)
-          PAYLOAD=$(jq -n --arg sys "$SYSTEM" --arg ctx "$CONTEXT" --arg diff "$DIFF" --arg sym "$SYMBOLS" --arg model "$MOD" '{model: $model, temperature: 0.2, max_tokens: 3500, reasoning: {effort: "none"}, messages: [{role:"system", content: $sys}, {role:"user", content: ("Repo context:\n" + $ctx + "\n\nChanged symbols:\n" + $sym + "\n\nDiff (truncated, 80-line hunks):\n" + $diff)}]}')
-          RESP=$(curl -s "$BASE/chat/completions" -H "Authorization: Bearer $API_KEY" -H "Content-Type: application/json" -H "HTTP-Referer: https://github.com/vraj-ai/skills" -H "X-Title: vskills-pr-review" -d "$PAYLOAD" 2>&1 | head -c 20000)
-          echo "$RESP" > /tmp/llm-raw.json
-          CONTENT=$(jq -r '.choices[0].message.content // empty' /tmp/llm-raw.json 2>/dev/null | sed -e 's/^```json//' -e 's/^```//' -e 's/```$//')
-          if [ -z "$CONTENT" ]; then CONTENT=$(jq -r '.choices[0].message.reasoning // empty' /tmp/llm-raw.json 2>/dev/null | head -c 3000); fi
-          if [ -n "$CONTENT" ]; then echo "$CONTENT" > /tmp/llm.json; echo "llm_summary=ok" >> "$GITHUB_OUTPUT"; else echo "llm_summary=failed" >> "$GITHUB_OUTPUT"; echo "has_llm=false" >> "$GITHUB_OUTPUT"; echo "limited=true" >> "$GITHUB_OUTPUT"; fi
+          VALID=false
+          TRIED='|'
+          for CANDIDATE in "$MOD" z-ai/glm-5.3-flash deepseek/deepseek-v4-flash-0731 meta/muse-spark-1.2-contributor tencent/hy4-preview qwen/qwen3.8-flash; do
+            case "$TRIED" in *"|$CANDIDATE|"*) continue ;; esac
+            TRIED="$TRIED$CANDIDATE|"
+            case "$CANDIDATE" in qwen/*|tencent/*) EFFORT=none ;; *) EFFORT=low ;; esac
+            PAYLOAD=$(jq -n --arg sys "$SYSTEM" --arg ctx "$CONTEXT" --arg diff "$DIFF" --arg sym "$SYMBOLS" --arg model "$CANDIDATE" --arg effort "$EFFORT" '{model: $model, temperature: 0.2, max_tokens: 3500, reasoning: {effort: $effort}, response_format: {type: "json_object"}, messages: [{role:"system", content: $sys}, {role:"user", content: ("Repo context:\n" + $ctx + "\n\nChanged symbols:\n" + $sym + "\n\nDiff (truncated, 80-line hunks):\n" + $diff)}]}')
+            if curl -sS --fail-with-body --connect-timeout 10 --max-time 60 "$BASE/chat/completions" -H "Authorization: Bearer $API_KEY" -H "Content-Type: application/json" -H "HTTP-Referer: https://github.com/vraj-ai/skills" -H "X-Title: vskills-pr-review" -d "$PAYLOAD" -o /tmp/llm-raw.json; then
+              CONTENT=$(jq -r '.choices[0].message.content // empty' /tmp/llm-raw.json 2>/dev/null || true)
+              if [ -n "$CONTENT" ]; then
+                printf '%s\n' "$CONTENT" > /tmp/llm.json
+                if jq -e 'type == "object" and (.summary | type == "string") and (.confidence | type == "number") and (.risk | IN("Low", "Medium", "High", "Critical")) and (.findings | type == "array")' /tmp/llm.json >/dev/null 2>&1; then
+                  VALID=true
+                  echo "model=$CANDIDATE" >> "$GITHUB_OUTPUT"
+                  break
+                fi
+              fi
+            fi
+            printf '* `%s` did not return valid review JSON.\n' "$CANDIDATE" >> "$GITHUB_STEP_SUMMARY"
+          done
+          if [ "$VALID" = true ]; then
+            echo "has_llm=true" >> "$GITHUB_OUTPUT"
+            echo "limited=false" >> "$GITHUB_OUTPUT"
+            echo "llm_summary=ok" >> "$GITHUB_OUTPUT"
+          else
+            rm -f /tmp/llm.json
+            echo "has_llm=false" >> "$GITHUB_OUTPUT"
+            echo "limited=true" >> "$GITHUB_OUTPUT"
+            echo "llm_summary=failed" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Finalize confidence and risk
+        if: steps.limits.outputs.skip == 'false'
+        id: final
+        env:
+          DETERMINISTIC_CONFIDENCE: ${{ steps.scores.outputs.confidence }}
+          DETERMINISTIC_RISK: ${{ steps.scores.outputs.risk }}
+          LIMITED: ${{ steps.llm.outputs.limited }}
+          REQUIRED: ${{ steps.config.outputs.required_confidence }}
+        run: |
+          node - <<'JS' >> "$GITHUB_OUTPUT"
+          const fs = require('fs');
+          const ranks = {Low: 0, Medium: 1, High: 2, Critical: 3};
+          let llm = null;
+          try { llm = JSON.parse(fs.readFileSync('/tmp/llm.json', 'utf8')); } catch {}
+          let confidence = Number(process.env.DETERMINISTIC_CONFIDENCE || 0);
+          let risk = process.env.DETERMINISTIC_RISK || 'Low';
+          if (process.env.LIMITED === 'true') confidence = Math.min(confidence, 1);
+          if (llm) {
+            confidence = Math.min(confidence, Math.max(0, Math.min(5, Number(llm.confidence))));
+            if (ranks[llm.risk] > ranks[risk]) risk = llm.risk;
+            if (llm.findings.some((finding) => finding?.severity === 'P1')) confidence = Math.min(confidence, 2);
+          }
+          if (risk === 'High') confidence = Math.min(confidence, 2);
+          if (risk === 'Critical') confidence = Math.min(confidence, 1);
+          const required = Number(process.env.REQUIRED || 2);
+          console.log(`confidence=${confidence}`);
+          console.log(`risk=${risk}`);
+          console.log(`verdict=${confidence >= required && ranks[risk] < ranks.High ? 'safe' : 'needs-human'}`);
+          JS
 
       - name: Render polished summary (Greptile + Devin)
+        if: steps.limits.outputs.skip == 'false'
         id: render
         run: |
-          node - << 'JS'
+          node - <<'JS'
           const fs = require('fs');
-          const conf = process.env.CONFIDENCE || '3';
+          const conf = process.env.CONFIDENCE || '0';
           const risk = process.env.RISK || 'Low';
           const verdict = process.env.VERDICT || 'needs-human';
           const limited = process.env.LIMITED === 'true';
           const lines = process.env.LINES || '0';
           const prNum = process.env.PR_NUMBER || '';
-          const cfgPath = process.env.CONFIG_PATH || 'standalone/pr-review/templates/review.yml';
-          let cfg=''; try{ cfg=fs.readFileSync(cfgPath,'utf8'); }catch{};
-          const has = (k)=> cfg.includes(k);
-          let llm=null; try{ llm=JSON.parse(fs.readFileSync('/tmp/llm.json','utf8')); }catch{}
-          let llmText=''; try{ llmText=fs.readFileSync('/tmp/llm.json','utf8'); }catch{}
-          let files=[]; try{ const diff=fs.readFileSync('/tmp/diff.patch','utf8'); const set=new Set(); for(const m of diff.matchAll(/^\+\+\+ b\/(.+)$/gm)) set.add(m[1]); for(const m of diff.matchAll(/^diff --git a\/(.+) b\//gm)) set.add(m[1]); files=[...set].slice(0,10); }catch{}
-          const safe = verdict==='safe' && conf==='5' && risk==='Low';
-          const headerEmoji = safe ? '✅' : (parseInt(conf)>=4 ? '🟢' : '🔍');
-          const headerTitle = safe ? 'vskills Review: No Issues Found' : `vskills Review: ${limited ? 'Limited review' : 'Findings'}`;
-          let md=''; md+=`<!-- vskills-pr-review -->\n`; md+=`# ${headerEmoji} ${headerTitle}\n`;
-          try{ const h = cfg.match(/header:\s*"([^"]+)"/); if(h) md+=`${h[1].replace(/\\n/g,'\n')}\n`; else md+=`**Heads up:** A pile of LLMs read your diff so you don't have to.\n`; }catch{ md+=`**Heads up:** A pile of LLMs read your diff so you don't have to.\n`; }
-          md+=`---\n\n`;
-          if(has('prSummary')){ md+=`## Summary\n`; if(llm && llm.summary) md+=`${llm.summary}\n\n`; else if(llmText && llmText.length>20 && !llmText.includes('No auto-fixable')) md+=`${llmText.slice(0,1200)}\n\n`; else { md+=`Adds a review for PR #${prNum} with ${lines} lines across ${files.length} files.\n`; if(files.length) md+=`- Changed: ${files.map(f=>'`'+f+'`').join(', ')}\n`; md+=`- Modes: ${limited ? 'deterministic checks only (no LLM key)' : 'LLM + deterministic checks'}\n`; md+=`- Context: ${process.env.HAS_CONTEXT==='true' ? 'AGENTS/CONTEXT injected' : 'no repo context found'}\n\n`; } }
-          if(has('confidenceScore')){ md+=`## Confidence Score: ${conf}/5\n`; const req = process.env.REQUIRED || '2'; const meets = parseInt(conf) >= parseInt(req); if(llm && llm.confidence_reason) md+=`${llm.confidence_reason}\n\n`; else { if(conf==='5') md+=`The PR appears safe to merge. Deterministic scanners and ${limited ? 'no LLM' : 'LLM'} review found no High/Critical risk and no conflicts.\n\n`; else if(parseInt(conf)>=3) md+=`The PR looks reasonable at ${conf}/5. ${meets ? 'Meets' : 'Below'} required ${req}/5. Review findings below.\n\n`; else md+=`Low confidence ${conf}/5 (required ${req}/5). Needs human review.\n\n`; } md+=`> Required: ${req}/5 — ${meets ? '✅ meets' : '⚠️ below'}\n\n`; }
-          md+=`## Risk Level\n**${risk}** — ${risk==='Low' ? 'low-risk change' : risk+' risk'}${process.env.CONFLICT==='true' ? ' (conflict detected)' : ''}\n\n`;
-          if(has('issueTable')){ md+=`## Important Files Changed\n`; md+=`| Filename | Overview |\n`; md+=`|---|---|\n`; if(files.length===0){ md+=`| — | No file list (diff too small) |\n`; } else { for(const f of files.slice(0,8)){ let ov=''; if(llm && llm.findings){ const found=llm.findings.find(x=> x.file && f.includes(x.file)); ov = found ? found.message.slice(0,90) : 'No actionable issues.'; } else { ov = f.endsWith('.md') ? 'Docs/marker — no runtime impact.' : 'Reviewed — no High findings.'; } md+=`| \`${f}\` | ${ov} |\n`; } } md+=`\n`; }
-          if(llm && llm.findings && llm.findings.length){ md+=`## Findings\n`; for(const ff of llm.findings.slice(0,6)){ const sev = ff.severity || 'P2'; const badge = sev==='P1' ? '🔴 P1' : '🟡 P2'; md+=`- **${badge}** \`${ff.file||''}:${ff.line||''}\` — ${ff.message}\n`; if(ff.suggestion) md+=`  > Suggestion: \`${ff.suggestion.slice(0,120)}\`\n`; } md+=`\n`; }
-          if(has('sequenceDiagram')){ let mermaid= llm && llm.sequenceMermaid ? llm.sequenceMermaid : `sequenceDiagram\n  participant PR\n  PR->>Review: diff hunks (80 lines, ripgrep context)\n  Review->>Checks: annotations`; md+=`## Sequence Diagram\n`; md+=`\`\`\`mermaid\n${mermaid}\n\`\`\`\n\n`; }
-          md+=`## Safe to merge?\n`; md+=`${safe ? '✅ **Safe**' : '⚠️ **Needs human**'} — confidence ${conf}/5, risk ${risk}${process.env.CONFLICT==='true' ? ', conflict' : ''}\n\n`; md+=`---\n`; md+=`Reviews (1): Last reviewed commit: "${process.env.COMMIT_MSG||'head'}" | [Re-trigger vskills](https://github.com/${process.env.GITHUB_REPOSITORY||'vraj-ai/skills'}/actions)\n`; md+=`*Strictness: ${cfg.match(/strictness:\s*(\w+)/)?.[1] || 'Medium'} | \`/fix\` to apply suggestions*\n`;
+          let config={}; try { config=JSON.parse(fs.readFileSync('/tmp/review-config.json','utf8')); } catch {}
+          const enabled = (name) => config.summary?.[name]?.enabled === true;
+          const strictness = config.comments?.strictness || 'Medium';
+          let llm=null; try { llm=JSON.parse(fs.readFileSync('/tmp/llm.json','utf8')); } catch {}
+          let files=[]; try { const diff=fs.readFileSync('/tmp/diff.patch','utf8'); const set=new Set(); for(const m of diff.matchAll(/^\+\+\+ b\/(.+)$/gm)) set.add(m[1]); for(const m of diff.matchAll(/^diff --git a\/(.+) b\//gm)) set.add(m[1]); files=[...set].slice(0,10); } catch {}
+          const findings = llm?.findings?.filter((finding) => finding.severity === 'P1' || strictness === 'Low' || (strictness === 'Medium' && finding.confidence !== 'low')) || [];
+          const safe = verdict === 'safe' && conf === '5' && risk === 'Low';
+          const headerEmoji = safe ? '✅' : (Number(conf) >= 4 ? '🟢' : '🔍');
+          let md=`<!-- vskills-pr-review -->\n# ${headerEmoji} vskills Review: ${limited ? 'Limited review' : findings.length ? 'Findings' : 'No issues found'}\n`;
+          const header = config.comments?.header || '**Heads up:** A pile of LLMs read your diff so you don\'t have to.';
+          md+=`${header}\n`;
+          if(!md.trimEnd().endsWith('---')) md+='---\n';
+          md+='\n';
+          if(enabled('prSummary')) {
+            md+='## Summary\n';
+            if(llm?.summary) md+=`${llm.summary}\n\n`;
+            else { md+=`Reviewed PR #${prNum}: ${lines} diff lines across ${files.length} files.\n`; if(files.length) md+=`- Changed: ${files.map((file)=>'`'+file+'`').join(', ')}\n`; md+=`- Mode: ${limited ? 'deterministic checks only (model unavailable)' : 'model + deterministic checks'}\n\n`; }
+          }
+          if(enabled('confidenceScore')) {
+            const required=process.env.REQUIRED || '2'; const meets=Number(conf)>=Number(required);
+            md+=`## Confidence Score: ${conf}/5\n${llm?.confidence_reason || (limited ? 'Model review was unavailable, so this requires human review.' : 'Score combines deterministic checks with model findings.')}\n\n> Required: ${required}/5 — ${meets ? '✅ meets' : '⚠️ below'}\n\n`;
+          }
+          md+=`## Risk Level\n**${risk}**${process.env.CONFLICT==='true' ? ' — merge conflict detected' : ''}\n\n`;
+          if(enabled('issueTable')) {
+            md+='## Important Files Changed\n| Filename | Overview |\n|---|---|\n';
+            if(!files.length) md+='| — | No changed file found |\n';
+            for(const file of files.slice(0,8)) { const finding=findings.find((item)=>item.file===file); md+=`| \`${file}\` | ${finding ? finding.message.slice(0,90) : 'No actionable issues.'} |\n`; }
+            md+='\n';
+          }
+          if(findings.length) {
+            md+='## Findings\n';
+            for(const finding of findings.slice(0,6)) { const badge=finding.severity==='P1'?'🔴 P1':'🟡 P2'; md+=`- **${badge}** \`${finding.file||''}:${finding.line||''}\` — ${finding.message}\n`; if(finding.suggestion) md+=`  > Suggestion: \`${finding.suggestion.slice(0,120)}\`\n`; }
+            md+='\n';
+          }
+          if(enabled('commentsOutsideDiff')) { const outside=findings.filter((finding)=>!finding.line); md+=`## Comments Outside Diff\n${outside.length ? outside.map((finding)=>`- \`${finding.file||''}\` — ${finding.message}`).join('\n') : 'None.'}\n\n`; }
+          if(enabled('sequenceDiagram')) { const mermaid=llm?.sequenceMermaid || 'sequenceDiagram\n  participant PR\n  PR->>Review: diff hunks\n  Review->>Checks: findings'; md+=`## Sequence Diagram\n\`\`\`mermaid\n${mermaid}\n\`\`\`\n\n`; }
+          md+=`## Safe to merge?\n${safe ? '✅ **Safe**' : '⚠️ **Needs human**'} — confidence ${conf}/5, risk ${risk}\n\n---\nReviews (1): Last reviewed commit: "${process.env.COMMIT_MSG||'head'}" | [Re-trigger vskills](https://github.com/${process.env.GITHUB_REPOSITORY}/actions)\n*Strictness: ${strictness} | \`/fix\` to apply suggestions*\n`;
           fs.writeFileSync('/tmp/review.md', md);
-          console.log(md.slice(0,700));
+          fs.writeFileSync('/tmp/visible-findings.json', JSON.stringify(findings));
           JS
         env:
-          CONFIDENCE: ${{ steps.scores.outputs.confidence }}
-          RISK: ${{ steps.scores.outputs.risk }}
-          VERDICT: ${{ steps.scores.outputs.verdict }}
+          CONFIDENCE: ${{ steps.final.outputs.confidence }}
+          RISK: ${{ steps.final.outputs.risk }}
+          VERDICT: ${{ steps.final.outputs.verdict }}
           LIMITED: ${{ steps.llm.outputs.limited }}
           LINES: ${{ steps.diff.outputs.lines }}
-          COUNT: ${{ steps.limits.outputs.count }}
           CONFIG_PATH: ${{ steps.config.outputs.path }}
-          REQUIRED: "2"
-          HAS_CONTEXT: ${{ steps.context.outputs.has_context }}
+          REQUIRED: ${{ steps.config.outputs.required_confidence }}
           CONFLICT: ${{ steps.conflicts.outputs.conflict }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           COMMIT_MSG: ${{ github.event.pull_request.title }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_SHA: ${{ github.sha }}
 
-      - name: Post Checks + comment (upsert)
+      - name: Post review check with annotations
+        if: steps.limits.outputs.skip == 'false' && steps.config.outputs.use_status_checks == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          CONFIDENCE: ${{ steps.final.outputs.confidence }}
+          RISK: ${{ steps.final.outputs.risk }}
+          VERDICT: ${{ steps.final.outputs.verdict }}
+        run: |
+          node - <<'JS'
+          const fs=require('fs');
+          const findings=JSON.parse(fs.readFileSync('/tmp/visible-findings.json','utf8'));
+          const annotations=findings.filter((finding)=>finding.file && Number(finding.line)>0).slice(0,50).map((finding)=>({path:finding.file,start_line:Number(finding.line),end_line:Number(finding.line),annotation_level:finding.severity==='P1'?'failure':'warning',message:String(finding.message).slice(0,65000),title:`${finding.severity||'P2'} review finding`}));
+          const payload={name:'pr-review',head_sha:process.env.HEAD_SHA,status:'completed',conclusion:process.env.VERDICT==='safe'?'success':'failure',output:{title:`Confidence ${process.env.CONFIDENCE}/5, risk ${process.env.RISK}`,summary:fs.readFileSync('/tmp/review.md','utf8').slice(0,65000),annotations}};
+          fs.writeFileSync('/tmp/check-payload.json',JSON.stringify(payload));
+          JS
+          gh api --method POST repos/${{ github.repository }}/check-runs --input /tmp/check-payload.json >/dev/null
+
+      - name: Upsert review comment
+        if: steps.limits.outputs.skip == 'false'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # create check run
-          gh api repos/${{ github.repository }}/check-runs -f name="pr-review" -f head_sha="${{ github.event.pull_request.head.sha }}" -f status="completed" -f conclusion="${{ steps.scores.outputs.confidence >= 2 && 'success' || 'neutral' }}" -f output[title]="Confidence ${{ steps.scores.outputs.confidence }}/5, risk ${{ steps.scores.outputs.risk }}" -F output[summary]="$(cat /tmp/review.md | head -c 4000)" 2>&1 | head -n 20 || true
-          # upsert single comment keyed by <!-- vskills-pr-review --> (polished, no \n escapes)
-          EXISTING=$(gh pr view ${{ github.event.pull_request.number }} --json comments --jq '.comments[] | select(.body | contains("<!-- vskills-pr-review -->")) | .id' 2>/dev/null | head -1)
-          if [ -n "$EXISTING" ]; then gh api repos/${{ github.repository }}/issues/comments/$EXISTING --method PATCH -F body=@/tmp/review.md 2>&1 | head -n 20 || true; else gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review.md 2>&1 | head -n 20 || true; fi
-          # annotate diff lines (example)
-          echo "annotations posted"
+          EXISTING=$(gh api --paginate repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments --jq '.[] | select(.body | contains("<!-- vskills-pr-review -->") and contains("vskills Review:")) | .id' | head -1)
+          if [ -n "$EXISTING" ]; then
+            gh api repos/${{ github.repository }}/issues/comments/$EXISTING --method PATCH -F body=@/tmp/review.md >/dev/null
+          else
+            gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review.md >/dev/null
+          fi
 
       - name: Auto-approve gate
-        if: contains(fromJSON('["true","false"]'), 'true')
+        if: steps.limits.outputs.skip == 'false' && steps.config.outputs.auto_approve == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CONFIDENCE: ${{ steps.final.outputs.confidence }}
+          RISK: ${{ steps.final.outputs.risk }}
+          MAXIMUM_RISK: ${{ steps.config.outputs.maximum_risk }}
         run: |
-          # only when config autoApprovePrs.enabled && confidence 5/5 && risk <= maximumRisk
-          CONF=${{ steps.scores.outputs.confidence }}
-          RISK=${{ steps.scores.outputs.risk }}
-          if [ "$CONF" = "5" ] && [ "$RISK" = "Low" ]; then gh pr review ${{ github.event.pull_request.number }} --approve --body "Auto-approve: 5/5, risk Low" 2>&1 | head -n 20 || true; fi
+          RANK='{"Low":0,"Medium":1,"High":2,"Critical":3}'
+          RISK_RANK=$(echo "$RANK" | jq -r --arg risk "$RISK" '.[$risk]')
+          MAX_RANK=$(echo "$RANK" | jq -r --arg risk "$MAXIMUM_RISK" '.[$risk]')
+          UNRESOLVED=$(gh api graphql -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){nodes{isResolved}}}}}' -F owner='${{ github.repository_owner }}' -F name='${{ github.event.repository.name }}' -F number=${{ github.event.pull_request.number }} --jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)] | length')
+          if [ "$CONFIDENCE" = "5" ] && [ "$RISK_RANK" -le "$MAX_RANK" ] && [ "$UNRESOLVED" = "0" ]; then
+            gh pr review ${{ github.event.pull_request.number }} --approve --body "Auto-approved: confidence 5/5, risk $RISK."
+          fi
