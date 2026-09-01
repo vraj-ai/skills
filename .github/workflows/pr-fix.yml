@@ -54,6 +54,13 @@ jobs:
           echo "skip=false" >> "$GITHUB_OUTPUT"
           echo "count=$COUNT" >> "$GITHUB_OUTPUT"
 
+      - name: Stage trusted fix assets
+        if: steps.guard.outputs.skip == 'false'
+        run: |
+          mkdir -p /tmp/vskills-pr-review
+          cp .vskills/pr-review/fix.md /tmp/vskills-pr-review/fix.md
+          cp .vskills/pr-review/parse-fix-response.mjs /tmp/vskills-pr-review/parse-fix-response.mjs
+
       - name: Resolve PR branch
         if: steps.guard.outputs.skip == 'false'
         id: pr
@@ -101,7 +108,7 @@ jobs:
           API_BASE: ${{ vars.REVIEW_API_BASE }}
         run: |
           COMMENT_BODY=$(cat /tmp/fix-comment.txt)
-          SYSTEM=$(cat .vskills/pr-review/fix.md 2>/dev/null || cat standalone/pr-review/templates/prompt/fix.md 2>/dev/null || true)
+          SYSTEM=$(cat /tmp/vskills-pr-review/fix.md)
           CONTEXT=$(head -c 8000 /tmp/context-trunc.md 2>/dev/null)
           DIFF=$(head -c 10000 /tmp/diff-trunc.patch 2>/dev/null)
           REVIEW=$(head -c 4000 /tmp/last-review.md 2>/dev/null)
@@ -119,8 +126,7 @@ jobs:
           if [ -z "$BASE" ]; then BASE="https://openrouter.ai/api/v1"; fi
           MOD="$MODEL"
           if [ -z "$MOD" ]; then MOD="z-ai/glm-5.3-flash"; fi
-          PARSER=.vskills/pr-review/parse-fix-response.mjs
-          if [ ! -f "$PARSER" ]; then PARSER=standalone/pr-review/scripts/parse-fix-response.mjs; fi
+          PARSER=/tmp/vskills-pr-review/parse-fix-response.mjs
           USER_MSG="User /fix comment:\n$COMMENT_BODY\n\nLast review:\n$REVIEW\n\nDiff (truncated):\n$DIFF\n\nSymbols:\n$SYMBOLS"
           VALID=false
           TRIED='|'

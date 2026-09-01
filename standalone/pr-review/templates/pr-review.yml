@@ -8,11 +8,7 @@ on:
     types: [created]
 
 permissions:
-  contents: write
-  pull-requests: write
-  checks: write
-  issues: write
-  actions: write
+  contents: read
 
 concurrency:
   group: pr-review-${{ github.event.pull_request.number || github.run_id }}
@@ -21,6 +17,10 @@ concurrency:
 jobs:
   rerun:
     if: github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '@vskills')
+    permissions:
+      actions: write
+      contents: read
+      pull-requests: read
     runs-on: ubuntu-latest
     steps:
       - name: Rerun latest PR review
@@ -37,6 +37,11 @@ jobs:
 
   review:
     if: github.event_name == 'pull_request'
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: write
+      issues: write
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -106,8 +111,11 @@ jobs:
           git fetch origin "$BASE_REF"
           if git merge-tree --write-tree "origin/$BASE_REF" HEAD >/tmp/merge-tree.txt 2>/tmp/merge-tree-error.txt; then
             echo "conflict=false" >> "$GITHUB_OUTPUT"
-          else
+          elif grep -Eq 'CONFLICT|Auto-merging' /tmp/merge-tree.txt /tmp/merge-tree-error.txt; then
             echo "conflict=true" >> "$GITHUB_OUTPUT"
+          else
+            cat /tmp/merge-tree-error.txt >&2
+            exit 1
           fi
 
       - name: Auto-fix conflicts (seamless)

@@ -18,6 +18,8 @@ test('pr-fix.yml has correct guard: /fix on PR only, same-repo, dedupe, loop cap
   assert.match(yml, /\^\[\[:space:\]\]\*\/fix/);
   assert.match(yml, /group: pr-fix-/);
   assert.match(yml, /REMOTE_SHA/);
+  assert.match(yml, /Stage trusted fix assets/);
+  assert.match(yml, /PARSER=\/tmp\/vskills-pr-review\/parse-fix-response\.mjs/);
   assert.doesNotMatch(yml, /COMMENT_BODY='\$\{\{/);
 });
 
