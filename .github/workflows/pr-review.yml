@@ -180,6 +180,16 @@ jobs:
           SYMBOLS=$(cat /tmp/symbols.txt 2>/dev/null)
           PAYLOAD=$(jq -n --arg sys "$SYSTEM" --arg ctx "$CONTEXT" --arg diff "$DIFF" --arg sym "$SYMBOLS" --arg model "$MOD" '{model: $model, temperature: 0.2, max_tokens: 3500, reasoning: {effort: "none"}, messages: [{role:"system", content: $sys}, {role:"user", content: ("Repo context:\n" + $ctx + "\n\nChanged symbols:\n" + $sym + "\n\nDiff (truncated, 80-line hunks):\n" + $diff)}]}')
           RESP=$(curl -s "$BASE/chat/completions" -H "Authorization: Bearer $API_KEY" -H "Content-Type: application/json" -H "HTTP-Referer: https://github.com/vraj-ai/skills" -H "X-Title: vskills-pr-review" -d "$PAYLOAD" 2>&1 | head -c 20000)
+          if echo "$RESP" | grep -q "rate-limited"; then
+            echo "Primary model rate-limited, trying fallback z-ai/glm-5.3-flash"
+            PAYLOAD2=$(echo "$PAYLOAD" | jq --arg m "z-ai/glm-5.3-flash" '.model = $m')
+            RESP=$(curl -s "$BASE/chat/completions" -H "Authorization: Bearer $API_KEY" -H "Content-Type: application/json" -H "HTTP-Referer: https://github.com/vraj-ai/skills" -H "X-Title: vskills-pr-review" -d "$PAYLOAD2" 2>&1 | head -c 20000)
+          fi
+          if echo "$RESP" | grep -q "rate-limited"; then
+            echo "Fallback also rate-limited, trying deepseek"
+            PAYLOAD3=$(echo "$PAYLOAD" | jq --arg m "deepseek/deepseek-v4-flash-0731" '.model = $m')
+            RESP=$(curl -s "$BASE/chat/completions" -H "Authorization: Bearer $API_KEY" -H "Content-Type: application/json" -H "HTTP-Referer: https://github.com/vraj-ai/skills" -H "X-Title: vskills-pr-review" -d "$PAYLOAD3" 2>&1 | head -c 20000)
+          fi
           echo "$RESP" > /tmp/llm-raw.json
           CONTENT=$(jq -r '.choices[0].message.content // empty' /tmp/llm-raw.json 2>/dev/null | sed -e 's/^```json//' -e 's/^```//' -e 's/```$//')
           if [ -z "$CONTENT" ]; then CONTENT=$(jq -r '.choices[0].message.reasoning // empty' /tmp/llm-raw.json 2>/dev/null | head -c 3000); fi
