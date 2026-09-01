@@ -75,9 +75,9 @@ jobs:
         run: |
           printf '%s' "$COMMENT_BODY" > /tmp/fix-comment.txt
           gh pr view ${{ github.event.issue.number }} --json comments --jq '[.comments[] | select(.body | contains("<!-- vskills-pr-review -->")) | select(.body | contains("<!-- fix:") | not)] | last.body // ""' > /tmp/last-review.md 2>/dev/null || true
-          git fetch origin "$BASE_REF" 2>&1 | head -n 20
+          git fetch origin "$BASE_REF"
           gh pr diff ${{ github.event.issue.number }} --patch > /tmp/diff.patch 2>/dev/null || git diff "origin/$BASE_REF"...HEAD > /tmp/diff.patch 2>/dev/null || git diff HEAD~1...HEAD > /tmp/diff.patch 2>/dev/null || true
-          git diff --name-only "origin/$BASE_REF"...HEAD > /tmp/fix-allowed-files.txt
+          git diff --name-only -z "origin/$BASE_REF"...HEAD > /tmp/fix-allowed-files.txt
           head -c 12000 /tmp/diff.patch > /tmp/diff-trunc.patch
           grep -E '^\+.*(function|class|def |import|export)' /tmp/diff.patch 2>/dev/null | head -n 30 > /tmp/symbols.txt || true
           CONTEXT_FILES=""
@@ -178,16 +178,21 @@ jobs:
         id: apply_patch
         run: |
           echo "applied=false" >> "$GITHUB_OUTPUT"
-          if ! git apply --numstat /tmp/fix.patch > /tmp/fix-numstat.txt 2>/tmp/fix-apply-error.txt || [ ! -s /tmp/fix-numstat.txt ]; then
+          if ! git apply --numstat -z /tmp/fix.patch > /tmp/fix-numstat.txt 2>/tmp/fix-apply-error.txt || [ ! -s /tmp/fix-numstat.txt ]; then
             echo "The model returned a malformed patch. I did not change the branch." >> /tmp/fix-reply.md
             exit 0
           fi
-          while IFS=$'\t' read -r _added _deleted file; do
-            if ! grep -Fxq -- "$file" /tmp/fix-allowed-files.txt; then
-              echo "The proposed patch touched \`$file\`, which is outside this PR's changed files. I did not apply it." >> /tmp/fix-reply.md
-              exit 0
-            fi
-          done < /tmp/fix-numstat.txt
+          if ! node - <<'JS'
+          const fs = require('fs');
+          const split = (file) => fs.readFileSync(file).toString('utf8').split('\0').filter(Boolean);
+          const allowed = new Set(split('/tmp/fix-allowed-files.txt'));
+          const changed = split('/tmp/fix-numstat.txt').map((entry) => entry.split('\t').slice(2).join('\t'));
+          if (!changed.length || changed.some((file) => !allowed.has(file))) process.exit(1);
+          JS
+          then
+            echo "The proposed patch touched a file outside this PR's changed files. I did not apply it." >> /tmp/fix-reply.md
+            exit 0
+          fi
           if ! git apply --check /tmp/fix.patch 2>/tmp/fix-apply-error.txt; then
             echo "The proposed patch did not apply cleanly. I did not change the branch. Run \`/fix\` again after updating the PR." >> /tmp/fix-reply.md
             exit 0
