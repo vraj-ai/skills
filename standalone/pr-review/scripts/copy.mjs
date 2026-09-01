@@ -32,6 +32,7 @@ export async function copyPrReview({ targetRoot = process.cwd(), sourceRoot = pa
   results.push(await atomicInstall(path.join(sourceRoot,'prompt/system.md'), path.join(targetRoot,'.vskills/pr-review/system.md'), backupRoot));
   results.push(await atomicInstall(path.join(sourceRoot,'prompt/fix.md'), path.join(targetRoot,'.vskills/pr-review/fix.md'), backupRoot));
   results.push(await atomicInstall(path.join(repoRoot,'standalone/pr-review/scripts/parse-fix-response.mjs'), path.join(targetRoot,'.vskills/pr-review/parse-fix-response.mjs'), backupRoot));
+  results.push(await atomicInstall(path.join(repoRoot,'standalone/pr-review/scripts/parse-review-config.mjs'), path.join(targetRoot,'.vskills/pr-review/parse-review-config.mjs'), backupRoot));
   // review config: prefer .vskills/review.yml, don't overwrite if exists with different content? we backup
   const cfgSrc = path.join(sourceRoot,'review.yml');
   const cfgDst = path.join(targetRoot,'.vskills/review.yml');

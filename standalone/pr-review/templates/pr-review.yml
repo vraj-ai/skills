@@ -53,20 +53,20 @@ jobs:
           [ -f "$CONFIG" ] || CONFIG=".github/review.yml"
           [ -f "$CONFIG" ] || CONFIG="standalone/pr-review/templates/review.yml"
           echo "path=$CONFIG" >> "$GITHUB_OUTPUT"
-          CONFIG_PATH="$CONFIG" node - <<'JS' >> "$GITHUB_OUTPUT"
-          const fs = require('fs');
-          const text = fs.readFileSync(process.env.CONFIG_PATH, 'utf8');
-          const value = (key, fallback) => text.match(new RegExp(`^\\s*${key}:\\s*([^#\\n]+)`, 'm'))?.[1].trim() ?? fallback;
-          const enabled = (section, fallback='false') => text.match(new RegExp(`^\\s*${section}:\\s*\\n\\s+enabled:\\s*(true|false)`, 'm'))?.[1] ?? fallback;
-          console.log(`file_limit=${value('fileChangeLimit', '100')}`);
-          console.log(`review_drafts=${value('reviewDraftPrs', 'false')}`);
-          console.log(`auto_review_commits=${value('autoReviewOnNewCommits', 'true')}`);
-          console.log(`required_confidence=${value('requiredConfidence', '2')}`);
-          console.log(`use_status_checks=${value('useStatusChecks', 'true')}`);
-          console.log(`post_status_comments=${value('postStatusComments', 'true')}`);
-          console.log(`auto_approve=${enabled('autoApprovePrs')}`);
-          console.log(`maximum_risk=${value('maximumRisk', 'Low')}`);
-          console.log(`strictness=${value('strictness', 'Medium')}`);
+          PARSER=.vskills/pr-review/parse-review-config.mjs
+          if [ ! -f "$PARSER" ]; then PARSER=standalone/pr-review/scripts/parse-review-config.mjs; fi
+          node "$PARSER" "$CONFIG" /tmp/review-config.json
+          node - <<'JS' >> "$GITHUB_OUTPUT"
+          const config = require('/tmp/review-config.json');
+          console.log(`file_limit=${config.when?.fileChangeLimit ?? 100}`);
+          console.log(`review_drafts=${config.when?.reviewDraftPrs ?? false}`);
+          console.log(`auto_review_commits=${config.when?.autoReviewOnNewCommits ?? true}`);
+          console.log(`required_confidence=${config.statusChecks?.requiredConfidence ?? 2}`);
+          console.log(`use_status_checks=${config.statusChecks?.useStatusChecks ?? true}`);
+          console.log(`post_status_comments=${config.statusChecks?.postStatusComments ?? true}`);
+          console.log(`auto_approve=${config.statusChecks?.autoApprovePrs?.enabled ?? false}`);
+          console.log(`maximum_risk=${config.statusChecks?.autoApprovePrs?.maximumRisk ?? 'Low'}`);
+          console.log(`strictness=${config.comments?.strictness ?? 'Medium'}`);
           JS
 
       - name: Check file-change limit
@@ -306,16 +306,16 @@ jobs:
           const limited = process.env.LIMITED === 'true';
           const lines = process.env.LINES || '0';
           const prNum = process.env.PR_NUMBER || '';
-          let cfg=''; try { cfg=fs.readFileSync(process.env.CONFIG_PATH,'utf8'); } catch {}
-          const enabled = (name) => new RegExp(`^\\s*${name}:\\s*\\n\\s+enabled:\\s*true`, 'm').test(cfg);
-          const strictness = cfg.match(/^\s*strictness:\s*(\w+)/m)?.[1] || 'Medium';
+          let config={}; try { config=JSON.parse(fs.readFileSync('/tmp/review-config.json','utf8')); } catch {}
+          const enabled = (name) => config.summary?.[name]?.enabled === true;
+          const strictness = config.comments?.strictness || 'Medium';
           let llm=null; try { llm=JSON.parse(fs.readFileSync('/tmp/llm.json','utf8')); } catch {}
           let files=[]; try { const diff=fs.readFileSync('/tmp/diff.patch','utf8'); const set=new Set(); for(const m of diff.matchAll(/^\+\+\+ b\/(.+)$/gm)) set.add(m[1]); for(const m of diff.matchAll(/^diff --git a\/(.+) b\//gm)) set.add(m[1]); files=[...set].slice(0,10); } catch {}
           const findings = llm?.findings?.filter((finding) => finding.severity === 'P1' || strictness === 'Low' || (strictness === 'Medium' && finding.confidence !== 'low')) || [];
           const safe = verdict === 'safe' && conf === '5' && risk === 'Low';
           const headerEmoji = safe ? '✅' : (Number(conf) >= 4 ? '🟢' : '🔍');
           let md=`<!-- vskills-pr-review -->\n# ${headerEmoji} vskills Review: ${limited ? 'Limited review' : findings.length ? 'Findings' : 'No issues found'}\n`;
-          const header = cfg.match(/header:\s*"([^"]+)"/)?.[1]?.replace(/\\n/g,'\n') || '**Heads up:** A pile of LLMs read your diff so you don\'t have to.';
+          const header = config.comments?.header || '**Heads up:** A pile of LLMs read your diff so you don\'t have to.';
           md+=`${header}\n`;
           if(!md.trimEnd().endsWith('---')) md+='---\n';
           md+='\n';

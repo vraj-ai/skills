@@ -145,8 +145,8 @@ jobs:
             echo "has_llm=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          REPLY=$(jq -r '.reply' /tmp/fix-content.json)
-          PATCH=$(jq -r '.patch' /tmp/fix-content.json)
+          REPLY=$(jq -r '.reply // empty' /tmp/fix-content.json)
+          PATCH=$(jq -r '.patch // empty' /tmp/fix-content.json)
           {
             echo '<!-- vskills-pr-review -->'
             echo ''
