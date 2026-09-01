@@ -52,7 +52,6 @@ jobs:
         id: conflicts
         run: |
           if git merge-base --is-ancestor origin/${{ github.base_ref }} HEAD 2>/dev/null; then echo "conflict=false" >> "$GITHUB_OUTPUT"; else echo "conflict=true" >> "$GITHUB_OUTPUT"; fi
-          echo "conflict=false" >> "$GITHUB_OUTPUT" 2>/dev/null || true
 
       - name: Auto-fix conflicts (seamless)
         if: steps.conflicts.outputs.conflict == 'true'
