@@ -62,8 +62,8 @@ jobs:
         run: |
           PR=${{ github.event.issue.number }}
           gh pr view "$PR" --json headRefName,baseRefName,headRepository --jq '"branch=\(.headRefName)\nbase=\(.baseRefName)\nrepo=\(.headRepository.name)"' >> "$GITHUB_OUTPUT"
-          git fetch origin "pull/$PR/head:pr-$PR"
-          git checkout "pr-$PR"
+          git fetch origin "pull/$PR/head"
+          git checkout -B "pr-$PR" FETCH_HEAD
 
       - name: Collect context for fix
         if: steps.guard.outputs.skip == 'false'

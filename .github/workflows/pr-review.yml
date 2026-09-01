@@ -93,8 +93,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          printf '%s\n' '<!-- vskills-pr-review -->' '' "Review skipped by \`.vskills/review.yml\` (draft, new-commit, or file limit policy)." > /tmp/review-skipped.md
-          gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review-skipped.md >/dev/null
+          printf '%s\n' '<!-- vskills-pr-review-skip -->' '' "Review skipped by \`.vskills/review.yml\` (draft, new-commit, or file limit policy)." > /tmp/review-skipped.md
+          EXISTING=$(gh api --paginate repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments --jq '.[] | select(.body | contains("<!-- vskills-pr-review-skip -->")) | .id' | head -1)
+          if [ -n "$EXISTING" ]; then gh api repos/${{ github.repository }}/issues/comments/$EXISTING --method PATCH -F body=@/tmp/review-skipped.md >/dev/null; else gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review-skipped.md >/dev/null; fi
 
       - name: Detect conflicts
         if: steps.limits.outputs.skip == 'false'
@@ -124,7 +125,7 @@ jobs:
             git push origin "HEAD:$PR_BRANCH"
             LOCAL_SHA=$(git rev-parse HEAD)
             REMOTE_SHA=$(git ls-remote origin "refs/heads/$PR_BRANCH" | cut -f1)
-            [ "$LOCAL_SHA" = "$REMOTE_SHA" ]
+            if [ "$LOCAL_SHA" != "$REMOTE_SHA" ]; then echo "Remote branch did not advance to the merge commit." >&2; exit 1; fi
             printf '%s\n' '<!-- vskills-pr-review -->' '' "Updated this branch by merging \`$BASE_REF\`. The review will run again on \`$(git rev-parse --short HEAD)\`." > /tmp/conflict-fix.md
             gh pr comment "$PR_NUMBER" --body-file /tmp/conflict-fix.md
           else
@@ -381,7 +382,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          EXISTING=$(gh pr view ${{ github.event.pull_request.number }} --json comments --jq '.comments[] | select(.body | contains("<!-- vskills-pr-review -->") and contains("vskills Review:")) | .id' 2>/dev/null | head -1)
+          EXISTING=$(gh api --paginate repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments --jq '.[] | select(.body | contains("<!-- vskills-pr-review -->") and contains("vskills Review:")) | .id' | head -1)
           if [ -n "$EXISTING" ]; then
             gh api repos/${{ github.repository }}/issues/comments/$EXISTING --method PATCH -F body=@/tmp/review.md >/dev/null
           else
