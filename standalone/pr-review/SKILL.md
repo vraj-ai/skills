@@ -17,8 +17,8 @@ Polished GitHub-Actions review bot. Copy the templates into any repo with `setup
 ## Triggers
 
 - Trusted `pull_request_target: [opened, synchronize, reopened, ready_for_review]`; checks out the PR head as data and executes no PR-controlled code. Collaborators can rerun with `@vskills review`.
-- `issue_comment: created` when the comment starts with `/fix`. Same-repo collaborators only. Forks cannot push.
-- After a verified `/fix` push, the fix job dispatches this workflow because `GITHUB_TOKEN` commits do not fire `pull_request_target`.
+- `issue_comment: created` when the comment line begins with the fix command. Same-repo collaborators only. Forks cannot push.
+- After a verified fix-on-comment push, the fix job dispatches this workflow because `GITHUB_TOKEN` commits do not fire `pull_request_target`.
 
 ## BYOK model
 
