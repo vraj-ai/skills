@@ -9,6 +9,7 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
+  actions: write
 
 concurrency:
   group: pr-fix-${{ github.event.issue.number }}
@@ -250,6 +251,7 @@ jobs:
               echo '<!-- fix:${{ github.event.comment.id }} -->'
             } > /tmp/fix-reply-push.md
             gh pr comment ${{ github.event.issue.number }} --body-file /tmp/fix-reply-push.md
+            gh workflow run "PR Review" -f pr_number="${{ github.event.issue.number }}"
           else
             gh pr comment ${{ github.event.issue.number }} --body-file /tmp/fix-reply.md
           fi

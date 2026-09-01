@@ -4,6 +4,12 @@ name: PR Review
 on:
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number to review
+        required: true
+        type: string
   issue_comment:
     types: [created]
 
@@ -11,7 +17,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: pr-review-${{ github.event.pull_request.number || github.run_id }}
+  group: pr-review-${{ github.event.pull_request.number || github.event.inputs.pr_number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -40,7 +46,7 @@ jobs:
           gh pr comment ${{ github.event.issue.number }} --body-file /tmp/rerun-missing.md
 
   review:
-    if: github.event_name == 'pull_request_target'
+    if: github.event_name == 'pull_request_target' || github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
       pull-requests: write
@@ -63,10 +69,18 @@ jobs:
           [ -f "$CONFIG" ] || CONFIG=.github/review.yml
           cp "$CONFIG" /tmp/vskills-pr-review/review.yml
 
+      - name: Resolve PR metadata
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+        run: |
+          gh pr view "$PR_NUMBER" --json number,title,isDraft,headRefOid,headRefName,baseRefName,isCrossRepository --jq '"number=\(.number)\ntitle=\(.title)\ndraft=\(.isDraft)\nhead_sha=\(.headRefOid)\nbranch=\(.headRefName)\nbase=\(.baseRefName)\nsame_repo=\(.isCrossRepository | not)"' >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ steps.pr.outputs.head_sha }}
           persist-credentials: false
 
       - name: Read review config
@@ -93,12 +107,12 @@ jobs:
         id: limits
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          IS_DRAFT: ${{ github.event.pull_request.draft }}
+          IS_DRAFT: ${{ steps.pr.outputs.draft }}
           ACTION: ${{ github.event.action }}
           REVIEW_DRAFTS: ${{ steps.config.outputs.review_drafts }}
           AUTO_REVIEW_COMMITS: ${{ steps.config.outputs.auto_review_commits }}
         run: |
-          COUNT=$(gh pr view ${{ github.event.pull_request.number }} --json changedFiles --jq .changedFiles 2>/dev/null || echo "0")
+          COUNT=$(gh pr view ${{ steps.pr.outputs.number }} --json changedFiles --jq .changedFiles 2>/dev/null || echo "0")
           LIMIT=${{ steps.config.outputs.file_limit }}
           echo "count=$COUNT" >> "$GITHUB_OUTPUT"
           echo "limit=$LIMIT" >> "$GITHUB_OUTPUT"
@@ -114,14 +128,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           printf '%s\n' '<!-- vskills-pr-review-skip -->' '' "Review skipped by \`.vskills/review.yml\` (draft, new-commit, or file limit policy)." > /tmp/review-skipped.md
-          EXISTING=$(gh api --paginate repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments --jq '.[] | select(.body | contains("<!-- vskills-pr-review-skip -->")) | .id' | head -1)
-          if [ -n "$EXISTING" ]; then gh api repos/${{ github.repository }}/issues/comments/$EXISTING --method PATCH -F body=@/tmp/review-skipped.md >/dev/null; else gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review-skipped.md >/dev/null; fi
+          EXISTING=$(gh api --paginate repos/${{ github.repository }}/issues/${{ steps.pr.outputs.number }}/comments --jq '.[] | select(.body | contains("<!-- vskills-pr-review-skip -->")) | .id' | head -1)
+          if [ -n "$EXISTING" ]; then gh api repos/${{ github.repository }}/issues/comments/$EXISTING --method PATCH -F body=@/tmp/review-skipped.md >/dev/null; else gh pr comment ${{ steps.pr.outputs.number }} --body-file /tmp/review-skipped.md >/dev/null; fi
 
       - name: Detect conflicts
         if: steps.limits.outputs.skip == 'false'
         id: conflicts
         env:
-          BASE_REF: ${{ github.base_ref }}
+          BASE_REF: ${{ steps.pr.outputs.base }}
         run: |
           git fetch origin "$BASE_REF"
           if git merge-tree --write-tree "origin/$BASE_REF" HEAD >/tmp/merge-tree.txt 2>/tmp/merge-tree-error.txt; then
@@ -134,13 +148,13 @@ jobs:
           fi
 
       - name: Auto-fix conflicts (seamless)
-        if: steps.conflicts.outputs.conflict == 'true' && github.event.pull_request.head.repo.full_name == github.repository
+        if: steps.conflicts.outputs.conflict == 'true' && steps.pr.outputs.same_repo == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          BASE_REF: ${{ github.base_ref }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          BASE_REF: ${{ steps.pr.outputs.base }}
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+          PR_BRANCH: ${{ steps.pr.outputs.branch }}
         run: |
           gh auth setup-git
           git checkout -B pr-head "$HEAD_SHA"
@@ -192,7 +206,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh pr diff ${{ github.event.pull_request.number }} --patch > /tmp/diff.patch 2>/dev/null || git diff origin/${{ github.base_ref }}...HEAD > /tmp/diff.patch || true
+          gh pr diff ${{ steps.pr.outputs.number }} --patch > /tmp/diff.patch 2>/dev/null || git diff origin/${{ steps.pr.outputs.base }}...HEAD > /tmp/diff.patch || true
           # chunk into 80-line hunks for LLM context
           split -l 80 /tmp/diff.patch /tmp/hunk- 2>/dev/null || true
           # ripgrep changed symbols (lightweight repo context)
@@ -380,15 +394,15 @@ jobs:
           CONFIG_PATH: ${{ steps.config.outputs.path }}
           REQUIRED: ${{ steps.config.outputs.required_confidence }}
           CONFLICT: ${{ steps.conflicts.outputs.conflict }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          COMMIT_MSG: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          COMMIT_MSG: ${{ steps.pr.outputs.title }}
           GITHUB_REPOSITORY: ${{ github.repository }}
 
       - name: Post review check with annotations
         if: steps.limits.outputs.skip == 'false' && steps.config.outputs.use_status_checks == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
           CONFIDENCE: ${{ steps.final.outputs.confidence }}
           RISK: ${{ steps.final.outputs.risk }}
           VERDICT: ${{ steps.final.outputs.verdict }}
@@ -407,11 +421,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          EXISTING=$(gh api --paginate repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments --jq '.[] | select(.body | contains("<!-- vskills-pr-review -->") and contains("vskills Review:")) | .id' | head -1)
+          EXISTING=$(gh api --paginate repos/${{ github.repository }}/issues/${{ steps.pr.outputs.number }}/comments --jq '.[] | select(.body | contains("<!-- vskills-pr-review -->") and contains("vskills Review:")) | .id' | head -1)
           if [ -n "$EXISTING" ]; then
             gh api repos/${{ github.repository }}/issues/comments/$EXISTING --method PATCH -F body=@/tmp/review.md >/dev/null
           else
-            gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review.md >/dev/null
+            gh pr comment ${{ steps.pr.outputs.number }} --body-file /tmp/review.md >/dev/null
           fi
 
       - name: Auto-approve gate
@@ -425,7 +439,7 @@ jobs:
           RANK='{"Low":0,"Medium":1,"High":2,"Critical":3}'
           RISK_RANK=$(echo "$RANK" | jq -r --arg risk "$RISK" '.[$risk]')
           MAX_RANK=$(echo "$RANK" | jq -r --arg risk "$MAXIMUM_RISK" '.[$risk]')
-          UNRESOLVED=$(gh api graphql -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){nodes{isResolved}}}}}' -F owner='${{ github.repository_owner }}' -F name='${{ github.event.repository.name }}' -F number=${{ github.event.pull_request.number }} --jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)] | length')
+          UNRESOLVED=$(gh api graphql -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){nodes{isResolved}}}}}' -F owner='${{ github.repository_owner }}' -F name='${{ github.event.repository.name }}' -F number=${{ steps.pr.outputs.number }} --jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)] | length')
           if [ "$CONFIDENCE" = "5" ] && [ "$RISK_RANK" -le "$MAX_RANK" ] && [ "$UNRESOLVED" = "0" ]; then
-            gh pr review ${{ github.event.pull_request.number }} --approve --body "Auto-approved: confidence 5/5, risk $RISK."
+            gh pr review ${{ steps.pr.outputs.number }} --approve --body "Auto-approved: confidence 5/5, risk $RISK."
           fi

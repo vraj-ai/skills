@@ -30,6 +30,7 @@ test('templates exist and are valid YAML with required triggers and permissions'
   }
   const review = await fs.readFile(path.join(root, 'pr-review.yml'), 'utf8');
   assert.match(review, /pull_request_target:/);
+  assert.match(review, /workflow_dispatch:/);
   assert.match(review, /opened.*synchronize.*reopened.*ready_for_review/s);
   assert.match(review, /permissions:/);
   assert.match(review, /contents:\s*(read|write)/);
@@ -42,6 +43,8 @@ test('templates exist and are valid YAML with required triggers and permissions'
   assert.match(fix, /issue_comment:/);
   assert.match(fix, /contains\(github\.event\.comment\.body, '\/fix'\)/);
   assert.match(fix, /contents:\s*write/);
+  assert.match(fix, /actions:\s*write/);
+  assert.match(fix, /gh workflow run/);
 
   const cfg = await fs.readFile(path.join(root, 'review.yml'), 'utf8');
   assert.match(cfg, /fileChangeLimit:\s*100/);
