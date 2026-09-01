@@ -16,7 +16,7 @@ Polished GitHub-Actions review bot. Copy the templates into any repo with `setup
 
 ## Triggers
 
-- `pull_request: [opened, synchronize, reopened, ready_for_review]` + `workflow_dispatch` and tag review or `@vskills`
+- Trusted `pull_request_target: [opened, synchronize, reopened, ready_for_review]`; checks out the PR head as data and executes no PR-controlled code. Collaborators can rerun with `@vskills review`.
 - `issue_comment: created` with `contains(body,'/fix')` on a PR, same-repo only (no forks)
 
 ## BYOK model

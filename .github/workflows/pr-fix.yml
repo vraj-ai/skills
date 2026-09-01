@@ -10,6 +10,10 @@ permissions:
   pull-requests: write
   issues: write
 
+concurrency:
+  group: pr-fix-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
 jobs:
   fix:
     if: contains(github.event.comment.body, '/fix') && github.event.issue.pull_request
@@ -25,9 +29,20 @@ jobs:
         id: guard
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMENT_AUTHOR_ASSOCIATION: ${{ github.event.comment.author_association }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
           PR=${{ github.event.issue.number }}
-          IS_FORK=$(gh pr view $PR --json isCrossRepository --jq .isCrossRepository 2>/dev/null || echo "false")
+          if ! printf '%s\n' "$COMMENT_BODY" | grep -Eq '^[[:space:]]*/fix([[:space:]]|$)'; then echo "skip=no-command" >> "$GITHUB_OUTPUT"; exit 0; fi
+          case "$COMMENT_AUTHOR_ASSOCIATION" in
+            OWNER|MEMBER|COLLABORATOR) ;;
+            *) echo "skip=unauthorized" >> "$GITHUB_OUTPUT"; echo "Only repository collaborators may run /fix." | tee /tmp/skip.md; exit 0 ;;
+          esac
+          if ! IS_FORK=$(gh pr view "$PR" --json isCrossRepository --jq .isCrossRepository); then
+            echo "skip=metadata-error" >> "$GITHUB_OUTPUT"
+            echo "I couldn't verify the PR repository, so /fix stopped without changing the branch." | tee /tmp/skip.md
+            exit 0
+          fi
           if [ "$IS_FORK" = "true" ]; then echo "skip=fork" >> "$GITHUB_OUTPUT"; echo "Fork PR — cannot push with GITHUB_TOKEN" | tee /tmp/skip.md; exit 0; fi
           LABELS=$(gh pr view $PR --json labels --jq '.labels[].name' 2>/dev/null || true)
           COUNT=$(echo "$LABELS" | grep -c "vskills-fix-" || true); COUNT=${COUNT:-0}
@@ -39,9 +54,16 @@ jobs:
             exit 0
           fi
           COMMENT_ID=${{ github.event.comment.id }}
-          if gh api repos/${{ github.repository }}/issues/$PR/comments --jq '.[].body' 2>/dev/null | grep -q "fix:$COMMENT_ID"; then echo "skip=dedupe" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if gh api --paginate repos/${{ github.repository }}/issues/$PR/comments --jq '.[].body' 2>/dev/null | grep -Fq "<!-- fix:$COMMENT_ID -->"; then echo "skip=dedupe" >> "$GITHUB_OUTPUT"; exit 0; fi
           echo "skip=false" >> "$GITHUB_OUTPUT"
           echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+
+      - name: Stage trusted fix assets
+        if: steps.guard.outputs.skip == 'false'
+        run: |
+          mkdir -p /tmp/vskills-pr-review
+          cp .vskills/pr-review/fix.md /tmp/vskills-pr-review/fix.md
+          cp .vskills/pr-review/parse-fix-response.mjs /tmp/vskills-pr-review/parse-fix-response.mjs
 
       - name: Resolve PR branch
         if: steps.guard.outputs.skip == 'false'
@@ -50,22 +72,23 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR=${{ github.event.issue.number }}
-          gh pr view $PR --json headRefName,headRepository --jq '"branch=\(.headRefName)\nrepo=\(.headRepository.name)"' >> "$GITHUB_OUTPUT"
-          git fetch origin pull/$PR/head:pr-$PR 2>&1 | head -n 20 || true
-          git checkout pr-$PR 2>&1 | head -n 20 || true
+          gh pr view "$PR" --json headRefName,baseRefName,headRepository --jq '"branch=\(.headRefName)\nbase=\(.baseRefName)\nrepo=\(.headRepository.name)"' >> "$GITHUB_OUTPUT"
+          git fetch origin "pull/$PR/head"
+          git checkout -B "pr-$PR" FETCH_HEAD
 
       - name: Collect context for fix
         if: steps.guard.outputs.skip == 'false'
         id: ctx
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          BASE_REF: ${{ steps.pr.outputs.base }}
         run: |
-          COMMENT_BODY='${{ github.event.comment.body }}'
-          # Escape single quotes for shell
           printf '%s' "$COMMENT_BODY" > /tmp/fix-comment.txt
-          gh pr view ${{ github.event.issue.number }} --json comments --jq '.comments[] | select(.body | contains("<!-- vskills-pr-review -->")) | .body' 2>/dev/null | tail -n 80 > /tmp/last-review.md || true
-          git fetch origin ${{ github.base_ref }} 2>&1 | head -n 20 || true
-          gh pr diff ${{ github.event.issue.number }} --patch > /tmp/diff.patch 2>/dev/null || git diff origin/${{ github.base_ref }}...HEAD > /tmp/diff.patch 2>/dev/null || git diff HEAD~1...HEAD > /tmp/diff.patch 2>/dev/null || true
+          gh pr view ${{ github.event.issue.number }} --json comments --jq '[.comments[] | select(.body | contains("<!-- vskills-pr-review -->")) | select(.body | contains("<!-- fix:") | not)] | last.body // ""' > /tmp/last-review.md 2>/dev/null || true
+          git fetch origin "$BASE_REF"
+          gh pr diff ${{ github.event.issue.number }} --patch > /tmp/diff.patch 2>/dev/null || git diff "origin/$BASE_REF"...HEAD > /tmp/diff.patch 2>/dev/null || git diff HEAD~1...HEAD > /tmp/diff.patch 2>/dev/null || true
+          git diff --name-only -z "origin/$BASE_REF"...HEAD > /tmp/fix-allowed-files.txt
           head -c 12000 /tmp/diff.patch > /tmp/diff-trunc.patch
           grep -E '^\+.*(function|class|def |import|export)' /tmp/diff.patch 2>/dev/null | head -n 30 > /tmp/symbols.txt || true
           CONTEXT_FILES=""
@@ -84,79 +107,62 @@ jobs:
         id: fix_llm
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           MODEL: ${{ vars.REVIEW_MODEL }}
           API_BASE: ${{ vars.REVIEW_API_BASE }}
         run: |
           COMMENT_BODY=$(cat /tmp/fix-comment.txt)
-          SYSTEM=$(cat standalone/pr-review/templates/prompt/fix.md 2>/dev/null | head -c 3500)
-          CONTEXT=$(cat /tmp/context-trunc.md 2>/dev/null | head -c 8000)
-          DIFF=$(cat /tmp/diff-trunc.patch 2>/dev/null | head -c 10000)
-          REVIEW=$(cat /tmp/last-review.md 2>/dev/null | head -c 4000)
-          SYMBOLS=$(cat /tmp/symbols.txt 2>/dev/null | head -c 2000)
-          if [ -z "$OPENROUTER_API_KEY" ] && [ -z "${{ secrets.OPENAI_API_KEY }}" ]; then
+          SYSTEM=$(cat /tmp/vskills-pr-review/fix.md)
+          CONTEXT=$(head -c 8000 /tmp/context-trunc.md 2>/dev/null)
+          DIFF=$(head -c 10000 /tmp/diff-trunc.patch 2>/dev/null)
+          REVIEW=$(head -c 4000 /tmp/last-review.md 2>/dev/null)
+          SYMBOLS=$(head -c 2000 /tmp/symbols.txt 2>/dev/null)
+          if [ -z "$OPENROUTER_API_KEY" ] && [ -z "$OPENAI_API_KEY" ]; then
             echo "has_llm=false" >> "$GITHUB_OUTPUT"
-            printf '%s\n' '<!-- vskills-pr-review -->' '' "Hey — you said: $COMMENT_BODY" '' "I don't have an LLM key configured, so I can't generate a patch right now. Set \`OPENROUTER_API_KEY\` as a repo secret and re-comment \`/fix\` and I'll talk + patch." '' '<!-- fix:${{ github.event.comment.id }} -->' > /tmp/fix-reply.md
+            printf '%s\n' '<!-- vskills-pr-review -->' '' "Hey, you said: $COMMENT_BODY" '' "I don't have an LLM key configured, so I can't generate a patch. Set \`OPENROUTER_API_KEY\` as a repository secret and run \`/fix\` again." '' '<!-- fix:${{ github.event.comment.id }} -->' > /tmp/fix-reply.md
             echo "reply_file=/tmp/fix-reply.md" >> "$GITHUB_OUTPUT"
             echo "has_patch=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           API_KEY="$OPENROUTER_API_KEY"
-          if [ -z "$API_KEY" ]; then API_KEY="${{ secrets.OPENAI_API_KEY }}"; fi
+          if [ -z "$API_KEY" ]; then API_KEY="$OPENAI_API_KEY"; fi
           BASE="$API_BASE"
           if [ -z "$BASE" ]; then BASE="https://openrouter.ai/api/v1"; fi
           MOD="$MODEL"
           if [ -z "$MOD" ]; then MOD="z-ai/glm-5.3-flash"; fi
-          echo "model=$MOD" >> "$GITHUB_OUTPUT"
+          PARSER=/tmp/vskills-pr-review/parse-fix-response.mjs
           USER_MSG="User /fix comment:\n$COMMENT_BODY\n\nLast review:\n$REVIEW\n\nDiff (truncated):\n$DIFF\n\nSymbols:\n$SYMBOLS"
-          PAYLOAD=$(jq -n --arg sys "$SYSTEM" --arg ctx "$CONTEXT" --arg user "$USER_MSG" --arg model "$MOD" '{model: $model, temperature: 0.3, max_tokens: 2500, reasoning: {effort: "low"}, messages: [{role:"system", content: $sys}, {role:"user", content: ("Repo context:\n" + $ctx + "\n\n" + $user)}]}')
-          RESP=$(curl -s "$BASE/chat/completions" -H "Authorization: Bearer $API_KEY" -H "Content-Type: application/json" -H "HTTP-Referer: https://github.com/vraj-ai/skills" -H "X-Title: vskills-fix" -d "$PAYLOAD" 2>&1 | head -c 30000)
-          if echo "$RESP" | grep -q "rate-limited"; then
-            echo "Primary fix model rate-limited, trying fallback"
-            PAYLOAD2=$(echo "$PAYLOAD" | jq --arg m "z-ai/glm-5.3-flash" '.model = $m')
-            RESP=$(curl -s "$BASE/chat/completions" -H "Authorization: Bearer $API_KEY" -H "Content-Type: application/json" -H "HTTP-Referer: https://github.com/vraj-ai/skills" -H "X-Title: vskills-fix" -d "$PAYLOAD2" 2>&1 | head -c 30000)
-          fi
-          echo "$RESP" > /tmp/fix-raw.json
-          CONTENT=$(jq -r '.choices[0].message.content // empty' /tmp/fix-raw.json 2>/dev/null | sed -e 's/^```json//' -e 's/^```//' -e 's/```$//' || true)
-          if [ -z "$CONTENT" ]; then
-            CONTENT=$(jq -r '.choices[0].message.reasoning // empty' /tmp/fix-raw.json 2>/dev/null | head -c 2000 || true)
-          fi
-          if [ -z "$CONTENT" ]; then
-            # Fallback: generic deterministic talk (no SMOKE hardcode) using last review + diff
-            REVIEW_SUM=$(head -c 500 /tmp/last-review.md 2>/dev/null | tr -d '\n' | head -c 200)
-            DIFF_STAT=$(grep -E '^\+\+\+ b/' /tmp/diff.patch 2>/dev/null | head -n 5 | tr '\n' ',' | head -c 200)
-            if [ -z "$DIFF_STAT" ]; then DIFF_STAT=$(wc -l < /tmp/diff.patch 2>/dev/null | xargs echo "lines:")","; fi
-            if echo "$COMMENT_BODY" | grep -qi "explain"; then
-              printf '%s\n' '<!-- vskills-pr-review -->' '' "Got it — you asked: $COMMENT_BODY" '' "I checked the last review and diff. **Last review:** $REVIEW_SUM" '' "**Changed:** $DIFF_STAT" '' "This looks **low-risk** based on deterministic checks. If you want me to change something specific, say \`/fix <instruction>\` and I'll generate a patch." '' '<!-- fix:${{ github.event.comment.id }} -->' > /tmp/fix-reply.md
-            else
-              printf '%s\n' '<!-- vskills-pr-review -->' '' "Got it — you asked: $COMMENT_BODY" '' "I checked the last review and diff — $REVIEW_SUM" '' "**Changed:** $DIFF_STAT — no auto-fixable patch needed for this request, so I didn't push a commit. Tell me what you'd like changed (e.g. \`/fix add error handling\`) and I'll patch." '' '<!-- fix:${{ github.event.comment.id }} -->' > /tmp/fix-reply.md
+          VALID=false
+          TRIED='|'
+          for CANDIDATE in "$MOD" z-ai/glm-5.3-flash deepseek/deepseek-v4-flash-0731 meta/muse-spark-1.2-contributor tencent/hy4-preview qwen/qwen3.8-flash; do
+            case "$TRIED" in *"|$CANDIDATE|"*) continue ;; esac
+            TRIED="$TRIED$CANDIDATE|"
+            case "$CANDIDATE" in qwen/*|tencent/*) EFFORT=none ;; *) EFFORT=low ;; esac
+            PAYLOAD=$(jq -n --arg sys "$SYSTEM" --arg ctx "$CONTEXT" --arg user "$USER_MSG" --arg model "$CANDIDATE" --arg effort "$EFFORT" '{model: $model, temperature: 0.2, max_tokens: 3500, reasoning: {effort: $effort}, response_format: {type: "json_object"}, messages: [{role:"system", content: $sys}, {role:"user", content: ("Repo context:\n" + $ctx + "\n\n" + $user)}]}')
+            if curl -sS --fail-with-body --connect-timeout 10 --max-time 60 "$BASE/chat/completions" -H "Authorization: Bearer $API_KEY" -H "Content-Type: application/json" -H "HTTP-Referer: https://github.com/vraj-ai/skills" -H "X-Title: vskills-fix" -d "$PAYLOAD" -o /tmp/fix-raw.json; then
+              if node "$PARSER" /tmp/fix-raw.json /tmp/fix-content.json 2>/tmp/fix-parse-error.txt; then
+                VALID=true
+                echo "model=$CANDIDATE" >> "$GITHUB_OUTPUT"
+                break
+              fi
             fi
+            printf '* `%s` did not return valid fix JSON.\n' "$CANDIDATE" >> "$GITHUB_STEP_SUMMARY"
+          done
+          if [ "$VALID" != true ]; then
+            printf '%s\n' '<!-- vskills-pr-review -->' '' "I understood your request: $COMMENT_BODY" '' "I couldn't generate a safe patch because the configured models did not return valid fix JSON. I did not change the branch. Please run \`/fix\` again." '' '<!-- fix:${{ github.event.comment.id }} -->' > /tmp/fix-reply.md
             echo "reply_file=/tmp/fix-reply.md" >> "$GITHUB_OUTPUT"
             echo "has_patch=false" >> "$GITHUB_OUTPUT"
+            echo "has_llm=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          echo "$CONTENT" > /tmp/fix-content.json
-          # Try to parse as JSON with reply+patch
-          REPLY=$(jq -r '.reply // empty' /tmp/fix-content.json 2>/dev/null || true)
-          PATCH=$(jq -r '.patch // empty' /tmp/fix-content.json 2>/dev/null || true)
-          if [ -z "$REPLY" ]; then
-            # Content was not JSON, try to extract JSON from it, else treat as reply
-            EXTRACTED=$(echo "$CONTENT" | sed -n 's/.*{.*\"reply\".*}/&/p' | head -c 2000)
-            if [ -n "$EXTRACTED" ] && echo "$EXTRACTED" | jq -e . >/dev/null 2>&1; then
-              REPLY=$(echo "$EXTRACTED" | jq -r '.reply // empty')
-              PATCH=$(echo "$EXTRACTED" | jq -r '.patch // empty')
-              if [ -z "$REPLY" ]; then REPLY="$CONTENT"; fi
-            else
-              REPLY="$CONTENT"
-              PATCH=""
-            fi
-          fi
-          # Save reply markdown
+          REPLY=$(jq -r '.reply // empty' /tmp/fix-content.json)
+          PATCH=$(jq -r '.patch // empty' /tmp/fix-content.json)
           {
             echo '<!-- vskills-pr-review -->'
             echo ''
             echo "$REPLY"
-            echo ''
-            if [ -n "$PATCH" ] && [ "$PATCH" != "null" ] && [ ${#PATCH} -gt 10 ]; then
+            if [ -n "$PATCH" ]; then
+              echo ''
               echo '<details><summary>Proposed patch</summary>'
               echo ''
               echo '```diff'
@@ -165,10 +171,9 @@ jobs:
               echo '</details>'
             fi
             echo ''
-            echo "<!-- fix:${{ github.event.comment.id }} -->"
+            echo '<!-- fix:${{ github.event.comment.id }} -->'
           } > /tmp/fix-reply.md
-          # Save patch to file if present
-          if [ -n "$PATCH" ] && [ "$PATCH" != "null" ] && [ ${#PATCH} -gt 10 ]; then
+          if [ -n "$PATCH" ]; then
             printf '%s\n' "$PATCH" > /tmp/fix.patch
             echo "has_patch=true" >> "$GITHUB_OUTPUT"
             echo "patch_file=/tmp/fix.patch" >> "$GITHUB_OUTPUT"
@@ -177,60 +182,81 @@ jobs:
           fi
           echo "reply_file=/tmp/fix-reply.md" >> "$GITHUB_OUTPUT"
           echo "has_llm=true" >> "$GITHUB_OUTPUT"
-          cat /tmp/fix-reply.md | head -n 40
 
       - name: Apply patch if any
         if: steps.guard.outputs.skip == 'false' && steps.fix_llm.outputs.has_patch == 'true'
+        id: apply_patch
         run: |
-          if [ -f /tmp/fix.patch ]; then
-            echo "Applying patch..."
-            cat /tmp/fix.patch
-            # Try git apply
-            if git apply --check /tmp/fix.patch 2>&1 | head -n 20; then
-              git apply /tmp/fix.patch 2>&1 | head -n 20 || true
-              echo "patch applied via git apply"
-            else
-              # Fallback: try patch command
-              patch -p1 < /tmp/fix.patch 2>&1 | head -n 20 || true
-            fi
-            # Also try prettier as fallback if patch was empty
-            if git diff --quiet && [ -f "package.json" ] && npx --yes prettier --check . 2>&1 | head -n 5 | grep -q "Code style"; then npx --yes prettier --write . 2>&1 | head -n 20 || true; fi
-            git diff --stat 2>&1 | head -n 20
+          echo "applied=false" >> "$GITHUB_OUTPUT"
+          if ! git apply --numstat -z /tmp/fix.patch > /tmp/fix-numstat.txt 2>/tmp/fix-apply-error.txt || [ ! -s /tmp/fix-numstat.txt ]; then
+            echo "The model returned a malformed patch. I did not change the branch." >> /tmp/fix-reply.md
+            exit 0
           fi
+          if ! node - <<'JS'
+          const fs = require('fs');
+          const split = (file) => fs.readFileSync(file).toString('utf8').split('\0').filter(Boolean);
+          const allowed = new Set(split('/tmp/fix-allowed-files.txt'));
+          const changed = split('/tmp/fix-numstat.txt').map((entry) => entry.split('\t').slice(2).join('\t'));
+          if (!changed.length || changed.some((file) => !allowed.has(file))) process.exit(1);
+          JS
+          then
+            echo "The proposed patch touched a file outside this PR's changed files. I did not apply it." >> /tmp/fix-reply.md
+            exit 0
+          fi
+          if ! git apply --check /tmp/fix.patch 2>/tmp/fix-apply-error.txt; then
+            echo "The proposed patch did not apply cleanly. I did not change the branch. Run \`/fix\` again after updating the PR." >> /tmp/fix-reply.md
+            exit 0
+          fi
+          git apply /tmp/fix.patch
+          echo "applied=true" >> "$GITHUB_OUTPUT"
+          git diff --stat
 
       - name: Push commit if needed and comment reply
         if: steps.guard.outputs.skip == 'false'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_BRANCH: ${{ steps.pr.outputs.branch }}
         run: |
-          REPLY_FILE=$(cat /tmp/fix-reply.md 2>/dev/null | head -c 10000; echo)
-          # Check if we have a patch applied
-          if ! git diff --quiet; then
+          if [ "${{ steps.apply_patch.outputs.applied }}" = "true" ] && ! git diff --quiet; then
             git config user.name "vskills-bot"
             git config user.email "bot@vskills.local"
             git add -A
             git commit -m "fix(pr): apply /fix suggestions
 
           Co-authored-by: vskills-bot <bot@vskills.local>
-          Ref: comment ${{ github.event.comment.id }}" 2>&1 | head -n 20
-            git push origin HEAD:${{ steps.pr.outputs.branch }} 2>&1 | head -n 20 || git push origin HEAD 2>&1 | head -n 20 || true
+          Ref: comment ${{ github.event.comment.id }}"
+            if ! git push origin "HEAD:$PR_BRANCH"; then
+              echo "I created the fix locally, but GitHub rejected the push. No remote commit was created." >> /tmp/fix-reply.md
+              gh pr comment ${{ github.event.issue.number }} --body-file /tmp/fix-reply.md
+              exit 1
+            fi
+            LOCAL_SHA=$(git rev-parse HEAD)
+            REMOTE_SHA=$(git ls-remote origin "refs/heads/$PR_BRANCH" | cut -f1)
+            if [ "$LOCAL_SHA" != "$REMOTE_SHA" ]; then
+              echo "GitHub did not report the new commit on the PR branch. I won't claim the fix was pushed." >> /tmp/fix-reply.md
+              gh pr comment ${{ github.event.issue.number }} --body-file /tmp/fix-reply.md
+              exit 1
+            fi
             COUNT=${{ steps.guard.outputs.count }}
             NEXT=$((COUNT+1))
-            gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/labels -f labels[]="vskills-fix-$NEXT" 2>&1 | head -n 20 || true
-            # Prepend push notice to reply
+            gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/labels -f labels[]="vskills-fix-$NEXT" >/dev/null
             {
               echo '<!-- vskills-pr-review -->'
               echo ''
-              cat /tmp/fix-reply.md | sed '/<!-- vskills-pr-review -->/d' | sed '/<!-- fix:/d'
+              sed '/<!-- vskills-pr-review -->/d; /<!-- fix:/d' /tmp/fix-reply.md
               echo ''
-              echo "✅ Pushed fix commit — re-running review…"
+              echo "Pushed fix commit \`$(git rev-parse --short HEAD)\`. The review will run again."
+              echo ''
+              echo '<!-- fix:${{ github.event.comment.id }} -->'
             } > /tmp/fix-reply-push.md
-            gh pr comment ${{ github.event.issue.number }} --body-file /tmp/fix-reply-push.md 2>&1 | head -n 20 || true
+            gh pr comment ${{ github.event.issue.number }} --body-file /tmp/fix-reply-push.md
           else
-            # No patch — just post the LLM's talk reply
-            gh pr comment ${{ github.event.issue.number }} --body-file /tmp/fix-reply.md 2>&1 | head -n 20 || true
+            gh pr comment ${{ github.event.issue.number }} --body-file /tmp/fix-reply.md
           fi
 
       - name: Comment on skip
         if: steps.guard.outputs.skip != 'false' && steps.guard.outputs.skip != ''
-        run: cat /tmp/skip.md 2>/dev/null || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -s /tmp/skip.md ]; then gh pr comment ${{ github.event.issue.number }} --body-file /tmp/skip.md || true; fi

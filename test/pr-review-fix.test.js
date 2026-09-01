@@ -13,6 +13,22 @@ test('pr-fix.yml has correct guard: /fix on PR only, same-repo, dedupe, loop cap
   assert.match(yml, /needs-human/);
   assert.match(yml, /3/);
   assert.match(yml, /fix:\$\{\{ github\.event\.comment\.id \}\}/);
+  assert.match(yml, /COMMENT_AUTHOR_ASSOCIATION/);
+  assert.match(yml, /OWNER\|MEMBER\|COLLABORATOR/);
+  assert.match(yml, /\^\[\[:space:\]\]\*\/fix/);
+  assert.match(yml, /group: pr-fix-/);
+  assert.match(yml, /REMOTE_SHA/);
+  assert.match(yml, /Stage trusted fix assets/);
+  assert.match(yml, /PARSER=\/tmp\/vskills-pr-review\/parse-fix-response\.mjs/);
+  assert.doesNotMatch(yml, /COMMENT_BODY='\$\{\{/);
+});
+
+test('pr-fix applies only clean patches to files already changed by the PR', async () => {
+  const yml = await fs.readFile(path.join(process.cwd(), 'standalone/pr-review/templates/pr-fix.yml'), 'utf8');
+  assert.match(yml, /fix-allowed-files\.txt/);
+  assert.match(yml, /git apply --check/);
+  assert.doesNotMatch(yml, /patch -p1/);
+  assert.doesNotMatch(yml, /git push[^\n]*\|\| true/);
 });
 
 test('fix loop simulation: 3rd rerun labels needs-human', ()=>{

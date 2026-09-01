@@ -29,12 +29,14 @@ test('templates exist and are valid YAML with required triggers and permissions'
     assert.match(txt, /<!-- vskills-pr-review -->/, `${f} has header marker`);
   }
   const review = await fs.readFile(path.join(root, 'pr-review.yml'), 'utf8');
-  assert.match(review, /pull_request:/);
+  assert.match(review, /pull_request_target:/);
   assert.match(review, /opened.*synchronize.*reopened.*ready_for_review/s);
   assert.match(review, /permissions:/);
   assert.match(review, /contents:\s*(read|write)/);
   assert.match(review, /pull-requests:\s*write/);
   assert.match(review, /checks:\s*write/);
+  assert.match(review, /Stage trusted review assets/);
+  assert.match(review, /PARSER=\/tmp\/vskills-pr-review\/parse-review-config\.mjs/);
 
   const fix = await fs.readFile(path.join(root, 'pr-fix.yml'), 'utf8');
   assert.match(fix, /issue_comment:/);
