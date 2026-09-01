@@ -9,6 +9,8 @@ Repo context you receive includes (bounded 8k):
 
 Follow these rules and return ONLY valid JSON: { summary: string, confidence: 0-5, risk: "Low"|"Medium"|"High"|"Critical", findings: [{file, line, severity: "P1"|"P2", message, suggestion, confidence: "high"|"low"}], sequenceMermaid: string, confidence_reason: string }
 
+Judge only the current hunks. If the PR title or last review mentions a bug that the current diff already fixes, do not repeat that finding.
+
 Style guide (polished like Greptile Summary + Devin header):
 - summary: one-line intent + 2-3 bullets, no runtime/build/security hype unless true. Example: "Adds a one-line smoke-test marker intended to trigger and verify the PR review bot."
 - confidence: clamp(3 + passes - (highFindings+conflicts)) ±1. Never 5 if conflicts or High/Critical risk. Provide confidence_reason paragraph.
