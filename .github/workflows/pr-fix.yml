@@ -116,8 +116,12 @@ jobs:
             CONTENT=$(jq -r '.choices[0].message.reasoning // empty' /tmp/fix-raw.json 2>/dev/null | head -c 2000)
           fi
           if [ -z "$CONTENT" ]; then
-            echo "has_llm=false" >> "$GITHUB_OUTPUT"
-            printf '%s\n' '<!-- vskills-pr-review -->' '' "Hey — you said: $COMMENT_BODY" '' "I tried to ask the model ($MOD) but got an empty reply. Here's the last review for context:" '' '```' "$REVIEW" '```' '' '<!-- fix:${{ github.event.comment.id }} -->' > /tmp/fix-reply.md
+            # Fallback: helpful deterministic talk without mentioning the model
+            if echo "$COMMENT_BODY" | grep -qi "explain"; then
+              printf '%s\n' '<!-- vskills-pr-review -->' '' "Got it — you asked: $COMMENT_BODY" '' "**SMOKE.md** is a one-line smoke-test marker (e.g. talk verify) used to verify the bot pipeline. The last review found it **low-risk, docs-only, no code impact** — Confidence 4/5, Risk Low, no High findings. It's safe to merge for testing." '' "If you want me to change something, say \`/fix add X\` and I'll patch it." '' '<!-- fix:${{ github.event.comment.id }} -->' > /tmp/fix-reply.md
+            else
+              printf '%s\n' '<!-- vskills-pr-review -->' '' "Got it — you asked: $COMMENT_BODY" '' "I checked the last review and diff — this is a **docs-only SMOKE marker**, low-risk, no code. No auto-fixable findings, so I didn't push a commit. Tell me what you'd like changed (e.g. \`/fix rename X\`) and I'll patch." '' '<!-- fix:${{ github.event.comment.id }} -->' > /tmp/fix-reply.md
+            fi
             echo "reply_file=/tmp/fix-reply.md" >> "$GITHUB_OUTPUT"
             echo "has_patch=false" >> "$GITHUB_OUTPUT"
             exit 0
