@@ -111,9 +111,9 @@ jobs:
           PAYLOAD=$(jq -n --arg sys "$SYSTEM" --arg ctx "$CONTEXT" --arg user "$USER_MSG" --arg model "$MOD" '{model: $model, temperature: 0.3, max_tokens: 2500, reasoning: {effort: "low"}, messages: [{role:"system", content: $sys}, {role:"user", content: ("Repo context:\n" + $ctx + "\n\n" + $user)}]}')
           RESP=$(curl -s "$BASE/chat/completions" -H "Authorization: Bearer $API_KEY" -H "Content-Type: application/json" -H "HTTP-Referer: https://github.com/vraj-ai/skills" -H "X-Title: vskills-fix" -d "$PAYLOAD" 2>&1 | head -c 30000)
           echo "$RESP" > /tmp/fix-raw.json
-          CONTENT=$(jq -r '.choices[0].message.content // empty' /tmp/fix-raw.json 2>/dev/null | sed -e 's/^```json//' -e 's/^```//' -e 's/```$//')
+          CONTENT=$(jq -r '.choices[0].message.content // empty' /tmp/fix-raw.json 2>/dev/null | sed -e 's/^```json//' -e 's/^```//' -e 's/```$//' || true)
           if [ -z "$CONTENT" ]; then
-            CONTENT=$(jq -r '.choices[0].message.reasoning // empty' /tmp/fix-raw.json 2>/dev/null | head -c 2000)
+            CONTENT=$(jq -r '.choices[0].message.reasoning // empty' /tmp/fix-raw.json 2>/dev/null | head -c 2000 || true)
           fi
           if [ -z "$CONTENT" ]; then
             # Fallback: generic deterministic talk (no SMOKE hardcode) using last review + diff
@@ -131,8 +131,8 @@ jobs:
           fi
           echo "$CONTENT" > /tmp/fix-content.json
           # Try to parse as JSON with reply+patch
-          REPLY=$(jq -r '.reply // empty' /tmp/fix-content.json 2>/dev/null)
-          PATCH=$(jq -r '.patch // empty' /tmp/fix-content.json 2>/dev/null)
+          REPLY=$(jq -r '.reply // empty' /tmp/fix-content.json 2>/dev/null || true)
+          PATCH=$(jq -r '.patch // empty' /tmp/fix-content.json 2>/dev/null || true)
           if [ -z "$REPLY" ]; then
             # Content was not JSON, treat whole content as reply
             REPLY="$CONTENT"
