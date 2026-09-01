@@ -15,6 +15,9 @@ test('copy helper backs up existing workflow and is idempotent', async () => {
     assert.ok((await fs.stat(path.join(tmp,'.github/workflows/pr-review.yml'))).isFile());
     assert.ok((await fs.stat(path.join(tmp,'.github/workflows/pr-fix.yml'))).isFile());
     assert.ok((await fs.stat(path.join(tmp,'.vskills/review.yml'))).isFile());
+    assert.ok((await fs.stat(path.join(tmp,'.vskills/pr-review/system.md'))).isFile());
+    assert.ok((await fs.stat(path.join(tmp,'.vskills/pr-review/fix.md'))).isFile());
+    assert.ok((await fs.stat(path.join(tmp,'.vskills/pr-review/parse-fix-response.mjs'))).isFile());
     // second is idempotent (up-to-date or skipped-exists)
     let r2 = await copyPrReview({targetRoot: tmp});
     assert.ok(r2.every(v=>['up-to-date','skipped-exists','installed','updated'].includes(v)) || r2.includes('skipped-exists'));
