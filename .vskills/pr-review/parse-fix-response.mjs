@@ -25,6 +25,9 @@ export function parseFixResponse(raw) {
   if (parsed.patch && !parsed.patch.startsWith('diff --git ')) {
     throw new Error('model patch is not a git unified diff');
   }
+  if (parsed.patch && /\/ship\b|did(?:n't| not) push|won't push|if you want me to (?:commit|push)/i.test(parsed.reply)) {
+    throw new Error('model reply contradicts its patch');
+  }
 
   return {
     reply: parsed.reply.trim(),

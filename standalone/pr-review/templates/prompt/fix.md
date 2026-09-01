@@ -19,7 +19,7 @@ Use OpenRouter `qwen/qwen3.8-flash` at low, escalate to `tencent/hy4-preview`, `
 
 Return only a valid JSON object with exactly these string fields: `{ "reply": "markdown reply", "patch": "git unified diff or empty string", "notes": "one-line summary" }`.
 
-Never put analysis, planning, hidden reasoning, or JSON fences in `reply`. A non-empty patch must start with `diff --git ` and apply to the supplied PR diff.
+Never put analysis, planning, hidden reasoning, or JSON fences in `reply`. A non-empty patch must start with `diff --git ` and apply to the supplied PR diff. When `patch` is non-empty, say you prepared the change; do not ask the user to run `/ship`, claim you did not push, or tell them to ask you to commit. The workflow reports apply/push success after validation.
 
 Example reply when no patch:
 "Got it. I checked your request against the last review and the changed files. Nothing in this PR needs that change, so I didn't push a commit. Name the file or behavior you want changed and I'll check it."

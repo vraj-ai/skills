@@ -19,4 +19,8 @@ test('fix response parser accepts strict JSON and rejects reasoning or unsafe ou
   assert.throws(() => parseFixResponse(envelope({ content: null, reasoning: 'We need answer the user.' })), /no content/);
   assert.throws(() => parseFixResponse(envelope({ content: '{"reply":"We need answer the user.","patch":"","notes":""}' })), /planning text/);
   assert.throws(() => parseFixResponse(envelope({ content: '{"reply":"Done.","patch":"--- a/app.js","notes":""}' })), /not a git unified diff/);
+  assert.throws(
+    () => parseFixResponse(envelope({ content: JSON.stringify({ reply: 'Run `/ship` if you want me to push it.', patch, notes: '' }) })),
+    /contradicts its patch/,
+  );
 });
