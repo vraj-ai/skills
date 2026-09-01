@@ -2,7 +2,7 @@
 name: PR Review
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review]
   issue_comment:
     types: [created]
@@ -32,16 +32,15 @@ jobs:
           case "$COMMENT_AUTHOR_ASSOCIATION" in OWNER|MEMBER|COLLABORATOR) ;; *) exit 0 ;; esac
           printf '%s\n' "$COMMENT_BODY" | grep -Eqi '^[[:space:]]*@vskills[[:space:]]+(review|rerun)([[:space:]]|$)' || exit 0
           HEAD_SHA=$(gh pr view ${{ github.event.issue.number }} --json headRefOid --jq .headRefOid)
-          RUN_ID=$(gh run list --workflow "PR Review" --commit "$HEAD_SHA" --event pull_request --limit 1 --json databaseId --jq '.[0].databaseId')
-          if [ -n "$RUN_ID" ]; then
-            gh run rerun "$RUN_ID"
-          else
-            printf '%s\n' '<!-- vskills-pr-review-rerun -->' '' "I couldn't find a completed PR Review run for \`$HEAD_SHA\`. Push a commit to start the first review." > /tmp/rerun-missing.md
-            gh pr comment ${{ github.event.issue.number }} --body-file /tmp/rerun-missing.md
+          RUN_ID=$(gh run list --workflow "PR Review" --commit "$HEAD_SHA" --event pull_request_target --status completed --limit 1 --json databaseId --jq '.[0].databaseId')
+          if [ -n "$RUN_ID" ] && gh run rerun "$RUN_ID"; then
+            exit 0
           fi
+          printf '%s\n' '<!-- vskills-pr-review-rerun -->' '' "I couldn't rerun a completed PR Review for \`$HEAD_SHA\`. Push a commit to start the first review." > /tmp/rerun-missing.md
+          gh pr comment ${{ github.event.issue.number }} --body-file /tmp/rerun-missing.md
 
   review:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request_target'
     permissions:
       contents: write
       pull-requests: write
@@ -53,18 +52,29 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
+
+      - name: Stage trusted review assets
+        run: |
+          mkdir -p /tmp/vskills-pr-review
+          cp .vskills/pr-review/parse-review-config.mjs /tmp/vskills-pr-review/parse-review-config.mjs
+          cp .vskills/pr-review/system.md /tmp/vskills-pr-review/system.md
+          CONFIG=.vskills/review.yml
+          [ -f "$CONFIG" ] || CONFIG=.github/review.yml
+          cp "$CONFIG" /tmp/vskills-pr-review/review.yml
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
 
       - name: Read review config
         id: config
         run: |
-          CONFIG=".vskills/review.yml"
-          [ -f "$CONFIG" ] || CONFIG=".github/review.yml"
-          [ -f "$CONFIG" ] || CONFIG="standalone/pr-review/templates/review.yml"
+          CONFIG=/tmp/vskills-pr-review/review.yml
           echo "path=$CONFIG" >> "$GITHUB_OUTPUT"
-          PARSER=.vskills/pr-review/parse-review-config.mjs
-          if [ ! -f "$PARSER" ]; then PARSER=standalone/pr-review/scripts/parse-review-config.mjs; fi
+          PARSER=/tmp/vskills-pr-review/parse-review-config.mjs
           node "$PARSER" "$CONFIG" /tmp/review-config.json
           node - <<'JS' >> "$GITHUB_OUTPUT"
           const config = require('/tmp/review-config.json');
@@ -179,6 +189,8 @@ jobs:
       - name: Chunk diff + ripgrep context
         if: steps.limits.outputs.skip == 'false'
         id: diff
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr diff ${{ github.event.pull_request.number }} --patch > /tmp/diff.patch 2>/dev/null || git diff origin/${{ github.base_ref }}...HEAD > /tmp/diff.patch || true
           # chunk into 80-line hunks for LLM context
@@ -241,7 +253,7 @@ jobs:
           if [ -z "$BASE" ]; then BASE="https://openrouter.ai/api/v1"; fi
           MOD="$MODEL"
           if [ -z "$MOD" ]; then MOD="z-ai/glm-5.3-flash"; fi
-          SYSTEM=$(cat .vskills/pr-review/system.md 2>/dev/null || cat standalone/pr-review/templates/prompt/system.md 2>/dev/null || true)
+          SYSTEM=$(cat /tmp/vskills-pr-review/system.md)
           SYSTEM=$(printf '%s' "$SYSTEM" | head -c 3000)
           CONTEXT=$(head -c 4000 /tmp/context-trunc.md 2>/dev/null)
           DIFF=$(head -c 50000 /tmp/diff.patch 2>/dev/null)
