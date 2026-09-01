@@ -38,7 +38,11 @@ jobs:
             OWNER|MEMBER|COLLABORATOR) ;;
             *) echo "skip=unauthorized" >> "$GITHUB_OUTPUT"; echo "Only repository collaborators may run /fix." | tee /tmp/skip.md; exit 0 ;;
           esac
-          IS_FORK=$(gh pr view "$PR" --json isCrossRepository --jq .isCrossRepository)
+          if ! IS_FORK=$(gh pr view "$PR" --json isCrossRepository --jq .isCrossRepository); then
+            echo "skip=metadata-error" >> "$GITHUB_OUTPUT"
+            echo "I couldn't verify the PR repository, so /fix stopped without changing the branch." | tee /tmp/skip.md
+            exit 0
+          fi
           if [ "$IS_FORK" = "true" ]; then echo "skip=fork" >> "$GITHUB_OUTPUT"; echo "Fork PR — cannot push with GITHUB_TOKEN" | tee /tmp/skip.md; exit 0; fi
           LABELS=$(gh pr view $PR --json labels --jq '.labels[].name' 2>/dev/null || true)
           COUNT=$(echo "$LABELS" | grep -c "vskills-fix-" || true); COUNT=${COUNT:-0}
@@ -252,4 +256,7 @@ jobs:
 
       - name: Comment on skip
         if: steps.guard.outputs.skip != 'false' && steps.guard.outputs.skip != ''
-        run: cat /tmp/skip.md 2>/dev/null || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -s /tmp/skip.md ]; then gh pr comment ${{ github.event.issue.number }} --body-file /tmp/skip.md || true; fi

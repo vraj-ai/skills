@@ -31,9 +31,14 @@ jobs:
         run: |
           case "$COMMENT_AUTHOR_ASSOCIATION" in OWNER|MEMBER|COLLABORATOR) ;; *) exit 0 ;; esac
           printf '%s\n' "$COMMENT_BODY" | grep -Eqi '^[[:space:]]*@vskills[[:space:]]+(review|rerun)([[:space:]]|$)' || exit 0
-          BRANCH=$(gh pr view ${{ github.event.issue.number }} --json headRefName --jq .headRefName)
-          RUN_ID=$(gh run list --workflow "PR Review" --branch "$BRANCH" --event pull_request --limit 1 --json databaseId --jq '.[0].databaseId')
-          [ -n "$RUN_ID" ] && gh run rerun "$RUN_ID"
+          HEAD_SHA=$(gh pr view ${{ github.event.issue.number }} --json headRefOid --jq .headRefOid)
+          RUN_ID=$(gh run list --workflow "PR Review" --commit "$HEAD_SHA" --event pull_request --limit 1 --json databaseId --jq '.[0].databaseId')
+          if [ -n "$RUN_ID" ]; then
+            gh run rerun "$RUN_ID"
+          else
+            printf '%s\n' '<!-- vskills-pr-review-rerun -->' '' "I couldn't find a completed PR Review run for \`$HEAD_SHA\`. Push a commit to start the first review." > /tmp/rerun-missing.md
+            gh pr comment ${{ github.event.issue.number }} --body-file /tmp/rerun-missing.md
+          fi
 
   review:
     if: github.event_name == 'pull_request'
