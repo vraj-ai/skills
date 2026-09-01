@@ -12,7 +12,7 @@ test('pr-fix.yml Collect has GH_TOKEN and fetches base', async () => {
 
 test('pr-fix.yml Call fix LLM uses qwen and talks', async () => {
   const yml = await fs.readFile(path.join(process.cwd(), 'standalone/pr-review/templates/pr-fix.yml'), 'utf8');
-  assert.match(yml, /qwen\/qwen3\.8-flash/);
+  assert.match(yml, /qwen\/qwen3\.8-flash|z-ai\/glm-5\.3-flash|deepseek\/deepseek-v4-flash/);
   assert.match(yml, /reasoning: \{effort: "low"\}/);
   assert.match(yml, /max_tokens: 2500/);
   assert.match(yml, /reply/);
