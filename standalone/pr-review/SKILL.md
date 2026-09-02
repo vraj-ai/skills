@@ -10,9 +10,10 @@ Polished GitHub-Actions review bot. Copy the templates into any repo with `setup
 
 ## What it installs
 
-- `.github/workflows/pr-review.yml` — diff-aware review, status checks, collapsible summary (PR Summary, Confidence Score 0-5, Issue Table, Sequence Diagram, Comments Outside Diff)
-- `.github/workflows/pr-fix.yml` — fix comment trigger, one commit per comment, max 3 loops then `needs-human`
-- `.vskills/review.yml` — all toggles: when to review, file-change limit (100), filters, strictness Low/Med/High, comment header, status checks (requiredConfidence 0-5), auto-approve (maximumRisk Low/Med/High/Critical)
+- `.github/workflows/pr-review.yml` — trusted-base review, status checks, one upserted summary
+- `.github/workflows/pr-fix.yml` — collaborator fix-on-comment, one commit, max 3 loops then `needs-human`
+- `.vskills/review.yml` — when to review, file-change limit, strictness, status-check thresholds, auto-approve
+- `.vskills/pr-review/` — prompts plus the JSON/config parsers the workflows actually run
 
 ## Triggers
 

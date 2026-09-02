@@ -121,6 +121,7 @@ on a clean final gate. `/snapshot` pushes because you invoked it.
 | `herdr-orchestrator` | Run `/goals` through Codex and three council agents across live [Herdr](https://herdr.dev) panes |
 | `setup-obsidian` | Turn a docs folder into a retrieval graph |
 | `setup-vskills` | Set this repo up on a new machine |
+| `pr-review` | GitHub Actions PR review bot: summary, confidence, checks, fix-on-comment |
 | `browser-control` | Manual-only browser navigation, inspection, and local web testing |
 | `github-workflow` | Manual-only GitHub orientation, review, CI, and explicit publish workflow |
 | `pi-usage-maintenance` | Manual-only Pi usage/index/report maintenance |

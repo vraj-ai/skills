@@ -55,8 +55,8 @@ node standalone/setup-vskills/scripts/copy-pr-review.mjs [project-root]
 
 Interactive prompt (ask, don't assume):
 - "Install PR review bot? [y/N]" — default no.
-- If yes, ask model wiring: provider `none` (deterministic only) | `openai` | `anthropic` | `compat`, auth `apikey` | `oauth` | `none`, `baseUrl`, `model`, `secretName` (default `OPENAI_API_KEY`). Write choice into `.vskills/review.yml` (never store the secret value). Show next step: "Add <secretName> as a repo/organization secret (and vars.REVIEW_MODEL if compat) and push a PR to test".
-- Copy is atomic, backs up existing `.github/workflows/pr-review.yml` / `pr-fix.yml` to `.vskills-backup/`, idempotent, and does not overwrite an existing `.vskills/review.yml` if the user already customized it.
+- If yes, ask model wiring: provider `none` (deterministic only) | `openai` | `anthropic` | `compat`, auth `apikey` | `oauth` | `none`, `baseUrl`, `model`, `secretName` (default `OPENROUTER_API_KEY`). Write choice into `.vskills/review.yml` (never store the secret value). Show next step: "Add OPENROUTER_API_KEY as a repo secret, set vars.REVIEW_MODEL / vars.REVIEW_API_BASE, and push a PR to test".
+- Copy is atomic, backs up existing workflows to `.vskills-backup/`, also installs `.vskills/pr-review/` prompts and parsers, is idempotent, and does not overwrite an existing `.vskills/review.yml`.
 
 Templates live in `standalone/pr-review/templates/` and carry `<!-- vskills-pr-review -->` for idempotent upserts. Verify with `node --test 'test/pr-review-*.test.js' 'test/setup-pr-review.test.js'`.
 
