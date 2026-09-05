@@ -1,6 +1,6 @@
 ---
 name: setup-vskills
-version: 1.12.0
+version: 1.13.0
 description: Sets up this skills repo on a new machine — installs the skills with the vskills CLI, configures pstack model routing for any harness, ensures a verification skill, then regenerates the local-only context docs (CONTEXT.md, docs/) that are deliberately not published in the public repo.
 recommended: true
 ---
@@ -38,9 +38,35 @@ Install the tightest integration for `grill`, `issues`, `ship`/`goals`, and `sna
 node standalone/setup-vskills/scripts/install-harness.mjs <harness>
 ```
 
-- **omp**: The installer copies the 10 canonical Role templates from `harness/omp/agent/` into `~/.omp/agent/agents/` (or `$OMP_AGENTS_DIR` when set for test isolation). This installs invocation templates (`grill`, `issues`, `ship`, `goals`, `snapshot`) and worker templates (`researcher`, `builder`, `reviewer`, `adversary`, `small-task`). You can also run `node standalone/setup-vskills/scripts/install-omp.mjs`.
-- **OpenCode**: The installer reads canonical agent and command files from `harness/opencode/` into `~/.config/opencode/` (or `$OPENCODE_CONFIG_DIR`). This installs selectable `goals` and read-only `council` primaries, the contributor, cost-aware Gemini/DeepSeek, council, and adversary subagents, and `/goal`. Goals remains the sole delivery/backlog authority inside a goal run. You can also run `node standalone/setup-vskills/scripts/install-opencode.mjs`.
-- **Any other harness**: The installer does not research and does not claim it did. You research how the harness defines agent roles, custom commands, prompt templates, and subagents. Write an integration plan mapping `grill`, `issues`, `ship`/`goals`, and `snapshot` to that harness. Never fail with an 'unknown harness' error from an allowlist.
+Supported harnesses are data, not prose. This table is the whole allowlist;
+every destination is overridable by its environment variable, and a harness not
+listed here is handled by the fallback row rather than by an error.
+
+| harness | template source | install destination (override) | routing file for Step 1.3 (override) | direct installer |
+| --- | --- | --- | --- | --- |
+| `omp` | `harness/omp/agent/` | user agents dir, `~/.omp/agent/agents/` (`$OMP_AGENTS_DIR`) | harness always-applied rules location | `scripts/install-omp.mjs` |
+| `opencode` | `harness/opencode/` | user config dir, `~/.config/opencode/` (`$OPENCODE_CONFIG_DIR`) | harness always-applied rules location | `scripts/install-opencode.mjs` |
+| `cursor` | — (research) | harness rules dir | `~/.cursor/rules/pstack-models.mdc`, `alwaysApply: true` | — |
+| *anything else* | — (research) | harness-defined | `docs/agents/model-routing.md` in the project | — |
+
+Row detail:
+
+- **omp**: copies the 10 canonical Role templates — invocation templates
+  (`grill`, `issues`, `ship`, `goals`, `snapshot`) and worker templates
+  (`researcher`, `builder`, `reviewer`, `adversary`, `small-task`).
+- **opencode**: copies canonical agent and command files — selectable `goals`
+  and read-only `council` primaries, the contributor, cost-aware
+  Gemini/DeepSeek, council, and adversary subagents, and `/goal`. Goals remains
+  the sole delivery/backlog authority inside a goal run.
+- **Fallback row**: the installer does not research and does not claim it did.
+  It reports that no bundled installer exists and exits successfully — a
+  missing harness is never an error. You then research how that harness defines
+  agent roles, custom commands, prompt templates, and subagents, and write an
+  integration plan mapping `grill`, `issues`, `ship`/`goals`, and `snapshot`
+  onto it. Never fail with an 'unknown harness' error from an allowlist.
+
+When a listed harness is simply not installed on the machine, skip its row and
+say so; do not create its config tree speculatively.
 
 All template installations are atomic and idempotent. Differing existing files are moved to `.vskills-backup/` before replace. It does not modify credentials or core configuration files.
 
@@ -66,8 +92,14 @@ Templates live in `standalone/pr-review/templates/` and carry `<!-- vskills-pr-r
 Run this from the root of the project being set up:
 
 ```bash
-node "$HOME/.agents/skills/setup-vskills/scripts/init-context.mjs"
+node "<skills-install-root>/setup-vskills/scripts/init-context.mjs"
 ```
+
+`<skills-install-root>` is wherever `vskills init` placed the skills on this
+machine (`node bin/vskills.js list` prints it); from a clone of this repo,
+`standalone/setup-vskills/scripts/init-context.mjs` works directly. Every path
+the initializer writes is resolved from the invoking repository root, never
+from the home directory.
 
 The initializer creates missing files only:
 
@@ -110,12 +142,12 @@ per entry, alias entries included, so list length sets fan-out.
 model family differs from the parent's when possible. `swarm workers` is the
 default model for every worker unless a race assigns per-arm models.
 4. Write the routing file, overwriting it whole so re-runs stay idempotent.
-Location is harness-dependent — reuse the Step 1.1 harness research. Cursor:
-`~/.cursor/rules/pstack-models.mdc` with `alwaysApply: true` frontmatter.
-Any other harness: its always-applied rules/custom-instructions location; if
-it has none, write `docs/agents/model-routing.md` in the project and point
-the `## Agent skills` block at it, and say so. Never fail with an 'unknown
-harness' error. Shape (defaults — replace slugs with detected ones):
+Location comes from the Step 1.1 table's routing column, plus the harness
+research for anything not listed: use its always-applied
+rules/custom-instructions location, and if it has none, write
+`docs/agents/model-routing.md` in the project and point the `## Agent skills`
+block at it, and say so. Never fail with an 'unknown harness' error. Shape
+(defaults — replace slugs with detected ones):
 
 ```
 ---
@@ -273,6 +305,6 @@ Ownership rules carry across skills:
   and rerun the installer (`install-harness.mjs`, `install-omp.mjs`, or `install-opencode.mjs`).
 - Bump the `version:` in a skill's frontmatter whenever you change its
   content; init uses versions to auto-resolve otherwise-ambiguous updates.
-- Quit and restart the harness (e.g. OpenCode or omp) after installing; config-time files are loaded once.
+- Quit and restart the harness after installing; config-time files are loaded once.
 - Re-run Step 1.3 whenever model entitlements change; stale slugs break every delegation that reads them.
 - Keep model routing (slugs, roles) and secrets (keys, tokens) in separate files; routing files never carry secret values.
