@@ -6,6 +6,13 @@ export class UnknownSkillsError extends Error {
   }
 }
 
+export class EmptySelectionError extends Error {
+  constructor() {
+    super('--only requires at least one skill name; an empty selection would retire everything installed');
+    this.name = 'EmptySelectionError';
+  }
+}
+
 function recommendedNames(skills) {
   return [...skills.values()].filter((s) => s.recommended).map((s) => s.name);
 }
@@ -24,6 +31,7 @@ function recommendedNames(skills) {
 // next no-flag run doesn't re-derive it.
 export function resolveSelection({ skills, selection, stored, installedNames = [] }) {
   if (selection?.only) {
+    if (selection.only.length === 0) throw new EmptySelectionError();
     const known = new Set(skills.keys());
     const unknown = selection.only.filter((n) => !known.has(n));
     if (unknown.length > 0) throw new UnknownSkillsError(unknown);

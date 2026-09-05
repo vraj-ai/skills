@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveSelection, UnknownSkillsError } from '../src/selection.js';
+import { resolveSelection, UnknownSkillsError, EmptySelectionError } from '../src/selection.js';
+import { parseNameList } from '../src/prompt-selection.js';
 
 function skillsMap(entries) {
   return new Map(entries.map(([name, recommended]) => [name, { name, recommended }]));
@@ -45,6 +46,47 @@ test('--only with an unknown skill name is rejected, not silently dropped', () =
       return true;
     }
   );
+});
+
+test('--only , (an empty list, as CLI parsing produces from a bare comma) is rejected, not treated as "select nothing"', () => {
+  const skills = skillsMap([['a', true], ['b', false]]);
+  assert.deepEqual(parseNameList(','), []); // what CLI parsing of `--only ,` actually produces
+  assert.throws(
+    () => resolveSelection({ skills, selection: { only: [] }, stored: null }),
+    (err) => {
+      assert.ok(err instanceof EmptySelectionError);
+      assert.match(err.message, /at least one skill name/);
+      return true;
+    }
+  );
+});
+
+test('the picker\'s pick-then-empty-Enter path also produces an empty --only list, and is rejected the same way', () => {
+  const skills = skillsMap([['a', true], ['b', false]]);
+  // Mirrors bin/vskills.js's promptForSelection pick-branch: `{ only: parseNameList(namesRaw) }`.
+  const pickedNames = parseNameList('');
+  assert.throws(
+    () => resolveSelection({ skills, selection: { only: pickedNames }, stored: null }),
+    EmptySelectionError
+  );
+});
+
+test('invariant: no input to resolveSelection ever produces an empty selected set when skills exist', () => {
+  const skills = skillsMap([['a', true], ['b', false]]);
+  const inputs = [
+    { selection: null, stored: null },
+    { selection: { all: true }, stored: null },
+    { selection: { recommended: true }, stored: null },
+    { selection: null, stored: 'all' },
+    { selection: null, stored: ['a'] },
+    { selection: { all: true }, stored: ['a'] },
+  ];
+  for (const input of inputs) {
+    const { names } = resolveSelection({ skills, ...input });
+    assert.ok(names.size > 0, `expected a non-empty selection for ${JSON.stringify(input)}`);
+  }
+  // The one deliberately-empty stored case is an existing selection of
+  // nothing — distinct from the --only bug, and out of scope here.
 });
 
 test('with no flag, a stored selection is honoured and not rewritten', () => {

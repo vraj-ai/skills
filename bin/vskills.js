@@ -11,7 +11,7 @@ import { runAdd } from '../src/commands/add.js';
 import { readConfig, writeConfig } from '../src/config.js';
 import { readManifest } from '../src/manifest.js';
 import { discoverSkills } from '../src/discovery.js';
-import { resolveSelection, UnknownSkillsError } from '../src/selection.js';
+import { resolveSelection, UnknownSkillsError, EmptySelectionError } from '../src/selection.js';
 import { interpretSelectionAnswer, parseNameList } from '../src/prompt-selection.js';
 import { banner, color, installLine, listLine, summarize, warningLine } from '../src/ui.js';
 
@@ -63,7 +63,7 @@ async function promptForConflicts(conflicts) {
     if (answer === 'n' || answer === 'no') return [];
     if (answer === 'e' || answer === 'edit') {
       const keepRaw = await rl.question('  Names to KEEP as-is (comma-separated): ');
-      const keep = new Set(keepRaw.split(',').map((s) => s.trim()).filter(Boolean));
+      const keep = new Set(parseNameList(keepRaw));
       const unknown = [...keep].filter((k) => !conflicts.some((c) => c.name === k));
       for (const u of unknown) console.log(color.yellow(`  ! "${u}" is not in the conflict list — ignored`));
       return conflicts.map((c) => c.name).filter((n) => !keep.has(n));
@@ -74,12 +74,8 @@ async function promptForConflicts(conflicts) {
   }
 }
 
-// Interactive picker for a plain `vskills init` on a TTY with no explicit
-// flag and nothing stored yet. Mirrors promptForConflicts's shape: same
-// readline import, close-in-finally, one summary question. Returns a
-// selection object in the same shape resolveSelection already accepts
-// ({ recommended: true } | { all: true } | { only: string[] }) — it never
-// resolves the selection itself.
+// Interactive picker for a plain init on a TTY; returns a
+// resolveSelection-shaped selection.
 export async function promptForSelection(skills) {
   const { createInterface } = await import('node:readline/promises');
   const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -162,7 +158,7 @@ export async function main(argv) {
         console.error('vskills init: --only requires a comma-separated list of skill names');
         return 1;
       }
-      flag = { only: arg.split(',').map((s) => s.trim()).filter(Boolean) };
+      flag = { only: parseNameList(arg) };
     } else if (rest.includes('--recommended')) {
       flag = { recommended: true };
     }
@@ -183,7 +179,7 @@ export async function main(argv) {
         skills, selection: flag, stored: storedSelection, installedNames: Object.keys(manifest.skills),
       });
     } catch (err) {
-      if (err instanceof UnknownSkillsError) {
+      if (err instanceof UnknownSkillsError || err instanceof EmptySelectionError) {
         console.error(`vskills init: ${err.message}`);
         return 1;
       }
