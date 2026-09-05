@@ -2,9 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { interpretSelectionAnswer, parseNameList } from '../src/prompt-selection.js';
 
-test('plain Enter (empty string) means accept the recommended set, never nothing', () => {
-  assert.deepEqual(interpretSelectionAnswer(''), { recommended: true });
-  assert.deepEqual(interpretSelectionAnswer('   '), { recommended: true });
+test('plain Enter (empty string) defers to resolveSelection\'s own no-flag default, not a forced recommended tier', () => {
+  assert.equal(interpretSelectionAnswer(''), null);
+  assert.equal(interpretSelectionAnswer('   '), null);
 });
 
 test('"a" / "all" (any case) means install everything', () => {

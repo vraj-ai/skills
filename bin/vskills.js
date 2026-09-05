@@ -23,7 +23,7 @@ const HELP = `V's Skills (vskills) — installer CLI for vraj-ai/skills
 
 Usage:
   vskills init                    Install the recommended skills (or your saved selection)
-  vskills init --recommended      Same as plain init, explicitly
+  vskills init --recommended      Exactly the recommended set, dropping anything else
   vskills init --all              Install every skill in the repo
   vskills init --only a,b,c       Install exactly these skills
   vskills init --yes              Non-interactive; overwrite conflicting skills without asking
@@ -83,13 +83,13 @@ export async function promptForSelection(skills) {
     const recommended = [...skills.values()].filter((s) => s.recommended).map((s) => s.name).sort();
     console.log(banner("V's Skills — choose what to install"));
     console.log(`  Recommended: ${recommended.length ? recommended.join(', ') : '(none marked recommended)'}`);
-    console.log(color.dim('  This is the recommended install — nothing more is needed.'));
+    console.log(color.dim('  Enter keeps anything already installed and adds the recommended set.'));
 
     const answer = await rl.question(
-      `\n  ${color.dim('[Enter = recommended / a = install everything / p = pick specific skills]')} `
+      `\n  ${color.dim('[Enter = keep + recommended / a = install everything / p = pick specific skills]')} `
     );
     const decision = interpretSelectionAnswer(answer);
-    if (decision.pick) {
+    if (decision?.pick) {
       const namesRaw = await rl.question('  Skill names (comma or space separated): ');
       return { only: parseNameList(namesRaw) };
     }

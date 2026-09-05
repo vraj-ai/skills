@@ -25,8 +25,8 @@ export async function readConfig(installRoot) {
       : null;
     const selection = selectionArray && selectionArray.length > 0
       ? selectionArray
-      : parsed.selection === 'all'
-        ? 'all'
+      : parsed.selection === 'all' || parsed.selection === 'recommended'
+        ? parsed.selection
         : null;
     return { targets, selection };
   } catch (err) {
