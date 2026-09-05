@@ -2,6 +2,7 @@
 name: council-adversary
 version: 1.0.0
 description: Tear down a converged item or whole deliverable as a read-only different-model judge, returning falsifiable findings and a blocking verdict. Use for optional hardened T0 review, optional T2 whole-deliverable review, and the mandatory final T3 code-level gate.
+recommended: true
 ---
 
 # Council Adversary

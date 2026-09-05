@@ -6,6 +6,7 @@ homepage: https://github.com/DietrichGebert/ponytail
 license: MIT
 source: https://github.com/DietrichGebert/ponytail
 source-commit: 0a4dd63ad4541f4f655c4108a295916f3c1d8fda
+recommended: true
 ---
 
 # Ponytail

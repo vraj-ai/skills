@@ -4,6 +4,7 @@ version: 1.3.0
 description: User-invoked interview that stress-tests a plan and writes glossary, architecture, and ADRs into CONTEXT/. Use when the user runs /grill.
 disable-model-invocation: true
 argument-hint: "[topic]"
+recommended: true
 ---
 
 # Grill

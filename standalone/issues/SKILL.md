@@ -4,6 +4,7 @@ version: 1.3.0
 description: User-invoked. Sets up a project's tracker and CONTEXT/ once, then turns a grill into a spec and tracer-bullet tickets. Use when the user runs /issues.
 disable-model-invocation: true
 argument-hint: "[spec-ref]"
+recommended: true
 ---
 
 # Issues

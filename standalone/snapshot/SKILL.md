@@ -5,6 +5,7 @@ description: User-invoked session close. Syncs CONTEXT/ and the issue tracker, w
 dependencies: [push-handoff]
 disable-model-invocation: true
 argument-hint: "[next session focus]"
+recommended: true
 ---
 
 # Snapshot
