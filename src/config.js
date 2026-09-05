@@ -19,7 +19,9 @@ export async function readConfig(installRoot) {
       : defaultTargets();
     const selection = Array.isArray(parsed.selection)
       ? parsed.selection.filter((name) => typeof name === 'string')
-      : null;
+      : parsed.selection === 'all'
+        ? 'all'
+        : null;
     return { targets, selection };
   } catch (err) {
     if (err.code === 'ENOENT') return { targets: defaultTargets(), selection: null };

@@ -9,6 +9,7 @@ import { runUpdate } from '../src/commands/update.js';
 import { runList } from '../src/commands/list.js';
 import { runAdd } from '../src/commands/add.js';
 import { readConfig, writeConfig } from '../src/config.js';
+import { readManifest } from '../src/manifest.js';
 import { discoverSkills } from '../src/discovery.js';
 import { resolveSelection, UnknownSkillsError } from '../src/selection.js';
 import { banner, color, installLine, listLine, summarize, warningLine } from '../src/ui.js';
@@ -139,10 +140,13 @@ export async function main(argv) {
     // and nothing stored, resolveSelection's own default is the recommended
     // tier, which is what an interactive/non-interactive run both get for now.
 
-    const discovered = await discoverSkills(repoRoot);
+    const { skills } = await discoverSkills(repoRoot);
+    const manifest = await readManifest(installRoot);
     let resolved;
     try {
-      resolved = resolveSelection({ skills: discovered.skills, selection: flag, stored: storedSelection });
+      resolved = resolveSelection({
+        skills, selection: flag, stored: storedSelection, installedNames: Object.keys(manifest.skills),
+      });
     } catch (err) {
       if (err instanceof UnknownSkillsError) {
         console.error(`vskills init: ${err.message}`);
@@ -152,7 +156,7 @@ export async function main(argv) {
     }
     if (resolved.toPersist) await writeConfig(installRoot, { selection: resolved.toPersist });
 
-    const result = await runInit({ repoRoot, installRoot, targets, resolveConflicts, selection: resolved.names, discovered });
+    const result = await runInit({ repoRoot, installRoot, targets, resolveConflicts, selection: resolved.names });
     report("V's Skills — installing", result);
     return result.ok ? 0 : 1;
   }

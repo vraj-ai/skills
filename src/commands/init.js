@@ -6,6 +6,7 @@ import { hashDir } from '../hash.js';
 import { parseFrontmatter } from '../frontmatter.js';
 import { compareVersions } from '../version.js';
 import { readManifest, writeManifest } from '../manifest.js';
+import { resolveClosure } from '../deps.js';
 
 async function readInstalledVersion(installedDir) {
   try {
@@ -26,12 +27,13 @@ async function readInstalledVersion(installedDir) {
 //      is overwritten — but installOne always backs up unmanaged content.
 //   3. apply
 // selection: iterable of skill names to install; omit for all discovered.
-// discovered: pass a prior `{ skills, warnings }` from discoverSkills to
-// skip re-scanning the repo (the CLI already scans once to resolve `selection`).
-export async function runInit({ repoRoot, installRoot, targets, resolveConflicts = null, selection = null, discovered = null }) {
-  const { skills, warnings: discoveryWarnings } = discovered ?? await discoverSkills(repoRoot);
+export async function runInit({ repoRoot, installRoot, targets, resolveConflicts = null, selection = null }) {
+  const { skills, warnings: discoveryWarnings } = await discoverSkills(repoRoot);
   const manifest = await readManifest(installRoot);
-  const selectedNames = selection ? new Set(selection) : new Set(skills.keys());
+  // Expand through the dependency closure so a dependency of a selected
+  // skill is itself selected — otherwise it gets treated as deselected and
+  // retired right after this function installs the skill that needs it.
+  const selectedNames = selection ? new Set(resolveClosure(skills, [...selection]).order) : new Set(skills.keys());
 
   const plan = [];
   for (const skill of skills.values()) {

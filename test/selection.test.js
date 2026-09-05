@@ -13,11 +13,18 @@ test('with no flag and nothing stored, the recommended tier is the default', () 
   assert.deepEqual([...toPersist].sort(), ['a', 'c']);
 });
 
-test('--all selects every discovered skill regardless of tier', () => {
+test('--all selects every discovered skill regardless of tier, and persists the "all" sentinel', () => {
   const skills = skillsMap([['a', true], ['b', false]]);
   const { names, toPersist } = resolveSelection({ skills, selection: { all: true }, stored: null });
   assert.deepEqual([...names].sort(), ['a', 'b']);
-  assert.deepEqual([...toPersist].sort(), ['a', 'b']);
+  assert.equal(toPersist, 'all');
+});
+
+test('a stored "all" sentinel selects every discovered skill, including ones added since', () => {
+  const skills = skillsMap([['a', true], ['b', false], ['c', false]]);
+  const { names, toPersist } = resolveSelection({ skills, selection: null, stored: 'all' });
+  assert.deepEqual([...names].sort(), ['a', 'b', 'c']);
+  assert.equal(toPersist, null);
 });
 
 test('--only selects exactly the named skills', () => {
@@ -51,5 +58,19 @@ test('an explicit flag overrides and rewrites a stored selection', () => {
   const skills = skillsMap([['a', true], ['b', false]]);
   const { names, toPersist } = resolveSelection({ skills, selection: { all: true }, stored: ['a'] });
   assert.deepEqual([...names].sort(), ['a', 'b']);
+  assert.equal(toPersist, 'all');
+});
+
+test('an existing install with nothing stored is migrated: recommended tier plus whatever is already installed', () => {
+  const skills = skillsMap([['a', true], ['b', false], ['c', false]]);
+  const { names, toPersist } = resolveSelection({ skills, selection: null, stored: null, installedNames: ['b'] });
+  assert.deepEqual([...names].sort(), ['a', 'b']);
   assert.deepEqual([...toPersist].sort(), ['a', 'b']);
+});
+
+test('a fresh machine (nothing stored, nothing installed) still gets just the recommended tier', () => {
+  const skills = skillsMap([['a', true], ['b', false]]);
+  const { names, toPersist } = resolveSelection({ skills, selection: null, stored: null, installedNames: [] });
+  assert.deepEqual([...names], ['a']);
+  assert.deepEqual([...toPersist], ['a']);
 });

@@ -341,6 +341,25 @@ test('a selection installs only the named skills, leaving the rest untouched', a
   }
 });
 
+test('a selected skill pulls in its non-selected dependency instead of retiring it', async () => {
+  const { repo, installRoot, target } = await setup();
+  try {
+    await writeSkill(repo, 'helper', { name: 'helper', description: 'Helper.' });
+    await writeSkill(repo, 'rec1', { name: 'rec1', description: 'Rec.', dependencies: ['helper'], recommended: true });
+
+    const result = await runInit({ repoRoot: repo, installRoot, targets: [target], selection: ['rec1'] });
+
+    assert.ok(!result.results.some((r) => r.status === 'retired'));
+    await assert.doesNotReject(fs.access(path.join(installRoot, 'rec1', 'SKILL.md')));
+    await assert.doesNotReject(fs.access(path.join(installRoot, 'helper', 'SKILL.md')));
+    const linkPath = path.join(target, 'helper');
+    const stat = await fs.lstat(linkPath);
+    assert.ok(stat.isSymbolicLink());
+  } finally {
+    await cleanup(repo, installRoot, target);
+  }
+});
+
 test('a skill that drops out of the selection is retired, not left orphaned', async () => {
   const { repo, installRoot, target } = await setup();
   try {
