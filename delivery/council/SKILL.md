@@ -2,6 +2,7 @@
 name: council
 version: 1.3.0
 description: Run independent multi-model research, evidence-based debate, voting, and scoped T0/T1 reviews without rubber-stamping. Use when goals encounters a genuinely contested research item, Phase B needs backlog sanity checks, an item needs independent T0 reviewers, or a milestone needs one rotating integration reviewer.
+recommended: true
 ---
 
 # Council

@@ -3,6 +3,7 @@ name: goals
 version: 1.5.0
 description: Drive a plan document to verified completion through a resumable single-writer backlog, named Worker Role research and review, worktree-isolated parallel builds, milestone gates, and a final adversarial teardown. Use when the user invokes /goal, asks to execute an architecture plan autonomously, resumes a goal, or needs a large issue set delivered milestone by milestone.
 dependencies: [council, council-adversary]
+recommended: true
 ---
 
 # Goals

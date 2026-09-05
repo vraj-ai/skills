@@ -3,6 +3,7 @@ name: ship
 version: 1.6.0
 description: Drive a published spec to verified, pushed completion through a resumable backlog, worktree-isolated parallel builds under a lazy-senior-dev ladder, gate-first review, a milestone reviewer, and a final adversarial teardown. Use when the user invokes /ship, asks to build out a spec autonomously, or resumes a ship run.
 dependencies: [council-adversary]
+recommended: true
 ---
 
 # Ship
