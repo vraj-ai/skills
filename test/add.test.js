@@ -130,3 +130,24 @@ test('add does not create a selection when none is stored (an unfiltered install
     await cleanup(repo, installRoot, target);
   }
 });
+
+test('add against a stored "recommended" sentinel pins the tier plus the added skill, so a later init keeps it', async () => {
+  const repo = await makeTmpDir();
+  const installRoot = await makeTmpDir();
+  try {
+    await writeSkill(repo, 'alpha', { name: 'alpha', recommended: true });
+    await writeSkill(repo, 'bravo', { name: 'bravo', recommended: true });
+    await writeSkill(repo, 'extra', { name: 'extra' });
+    await writeConfig(installRoot, { selection: 'recommended' });
+
+    const result = await runAdd({ names: ['extra'], repoRoot: repo, installRoot, targets: [] });
+    assert.equal(result.ok, true, result.messages.join('; '));
+
+    // The sentinel cannot express "the tier plus extra", so it must have been
+    // resolved to an explicit list — otherwise the next plain init retires extra.
+    const { selection } = await readConfig(installRoot);
+    assert.deepEqual([...selection].sort(), ['alpha', 'bravo', 'extra']);
+  } finally {
+    await cleanup(repo, installRoot);
+  }
+});

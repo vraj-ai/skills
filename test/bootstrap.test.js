@@ -61,8 +61,16 @@ test('init on a fresh HOME with no install root yet succeeds and installs the re
     });
     assert.match(stdout, /installing/i);
 
-    const installedSkills = await readdir(path.join(fakeHome, '.agents', 'skills'));
-    assert.ok(installedSkills.length > 0);
+    // Assert named skills, not just a non-empty directory: the install root
+    // also holds dotfiles (.vskills-config.json, .vskills-manifest.json), so a
+    // count-only check passed even when zero skills were installed.
+    const entries = await readdir(path.join(fakeHome, '.agents', 'skills'), { withFileTypes: true });
+    const installed = new Set(entries.filter((e) => !e.name.startsWith('.')).map((e) => e.name));
+    for (const name of ['ship', 'goals', 'grill', 'issues', 'snapshot', 'council']) {
+      assert.ok(installed.has(name), `expected recommended skill "${name}" to be installed, got: ${[...installed].sort().join(', ')}`);
+    }
+    // Opt-in skills must stay out of the default install.
+    assert.ok(!installed.has('herdr-orchestrator'), 'herdr-orchestrator is opt-in and must not install by default');
   } finally {
     await rm(fakeHome, { recursive: true, force: true });
   }

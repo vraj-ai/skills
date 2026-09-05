@@ -83,13 +83,13 @@ export async function promptForSelection(skills) {
     const recommended = [...skills.values()].filter((s) => s.recommended).map((s) => s.name).sort();
     console.log(banner("V's Skills — choose what to install"));
     console.log(`  Recommended: ${recommended.length ? recommended.join(', ') : '(none marked recommended)'}`);
-    console.log(color.dim('  This is the recommended install — nothing more is needed.'));
+    console.log(color.dim('  Enter keeps anything already installed and adds the recommended set.'));
 
     const answer = await rl.question(
       `\n  ${color.dim('[Enter = recommended / a = install everything / p = pick specific skills]')} `
     );
     const decision = interpretSelectionAnswer(answer);
-    if (decision.pick) {
+    if (decision?.pick) {
       const namesRaw = await rl.question('  Skill names (comma or space separated): ');
       return { only: parseNameList(namesRaw) };
     }
