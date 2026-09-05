@@ -95,7 +95,7 @@ For each unit of work, in order:
 6. Reviewer run → Gate 5. On a bounce, route by failure kind and repeat only the required stage.
 7. Repeat per child until every ticket is Done or human escalation is required.
 
-**One item per run** unless the user authorizes a batch — then `subagent-batch-implementation` with lanes, and the parent still holds every gate.
+**One item per run** unless the user authorizes a batch — then `subagent-delegation` with lanes, and the parent still holds every gate.
 
 ## The bounce loop
 
@@ -121,4 +121,4 @@ If the pipeline is already thrashing, load `state-driven-pipeline-recovery`.
 
 ## Related
 
-`github-projects-pipeline` · `legacy-planner` · `legacy-coder` · `legacy-debugger` · `state-driven-pipeline-recovery` · `subagent-batch-implementation`
+`github-projects-pipeline` · `legacy-planner` · `legacy-coder` · `legacy-debugger` · `state-driven-pipeline-recovery` · `subagent-delegation`

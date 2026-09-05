@@ -111,8 +111,7 @@ each. If `Debugger Ready` is empty at the start, say so and offer sweep mode
 instead of inventing tickets.
 
 **The authorized exception.** If the user explicitly authorizes *parallel* hardening
-— not merely "all of them" — read the route table in
-`~/.claude/skills/parallel-subagent-implementation/SKILL.md` and follow it. Its
+— not merely "all of them" — read `subagent-delegation` and follow it. Its
 preconditions bind: disjoint lanes proven, baseline green recorded, one commit per
 ticket, and you re-run every worker's gate yourself. Repairs still never review
 themselves, and every ticket still lands in `Review Ready`, never `Done`.

@@ -78,8 +78,8 @@ Next owner: <role>
 - Moving a ticket to Done to unblock the queue.
 - Deleting or rewriting failing tests to get green.
 - Retrying past the budget without escalating classification.
-- Treating a timeout as a total loss — assess what landed first (`shared-worktree-safety`).
+- Treating a timeout as a total loss — assess what landed first (`subagent-delegation`).
 
 ## Related
 
-`github-projects-pipeline` · `coder` · `debugger` · `shared-worktree-safety` · `invariant-evidence-review`
+`github-projects-pipeline` · `coder` · `debugger` · `subagent-delegation` · `invariant-evidence-review`

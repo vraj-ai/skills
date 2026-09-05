@@ -228,8 +228,7 @@ Never narrate a transition that the project does not show.
 
 **One GitHub Project item per agent run, oldest unblocked first.** Batching transitions
 in one sitting muddies evidence and ownership. Batch only when the user explicitly
-authorizes it; use `subagent-batch-implementation` or
-`parallel-subagent-implementation` with lanes and a parent-verified gate.
+authorizes it; use `subagent-delegation` with lanes and a parent-verified gate.
 
 Draining a queue is serial, not a batch claim. When asked to work all items in a
 status, claim one, finish its stage, read it back, then re-query the project before
@@ -304,4 +303,4 @@ Before ending any pipeline run:
 
 `legacy-planner` · `legacy-coder` · `legacy-debugger` · `legacy-reviewer` · `profile-gated-delivery` ·
 `specialist-profiles` · `state-driven-pipeline-recovery` ·
-`subagent-batch-implementation`
+`subagent-delegation`

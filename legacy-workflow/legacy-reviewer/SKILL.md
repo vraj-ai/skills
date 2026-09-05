@@ -81,7 +81,7 @@ claim, gate, judge, route, comment — to completion on one ticket, then start o
 from `Before you start` for the next. The board should never show more than one
 ticket in `Reviewing` because of you.
 
-**The fan-out exception does not reach this stage.** `parallel-subagent-implementation`
+**The fan-out exception does not reach this stage.** `subagent-delegation`
 exists so `/legacy-coder` and `/legacy-debugger` can widen when the user authorizes it. Reviewing is
 different in kind: the verdict is the product, and a helper that judges on your
 behalf becomes the judge — the one role this skill exists to keep independent and

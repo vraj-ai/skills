@@ -147,7 +147,7 @@ asked to keep them for reference.
 
 ## Related
 
-`shared-worktree-delegation` (lane/gatekeeper mechanics this borrows from),
+`subagent-delegation` (lane/gatekeeper mechanics this borrows from),
 `superpowers:using-git-worktrees` (worktree setup), `push-handoff` (once the
 chosen diff is merged and ready to ship), `grilling` (for scoping the task
 brief itself before a run, if it's still fuzzy), `legacy-coder`,
