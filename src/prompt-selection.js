@@ -14,6 +14,5 @@ export function interpretSelectionAnswer(answer) {
   if (lower === '') return { recommended: true };
   if (lower === 'a' || lower === 'all') return { all: true };
   if (lower === 'p' || lower === 'pick') return { pick: true };
-  const names = parseNameList(answer);
-  return names.length > 0 ? { only: names } : { recommended: true };
+  return { only: parseNameList(answer) };
 }

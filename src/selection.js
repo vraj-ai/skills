@@ -1,15 +1,7 @@
 export class UnknownSkillsError extends Error {
-  constructor(names) {
-    super(`unknown skill(s) passed to --only: ${names.join(', ')}`);
+  constructor(message) {
+    super(message);
     this.name = 'UnknownSkillsError';
-    this.names = names;
-  }
-}
-
-export class EmptySelectionError extends Error {
-  constructor() {
-    super('--only requires at least one skill name; an empty selection would retire everything installed');
-    this.name = 'EmptySelectionError';
   }
 }
 
@@ -30,35 +22,37 @@ function recommendedNames(skills) {
 // a derived default because nothing is stored yet also seeds config so the
 // next no-flag run doesn't re-derive it.
 export function resolveSelection({ skills, selection, stored, installedNames = [] }) {
+  let result;
   if (selection?.only) {
-    if (selection.only.length === 0) throw new EmptySelectionError();
     const known = new Set(skills.keys());
     const unknown = selection.only.filter((n) => !known.has(n));
-    if (unknown.length > 0) throw new UnknownSkillsError(unknown);
-    return { names: new Set(selection.only), toPersist: [...selection.only] };
-  }
-
-  if (selection?.all) {
-    return { names: new Set(skills.keys()), toPersist: 'all' };
-  }
-
-  if (selection?.recommended) {
+    if (unknown.length > 0) {
+      throw new UnknownSkillsError(`unknown skill(s) passed to --only: ${unknown.join(', ')}`);
+    }
+    result = { names: new Set(selection.only), toPersist: [...selection.only] };
+  } else if (selection?.all) {
+    result = { names: new Set(skills.keys()), toPersist: 'all' };
+  } else if (selection?.recommended) {
     const names = recommendedNames(skills);
-    return { names: new Set(names), toPersist: names };
+    result = { names: new Set(names), toPersist: names };
+  } else if (stored === 'all') {
+    result = { names: new Set(skills.keys()), toPersist: null };
+  } else if (Array.isArray(stored)) {
+    result = { names: new Set(stored), toPersist: null };
+  } else {
+    // Nothing stored: a non-empty manifest predates selection support — seed
+    // it from what's already installed (unioned with the recommended tier) so
+    // upgrading doesn't silently retire everything else already on disk. A
+    // fresh machine (empty manifest) just gets the recommended tier.
+    const names = new Set([...installedNames, ...recommendedNames(skills)]);
+    result = { names, toPersist: [...names] };
   }
 
-  if (stored === 'all') {
-    return { names: new Set(skills.keys()), toPersist: null };
+  // Single exit for every branch above: whatever route got here, an empty
+  // result would hand runInit an empty keep-set and retire every installed
+  // skill. A genuinely empty repo is the only legitimate empty selection.
+  if (result.names.size === 0 && skills.size > 0) {
+    throw new UnknownSkillsError('the resolved selection is empty; this would retire every installed skill');
   }
-
-  if (Array.isArray(stored)) {
-    return { names: new Set(stored), toPersist: null };
-  }
-
-  // Nothing stored: a non-empty manifest predates selection support — seed
-  // it from what's already installed (unioned with the recommended tier) so
-  // upgrading doesn't silently retire everything else already on disk. A
-  // fresh machine (empty manifest) just gets the recommended tier.
-  const names = new Set([...installedNames, ...recommendedNames(skills)]);
-  return { names, toPersist: [...names] };
+  return result;
 }

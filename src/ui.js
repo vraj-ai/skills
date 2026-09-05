@@ -45,7 +45,7 @@ export function installLine(status, name) {
 export function listLine(status, name, description, tier) {
   const { symbol, paint } = styleFor(status);
   const label = paint(`${symbol} ${status}`.padEnd(13));
-  const tierTag = tier === 'recommended' ? `${color.cyan('[recommended]')} ` : tier === 'opt-in' ? `${color.dim('[opt-in]')} ` : '';
+  const tierTag = tier === 'recommended' ? `${color.cyan('[recommended]')} ` : `${color.dim('[opt-in]')} `;
   const desc = description ? color.dim(`— ${description}`) : '';
   return `  ${label} ${color.bold(name)} ${tierTag}${desc}`;
 }

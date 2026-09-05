@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveSelection, UnknownSkillsError, EmptySelectionError } from '../src/selection.js';
+import { resolveSelection, UnknownSkillsError } from '../src/selection.js';
 import { parseNameList } from '../src/prompt-selection.js';
 
 function skillsMap(entries) {
@@ -41,7 +41,6 @@ test('--only with an unknown skill name is rejected, not silently dropped', () =
     () => resolveSelection({ skills, selection: { only: ['a', 'nope'] }, stored: null }),
     (err) => {
       assert.ok(err instanceof UnknownSkillsError);
-      assert.deepEqual(err.names, ['nope']);
       assert.match(err.message, /nope/);
       return true;
     }
@@ -54,8 +53,8 @@ test('--only , (an empty list, as CLI parsing produces from a bare comma) is rej
   assert.throws(
     () => resolveSelection({ skills, selection: { only: [] }, stored: null }),
     (err) => {
-      assert.ok(err instanceof EmptySelectionError);
-      assert.match(err.message, /at least one skill name/);
+      assert.ok(err instanceof UnknownSkillsError);
+      assert.match(err.message, /resolved selection is empty/);
       return true;
     }
   );
@@ -67,26 +66,40 @@ test('the picker\'s pick-then-empty-Enter path also produces an empty --only lis
   const pickedNames = parseNameList('');
   assert.throws(
     () => resolveSelection({ skills, selection: { only: pickedNames }, stored: null }),
-    EmptySelectionError
+    UnknownSkillsError
+  );
+});
+
+test('a catalogue with no recommended skill still throws on plain init (or a picker\'s bare Enter), instead of retiring everything', () => {
+  const skills = skillsMap([['a', false], ['b', false]]);
+  assert.throws(
+    () => resolveSelection({ skills, selection: { recommended: true }, stored: null }),
+    (err) => {
+      assert.ok(err instanceof UnknownSkillsError);
+      assert.match(err.message, /resolved selection is empty/);
+      return true;
+    }
   );
 });
 
 test('invariant: no input to resolveSelection ever produces an empty selected set when skills exist', () => {
-  const skills = skillsMap([['a', true], ['b', false]]);
+  const withRecommended = skillsMap([['a', true], ['b', false]]);
+  const noneRecommended = skillsMap([['a', false], ['b', false]]);
   const inputs = [
-    { selection: null, stored: null },
-    { selection: { all: true }, stored: null },
-    { selection: { recommended: true }, stored: null },
-    { selection: null, stored: 'all' },
-    { selection: null, stored: ['a'] },
-    { selection: { all: true }, stored: ['a'] },
+    { skills: withRecommended, selection: null, stored: null },
+    { skills: withRecommended, selection: { all: true }, stored: null },
+    { skills: withRecommended, selection: { recommended: true }, stored: null },
+    { skills: withRecommended, selection: null, stored: 'all' },
+    { skills: withRecommended, selection: null, stored: ['a'] },
+    { skills: withRecommended, selection: { all: true }, stored: ['a'] },
+    { skills: noneRecommended, selection: { all: true }, stored: null },
   ];
   for (const input of inputs) {
-    const { names } = resolveSelection({ skills, ...input });
+    const { names } = resolveSelection(input);
     assert.ok(names.size > 0, `expected a non-empty selection for ${JSON.stringify(input)}`);
   }
-  // The one deliberately-empty stored case is an existing selection of
-  // nothing — distinct from the --only bug, and out of scope here.
+  // { skills: noneRecommended, selection: { recommended: true } } is covered
+  // by its own test above: it must throw, not silently resolve to empty.
 });
 
 test('with no flag, a stored selection is honoured and not rewritten', () => {

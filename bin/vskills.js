@@ -11,7 +11,7 @@ import { runAdd } from '../src/commands/add.js';
 import { readConfig, writeConfig } from '../src/config.js';
 import { readManifest } from '../src/manifest.js';
 import { discoverSkills } from '../src/discovery.js';
-import { resolveSelection, UnknownSkillsError, EmptySelectionError } from '../src/selection.js';
+import { resolveSelection, UnknownSkillsError } from '../src/selection.js';
 import { interpretSelectionAnswer, parseNameList } from '../src/prompt-selection.js';
 import { banner, color, installLine, listLine, summarize, warningLine } from '../src/ui.js';
 
@@ -179,7 +179,7 @@ export async function main(argv) {
         skills, selection: flag, stored: storedSelection, installedNames: Object.keys(manifest.skills),
       });
     } catch (err) {
-      if (err instanceof UnknownSkillsError || err instanceof EmptySelectionError) {
+      if (err instanceof UnknownSkillsError) {
         console.error(`vskills init: ${err.message}`);
         return 1;
       }
