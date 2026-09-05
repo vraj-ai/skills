@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import fs from 'node:fs/promises';
-import { readConfig, defaultTargets } from '../src/config.js';
+import { readConfig, writeConfig, defaultTargets } from '../src/config.js';
 import { runInit } from '../src/commands/init.js';
 import { makeTmpDir, writeSkill, cleanup } from './helpers.js';
 
@@ -26,6 +26,34 @@ test('a custom single target in config overrides the default', async () => {
     );
     const { targets } = await readConfig(installRoot);
     assert.deepEqual(targets, ['/tmp/custom-vskills-target']);
+  } finally {
+    await cleanup(installRoot);
+  }
+});
+
+test('with no config present, the selection is null', async () => {
+  const installRoot = await makeTmpDir();
+  try {
+    const { selection } = await readConfig(installRoot);
+    assert.equal(selection, null);
+  } finally {
+    await cleanup(installRoot);
+  }
+});
+
+test('writeConfig persists the selection without dropping existing targets', async () => {
+  const installRoot = await makeTmpDir();
+  try {
+    await fs.writeFile(
+      path.join(installRoot, '.vskills-config.json'),
+      JSON.stringify({ targets: ['/tmp/custom-vskills-target'] }),
+      'utf8'
+    );
+    await writeConfig(installRoot, { selection: ['alpha', 'beta'] });
+
+    const config = await readConfig(installRoot);
+    assert.deepEqual(config.targets, ['/tmp/custom-vskills-target']);
+    assert.deepEqual(config.selection, ['alpha', 'beta']);
   } finally {
     await cleanup(installRoot);
   }

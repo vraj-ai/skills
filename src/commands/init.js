@@ -6,6 +6,7 @@ import { hashDir } from '../hash.js';
 import { parseFrontmatter } from '../frontmatter.js';
 import { compareVersions } from '../version.js';
 import { readManifest, writeManifest } from '../manifest.js';
+import { resolveClosure } from '../deps.js';
 
 async function readInstalledVersion(installedDir) {
   try {
@@ -25,12 +26,18 @@ async function readInstalledVersion(installedDir) {
 //      it returns the names to overwrite. Without a resolver, every conflict
 //      is overwritten — but installOne always backs up unmanaged content.
 //   3. apply
-export async function runInit({ repoRoot, installRoot, targets, resolveConflicts = null }) {
+// selection: iterable of skill names to install; omit for all discovered.
+export async function runInit({ repoRoot, installRoot, targets, resolveConflicts = null, selection = null }) {
   const { skills, warnings: discoveryWarnings } = await discoverSkills(repoRoot);
   const manifest = await readManifest(installRoot);
+  // Expand through the dependency closure so a dependency of a selected
+  // skill is itself selected — otherwise it gets treated as deselected and
+  // retired right after this function installs the skill that needs it.
+  const selectedNames = selection ? new Set(resolveClosure(skills, [...selection]).order) : new Set(skills.keys());
 
   const plan = [];
   for (const skill of skills.values()) {
+    if (!selectedNames.has(skill.name)) continue;
     const installedDir = path.join(installRoot, skill.name);
     if (!(await isDirectory(installedDir))) {
       plan.push({ skill, action: 'install' });
@@ -152,8 +159,11 @@ export async function runInit({ repoRoot, installRoot, targets, resolveConflicts
     }
   }
 
+  // "Still wanted" means in the repo AND selected — a name can be in
+  // `selectedNames` (stored selection) but no longer in `skills` (deleted
+  // from the repo), or in `skills` but not selected. Either way it retires.
   const vanished = await retireVanished({
-    discoveredNames: new Set(skills.keys()),
+    discoveredNames: new Set([...skills.keys()].filter((n) => selectedNames.has(n))),
     installRoot,
     targets,
     manifest,

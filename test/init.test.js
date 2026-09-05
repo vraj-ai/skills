@@ -326,6 +326,81 @@ test('init retires managed skills that vanished from the repo', async () => {
   }
 });
 
+test('a selection installs only the named skills, leaving the rest untouched', async () => {
+  const { repo, installRoot, target } = await setup();
+  try {
+    await writeSkill(repo, 'beta', { name: 'beta', description: 'Beta.' });
+
+    const result = await runInit({ repoRoot: repo, installRoot, targets: [target], selection: ['alpha'] });
+
+    assert.deepEqual(result.results.map((r) => r.name), ['alpha']);
+    await assert.doesNotReject(fs.access(path.join(installRoot, 'alpha', 'SKILL.md')));
+    await assert.rejects(fs.access(path.join(installRoot, 'beta')));
+  } finally {
+    await cleanup(repo, installRoot, target);
+  }
+});
+
+test('a selected skill pulls in its non-selected dependency instead of retiring it', async () => {
+  const { repo, installRoot, target } = await setup();
+  try {
+    await writeSkill(repo, 'helper', { name: 'helper', description: 'Helper.' });
+    await writeSkill(repo, 'rec1', { name: 'rec1', description: 'Rec.', dependencies: ['helper'], recommended: true });
+
+    const result = await runInit({ repoRoot: repo, installRoot, targets: [target], selection: ['rec1'] });
+
+    assert.ok(!result.results.some((r) => r.status === 'retired'));
+    await assert.doesNotReject(fs.access(path.join(installRoot, 'rec1', 'SKILL.md')));
+    await assert.doesNotReject(fs.access(path.join(installRoot, 'helper', 'SKILL.md')));
+    const linkPath = path.join(target, 'helper');
+    const stat = await fs.lstat(linkPath);
+    assert.ok(stat.isSymbolicLink());
+  } finally {
+    await cleanup(repo, installRoot, target);
+  }
+});
+
+test('a skill that drops out of the selection is retired, not left orphaned', async () => {
+  const { repo, installRoot, target } = await setup();
+  try {
+    await writeSkill(repo, 'beta', { name: 'beta', description: 'Beta.' });
+    await runInit({ repoRoot: repo, installRoot, targets: [target], selection: ['alpha', 'beta'] });
+    await assert.doesNotReject(fs.access(path.join(installRoot, 'beta', 'SKILL.md')));
+
+    const result = await runInit({ repoRoot: repo, installRoot, targets: [target], selection: ['alpha'] });
+
+    assert.ok(result.results.some((r) => r.name === 'beta' && r.status === 'retired'));
+    await assert.rejects(fs.access(path.join(installRoot, 'beta')));
+    const manifest = await readManifest(installRoot);
+    assert.equal(manifest.skills.beta, undefined);
+    assert.ok(manifest.skills.alpha);
+  } finally {
+    await cleanup(repo, installRoot, target);
+  }
+});
+
+test('a skill deleted from the repo is retired even when the stored selection still names it', async () => {
+  const { repo, installRoot, target } = await setup();
+  try {
+    await writeSkill(repo, 'gone', { name: 'gone', description: 'Gone.' });
+    await runInit({ repoRoot: repo, installRoot, targets: [target], selection: ['alpha', 'gone'] });
+    await assert.doesNotReject(fs.access(path.join(installRoot, 'gone', 'SKILL.md')));
+    await fs.rm(path.join(repo, 'gone'), { recursive: true, force: true });
+
+    // The stored selection (as a later plain `init` would pass through
+    // unchanged) still names 'gone' — it must retire anyway.
+    const result = await runInit({ repoRoot: repo, installRoot, targets: [target], selection: ['alpha', 'gone'] });
+
+    assert.ok(result.results.some((r) => r.name === 'gone' && r.status === 'retired'));
+    await assert.rejects(fs.access(path.join(installRoot, 'gone')));
+    await assert.rejects(fs.access(path.join(target, 'gone')));
+    const manifest = await readManifest(installRoot);
+    assert.equal(manifest.skills.gone, undefined);
+  } finally {
+    await cleanup(repo, installRoot, target);
+  }
+});
+
 test('init leaves a drifted vanished skill installed', async () => {
   const { repo, installRoot, target } = await setup();
   try {
