@@ -59,7 +59,7 @@ export function resolveSelection({ skills, selection, stored, installedNames = [
   // result would hand runInit an empty keep-set and retire every installed
   // skill. A genuinely empty repo is the only legitimate empty selection.
   if (result.names.size === 0 && skills.size > 0) {
-    throw new UnknownSkillsError('the resolved selection is empty; this would retire every installed skill');
+    throw new UnknownSkillsError('the resolved selection is empty; this would retire every installed skill. Re-run with --all, or --only <names>.');
   }
   return result;
 }

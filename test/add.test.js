@@ -151,3 +151,21 @@ test('add against a stored "recommended" sentinel pins the tier plus the added s
     await cleanup(repo, installRoot);
   }
 });
+
+test('add of a skill the tier already covers keeps the "recommended" subscription instead of freezing it', async () => {
+  const repo = await makeTmpDir();
+  const installRoot = await makeTmpDir();
+  try {
+    await writeSkill(repo, 'alpha', { name: 'alpha', recommended: true });
+    await writeSkill(repo, 'bravo', { name: 'bravo', recommended: true });
+    await writeConfig(installRoot, { selection: 'recommended' });
+
+    const result = await runAdd({ names: ['alpha'], repoRoot: repo, installRoot, targets: [] });
+    assert.equal(result.ok, true, result.messages.join('; '));
+
+    const { selection } = await readConfig(installRoot);
+    assert.equal(selection, 'recommended', 'a no-op add must not end the tier subscription');
+  } finally {
+    await cleanup(repo, installRoot);
+  }
+});

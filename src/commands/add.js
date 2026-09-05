@@ -49,12 +49,16 @@ export async function runAdd({ names, repoRoot, installRoot, targets }) {
   // just added. That gives up the tier subscription, which is the cost of
   // pinning a skill the tier does not include.
   const { selection: storedSelection } = await readConfig(installRoot);
-  const base = storedSelection === 'recommended'
-    ? [...skills.values()].filter((s) => s.recommended).map((s) => s.name)
-    : Array.isArray(storedSelection) ? storedSelection : null;
-  if (base) {
-    const merged = new Set([...base, ...order]);
-    await writeConfig(installRoot, { selection: [...merged] });
+  if (storedSelection === 'recommended') {
+    // Adding a skill the tier already covers changes nothing, so keep the
+    // subscription rather than freezing it for a no-op.
+    const tier = new Set([...skills.values()].filter((s) => s.recommended).map((s) => s.name));
+    const outsideTier = order.filter((n) => !tier.has(n));
+    if (outsideTier.length > 0) {
+      await writeConfig(installRoot, { selection: [...new Set([...tier, ...order])] });
+    }
+  } else if (Array.isArray(storedSelection)) {
+    await writeConfig(installRoot, { selection: [...new Set([...storedSelection, ...order])] });
   }
 
   return {
