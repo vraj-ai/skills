@@ -198,4 +198,4 @@ exponential backoff to 8s, then surface a retryable error to the caller` is.
 
 ## Related
 
-`invariant-evidence-review` · `codebase-audit` · `shared-worktree-safety` · `controlled-ticket-delivery`
+`audit` · `subagent-delegation` · `delivery-constraints`

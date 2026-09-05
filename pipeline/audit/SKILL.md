@@ -188,4 +188,4 @@ not achieve is worse than a narrow honest one.
 
 ## Related
 
-`provider-integration-tdd` · `ticket-implementation-tdd` · `issues` · `ponytail-audit`
+`implementation-tdd` · `issues` · `delivery-constraints`

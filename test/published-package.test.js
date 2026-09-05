@@ -102,7 +102,7 @@ test('shipped skills never invoke a skill this repo does not ship', async () => 
 
   assert.ok(skills.has('ship') && skills.has('push-handoff'), 'skill discovery failed');
   assert.ok(
-    skills.has('codebase-audit') && skills.has('ticket-implementation-tdd'),
+    skills.has('audit') && skills.has('implementation-tdd'),
     'nested skills under pipeline/ are invisible to this gate',
   );
 

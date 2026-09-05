@@ -156,4 +156,4 @@ Both records live inside the repository under change. Say clearly in the report 
 
 ## Related
 
-`push-handoff` · `github-projects-pipeline` · `provider-integration-tdd` · `ticket-implementation-tdd` · `shared-worktree-safety` · `invariant-evidence-review`
+`push-handoff` · `implementation-tdd` · `subagent-delegation` · `audit`
