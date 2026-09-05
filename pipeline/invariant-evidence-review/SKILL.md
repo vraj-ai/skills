@@ -81,4 +81,4 @@ Verdicts: **enforced** (all three columns real) · **documented-only** (no enfor
 
 ## Related
 
-`debugger` · `planner` (locks the invariants) · `provider-integration-tdd` · `code review` workflows
+`debugger` · `planner` (locks the invariants) · `implementation-tdd` · `code review` workflows

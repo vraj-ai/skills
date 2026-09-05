@@ -84,4 +84,4 @@ Write it to the project's handoff location. Say clearly in your report that the 
 
 ## Related
 
-`coder` · `push-handoff` · `state-driven-pipeline-recovery` · `github-projects-pipeline` · `provider-integration-tdd`
+`coder` · `push-handoff` · `state-driven-pipeline-recovery` · `github-projects-pipeline` · `implementation-tdd`
