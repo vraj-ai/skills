@@ -86,4 +86,4 @@ Invariants: <held / unproven>
 
 ## Related
 
-`coder` · `tdd` · `provider-integration-tdd` · `invariant-evidence-review` · `shared-worktree-safety`
+`coder` · `tdd` · `provider-integration-tdd` · `audit` · `shared-worktree-safety`

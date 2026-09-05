@@ -30,7 +30,7 @@ corresponding top-level harness sessions:
 |---|---|---|---|
 | `legacy-planner` | Planned | `github-projects-pipeline` → `legacy-planner` (+ `batch-grill-me`) | creates GitHub issues in Planned; promotes unblocked project items to Agent Ready |
 | `legacy-coder` | Agent Ready (incl. scope/test bounce returns) | `github-projects-pipeline` → `legacy-coder` (+ `ticket-implementation-tdd`) | Agent Ready → Coding → Debugger Ready |
-| `legacy-debugger` | Debugger Ready (incl. correctness bounce returns) | `github-projects-pipeline` → `legacy-debugger` (+ `invariant-evidence-review`) | Debugger Ready → Debugging → Review Ready |
+| `legacy-debugger` | Debugger Ready (incl. correctness bounce returns) | `github-projects-pipeline` → `legacy-debugger` (+ `audit`) | Debugger Ready → Debugging → Review Ready |
 | `legacy-reviewer` | Review Ready | `github-projects-pipeline` → `legacy-reviewer` (+ review rubric) | Review Ready → Reviewing → Done or classified bounce |
 
 ## The shared core every role inherits

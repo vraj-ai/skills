@@ -82,4 +82,4 @@ Next owner: <role>
 
 ## Related
 
-`github-projects-pipeline` · `coder` · `debugger` · `shared-worktree-safety` · `invariant-evidence-review`
+`github-projects-pipeline` · `coder` · `debugger` · `shared-worktree-safety` · `audit`

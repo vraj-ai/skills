@@ -90,7 +90,7 @@ Feed these into `planner`'s invariant lock so they become testable, not aspirati
 - Cache hit rate assumed: H% — alert if it drops below H−10
 ```
 
-An unenforced cap is a wish. Each of these needs an enforcement point and a signal — see `invariant-evidence-review`.
+An unenforced cap is a wish. Each of these needs an enforcement point and a signal — see `audit`.
 
 ## Non-negotiables
 
@@ -102,4 +102,4 @@ An unenforced cap is a wish. Each of these needs an enforcement point and a sign
 
 ## Related
 
-`planner` (invariant lock) · `invariant-evidence-review` · `controlled-ticket-delivery` · `claude-api`
+`planner` (invariant lock) · `audit` · `controlled-ticket-delivery` · `claude-api`
