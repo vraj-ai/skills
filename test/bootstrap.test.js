@@ -4,7 +4,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { mkdtemp, rm, symlink } from 'node:fs/promises';
+import { mkdtemp, readdir, rm, symlink } from 'node:fs/promises';
 import os from 'node:os';
 
 const execFileAsync = promisify(execFile);
@@ -46,5 +46,24 @@ test('running through a symlink (as npx/npm bin shims do) still runs the command
     assert.match(stdout.trim(), /^\d+\.\d+\.\d+$/);
   } finally {
     await rm(tmp, { recursive: true, force: true });
+  }
+});
+
+// Regression test for the fresh-machine crash: the install root
+// (~/.agents/skills, derived from HOME) must not need to exist beforehand.
+// Deliberately does NOT pre-create the install root — that's the bug this
+// guards against.
+test('init on a fresh HOME with no install root yet succeeds and installs the recommended closure', async () => {
+  const fakeHome = await mkdtemp(path.join(os.tmpdir(), 'vskills-fresh-home-'));
+  try {
+    const { stdout } = await execFileAsync(process.execPath, [binPath, 'init', '--yes'], {
+      env: { ...process.env, HOME: fakeHome },
+    });
+    assert.match(stdout, /installing/i);
+
+    const installedSkills = await readdir(path.join(fakeHome, '.agents', 'skills'));
+    assert.ok(installedSkills.length > 0);
+  } finally {
+    await rm(fakeHome, { recursive: true, force: true });
   }
 });

@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -45,5 +45,6 @@ export async function writeConfig(installRoot, patch) {
     if (err.code !== 'ENOENT') throw err;
   }
   const next = { ...current, ...patch };
+  await mkdir(installRoot, { recursive: true });
   await writeFile(configPath(installRoot), `${JSON.stringify(next, null, 2)}\n`, 'utf8');
 }
