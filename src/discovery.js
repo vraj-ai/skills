@@ -2,7 +2,10 @@ import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { parseFrontmatter, FrontmatterError } from './frontmatter.js';
 
-const SKIP_DIRS = new Set(['.git', 'node_modules']);
+// CONTEXT/ holds this pipeline's own git worktrees (full repo checkouts), so
+// walking into it would see every skill twice and drop both as a name
+// collision. Skip it like .git and node_modules.
+const SKIP_DIRS = new Set(['.git', 'node_modules', 'CONTEXT']);
 
 async function findSkillMdFiles(root) {
   const found = [];
