@@ -8,7 +8,9 @@ import { runInit } from '../src/commands/init.js';
 import { runUpdate } from '../src/commands/update.js';
 import { runList } from '../src/commands/list.js';
 import { runAdd } from '../src/commands/add.js';
-import { readConfig } from '../src/config.js';
+import { readConfig, writeConfig } from '../src/config.js';
+import { discoverSkills } from '../src/discovery.js';
+import { resolveSelection, UnknownSkillsError } from '../src/selection.js';
 import { banner, color, installLine, listLine, summarize, warningLine } from '../src/ui.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -18,8 +20,11 @@ const installRoot = path.join(os.homedir(), '.agents', 'skills');
 const HELP = `V's Skills (vskills) — installer CLI for vraj-ai/skills
 
 Usage:
-  vskills init                    Install every skill in the repo
-  vskills init --yes              Same, but overwrite conflicting skills without asking
+  vskills init                    Install the recommended skills (or your saved selection)
+  vskills init --recommended      Same as plain init, explicitly
+  vskills init --all              Install every skill in the repo
+  vskills init --only a,b,c       Install exactly these skills
+  vskills init --yes              Non-interactive; overwrite conflicting skills without asking
   vskills add <skill...>          Install a skill plus its dependencies (or refresh it)
   vskills update [skill...]       Update installed skills (all, or just the named ones)
   vskills update --force <skill>  Overwrite a locally-modified (drifted) skill
@@ -110,13 +115,44 @@ export async function main(argv) {
     return 1;
   }
 
-  const { targets } = await readConfig(installRoot);
+  const { targets, selection: storedSelection } = await readConfig(installRoot);
 
   if (command === 'init') {
     const assumeYes = rest.includes('--yes') || rest.includes('-y');
     const interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY) && !assumeYes;
     const resolveConflicts = interactive ? promptForConflicts : null;
-    const result = await runInit({ repoRoot, installRoot, targets, resolveConflicts });
+
+    let flag = null;
+    if (rest.includes('--all')) {
+      flag = { all: true };
+    } else if (rest.includes('--only')) {
+      const arg = rest[rest.indexOf('--only') + 1];
+      if (!arg) {
+        console.error('vskills init: --only requires a comma-separated list of skill names');
+        return 1;
+      }
+      flag = { only: arg.split(',').map((s) => s.trim()).filter(Boolean) };
+    } else if (rest.includes('--recommended')) {
+      flag = { recommended: true };
+    }
+    // ship: no interactive picker yet (separate later item) — with no flag
+    // and nothing stored, resolveSelection's own default is the recommended
+    // tier, which is what an interactive/non-interactive run both get for now.
+
+    const { skills } = await discoverSkills(repoRoot);
+    let resolved;
+    try {
+      resolved = resolveSelection({ skills, selection: flag, stored: storedSelection });
+    } catch (err) {
+      if (err instanceof UnknownSkillsError) {
+        console.error(`vskills init: ${err.message}`);
+        return 1;
+      }
+      throw err;
+    }
+    if (resolved.toPersist) await writeConfig(installRoot, { selection: resolved.toPersist });
+
+    const result = await runInit({ repoRoot, installRoot, targets, resolveConflicts, selection: resolved.names });
     report("V's Skills — installing", result);
     return result.ok ? 0 : 1;
   }

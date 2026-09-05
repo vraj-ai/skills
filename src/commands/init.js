@@ -25,12 +25,19 @@ async function readInstalledVersion(installedDir) {
 //      it returns the names to overwrite. Without a resolver, every conflict
 //      is overwritten — but installOne always backs up unmanaged content.
 //   3. apply
-export async function runInit({ repoRoot, installRoot, targets, resolveConflicts = null }) {
+// `selection`, when given, is an already-resolved iterable of skill names
+// (the CLI derives it from --recommended/--all/--only or a stored config
+// selection; a future interactive prompt can produce the same shape). Omit
+// it to install every discovered skill, as before — existing callers that
+// don't care about tiering are unaffected.
+export async function runInit({ repoRoot, installRoot, targets, resolveConflicts = null, selection = null }) {
   const { skills, warnings: discoveryWarnings } = await discoverSkills(repoRoot);
   const manifest = await readManifest(installRoot);
+  const selectedNames = selection ? new Set(selection) : new Set(skills.keys());
 
   const plan = [];
   for (const skill of skills.values()) {
+    if (!selectedNames.has(skill.name)) continue;
     const installedDir = path.join(installRoot, skill.name);
     if (!(await isDirectory(installedDir))) {
       plan.push({ skill, action: 'install' });
@@ -152,8 +159,12 @@ export async function runInit({ repoRoot, installRoot, targets, resolveConflicts
     }
   }
 
+  // A skill that vanished from the repo AND a skill that simply dropped out
+  // of the selection both mean "no longer wanted" — retireVanished doesn't
+  // need to tell them apart, so pass selectedNames (not the full discovered
+  // set) as what should still be installed.
   const vanished = await retireVanished({
-    discoveredNames: new Set(skills.keys()),
+    discoveredNames: selectedNames,
     installRoot,
     targets,
     manifest,
