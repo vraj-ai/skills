@@ -23,7 +23,12 @@ export async function runList({ repoRoot, installRoot }) {
       }
     }
 
-    rows.push({ name, status, description: skill.description });
+    rows.push({
+      name,
+      status,
+      description: skill.description,
+      tier: skill.recommended ? 'recommended' : 'opt-in',
+    });
   }
 
   return { rows, warnings };

@@ -12,6 +12,7 @@ import { readConfig, writeConfig } from '../src/config.js';
 import { readManifest } from '../src/manifest.js';
 import { discoverSkills } from '../src/discovery.js';
 import { resolveSelection, UnknownSkillsError } from '../src/selection.js';
+import { interpretSelectionAnswer, parseNameList } from '../src/prompt-selection.js';
 import { banner, color, installLine, listLine, summarize, warningLine } from '../src/ui.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -68,6 +69,35 @@ async function promptForConflicts(conflicts) {
       return conflicts.map((c) => c.name).filter((n) => !keep.has(n));
     }
     return conflicts.map((c) => c.name); // default: overwrite all (backed up)
+  } finally {
+    rl.close();
+  }
+}
+
+// Interactive picker for a plain `vskills init` on a TTY with no explicit
+// flag and nothing stored yet. Mirrors promptForConflicts's shape: same
+// readline import, close-in-finally, one summary question. Returns a
+// selection object in the same shape resolveSelection already accepts
+// ({ recommended: true } | { all: true } | { only: string[] }) — it never
+// resolves the selection itself.
+export async function promptForSelection(skills) {
+  const { createInterface } = await import('node:readline/promises');
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const recommended = [...skills.values()].filter((s) => s.recommended).map((s) => s.name).sort();
+    console.log(banner("V's Skills — choose what to install"));
+    console.log(`  Recommended: ${recommended.length ? recommended.join(', ') : '(none marked recommended)'}`);
+    console.log(color.dim('  This is the recommended install — nothing more is needed.'));
+
+    const answer = await rl.question(
+      `\n  ${color.dim('[Enter = recommended / a = install everything / p = pick specific skills]')} `
+    );
+    const decision = interpretSelectionAnswer(answer);
+    if (decision.pick) {
+      const namesRaw = await rl.question('  Skill names (comma or space separated): ');
+      return { only: parseNameList(namesRaw) };
+    }
+    return decision;
   } finally {
     rl.close();
   }
@@ -136,11 +166,16 @@ export async function main(argv) {
     } else if (rest.includes('--recommended')) {
       flag = { recommended: true };
     }
-    // ship: no interactive picker yet (separate later item) — with no flag
-    // and nothing stored, resolveSelection's own default is the recommended
-    // tier, which is what an interactive/non-interactive run both get for now.
 
     const { skills } = await discoverSkills(repoRoot);
+
+    // No explicit flag, nothing stored yet, and a human is at the keyboard:
+    // ask instead of silently defaulting. A stored selection or any explicit
+    // flag above already bypasses this.
+    if (!flag && interactive && storedSelection == null) {
+      flag = await promptForSelection(skills);
+    }
+
     const manifest = await readManifest(installRoot);
     let resolved;
     try {
@@ -164,7 +199,7 @@ export async function main(argv) {
   if (command === 'list') {
     const { rows, warnings } = await runList({ repoRoot, installRoot });
     console.log(banner("V's Skills — status"));
-    for (const row of rows) console.log(listLine(row.status, row.name, row.description));
+    for (const row of rows) console.log(listLine(row.status, row.name, row.description, row.tier));
     console.log(color.dim('  ' + '─'.repeat(30)));
     console.log(`  ${summarize(rows)}`);
     for (const w of warnings) console.error(warningLine(w));

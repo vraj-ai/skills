@@ -42,11 +42,12 @@ export function installLine(status, name) {
   return `  ${paint(`${symbol} ${status}`.padEnd(13))} ${name}`;
 }
 
-export function listLine(status, name, description) {
+export function listLine(status, name, description, tier) {
   const { symbol, paint } = styleFor(status);
   const label = paint(`${symbol} ${status}`.padEnd(13));
+  const tierTag = tier === 'recommended' ? color.cyan('[recommended]') : tier === 'opt-in' ? color.dim('[opt-in]') : '';
   const desc = description ? color.dim(`— ${description}`) : '';
-  return `  ${label} ${color.bold(name)} ${desc}`;
+  return `  ${label} ${color.bold(name)} ${tierTag ? `${tierTag} ` : ''}${desc}`;
 }
 
 export function summarize(items) {
