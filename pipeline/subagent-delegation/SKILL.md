@@ -49,7 +49,7 @@ Delegating into a *shared* checkout is safe **only** with lanes and a gatekeeper
 - [ ] The user **explicitly authorized** parallel/batch work.
 - [ ] Each ticket has its own **runnable Verification-command**.
 - [ ] Lanes are **provably disjoint** — you have checked the files, not assumed.
-- [ ] No ticket in the batch is **blocked by** another in the same wave.
+- [ ] No ticket is **blocked by** another in the same batch or wave.
 - [ ] A **baseline green** is recorded before dispatch.
 
 Fail any precondition → do not fan out. Serialize instead, or go back to one ticket.
@@ -170,7 +170,9 @@ Baseline once, before Wave 1, and carry `BASELINE GREEN` and `OUT OF SCOPE FAILU
 
 Stop the whole batch and report when any of these occur:
 
-- A ticket fails the parent gate past its repair budget (default: five meaningful attempts).
+- A ticket fails the parent gate past its repair budget (default: five meaningful attempts;
+  "meaningful" means new information each time -- identical failures do not count. See
+  `delivery-constraints`).
 - The broad suite goes red and you cannot attribute it to one ticket.
 - A ticket's real blockers turn out to differ from its `Blocked-by` field.
 - A structural prerequisite is missing — a ticket cannot land as specified.

@@ -80,7 +80,9 @@ In rough order of preference:
 
 ## Step 5 — Encode the result as invariants
 
-Feed these into `planner`'s invariant lock so they become testable, not aspirational:
+Lock these as invariants so they become testable, not aspirational. Each one needs an
+enforcement point, a test that fails when it is violated, and a production signal --
+`audit` runs exactly that triad:
 
 ```
 - Cost per <action> must not exceed $X at p95 (measured, with a test/monitor)

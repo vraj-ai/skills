@@ -59,7 +59,7 @@ where a type would prevent a class of bug.
 what they claim; migrations that are not reversible; no tenancy filter on a shared table.
 
 **Integrations** — replay, ordering, idempotency, signature verification, cost exposure.
-See `provider-integration-tdd`.
+See `implementation-tdd`.
 
 **Auth & permissions** — the boundary enforced in one path but not another; wrong-tenant
 access untested; secrets in code, logs, or committed env files.

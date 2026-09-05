@@ -20,7 +20,7 @@ resolved (Step 5) differ.
 | Mode | Task | Artifact |
 |---|---|---|
 | `build` (default) | Implement the ticket's acceptance criteria test-first | A code diff, gated by the ticket's `Verification-command` |
-| `harden` | Run the four-nets audit + red-team pass against the ticket's landed diff, fix everything found, test-first | A fix diff on top of the existing branch, same gate |
+| `harden` | Run `audit`'s layer sweep + a red-team pass against the ticket's landed diff, fix everything found, test-first | A fix diff on top of the existing branch, same gate |
 | `plan` | Turn already-**grilled** decisions + locked invariants into a spec and dependency-ordered tickets | A spec + ticket set per participant, no code gate |
 
 `plan` mode never runs the interactive grill itself (`grill-with-docs` stays a

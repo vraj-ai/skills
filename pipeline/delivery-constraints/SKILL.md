@@ -88,6 +88,9 @@ Misclassifying B as A is the single most expensive mistake here — it burns bud
 - A scheduler tick, a retry, or an automation firing proves nothing about the work. Only evidence does.
 - Spend, deploy, and purchase stay separately authorized even during recovery.
 - Prefer the oldest unblocked child ticket over the umbrella parent. Parents do not implement.
+- **A state name is not proof.** A ticket sitting in an implementing state does not mean its
+  blockers are done -- check them yourself. Trusting the name is how a ticket that was never
+  landable eats a whole repair budget, which is the misclassification above at its most expensive.
 
 ## Step 6 — Migration safety
 
