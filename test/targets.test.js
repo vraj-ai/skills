@@ -41,6 +41,21 @@ test('with no config present, the selection is null', async () => {
   }
 });
 
+test('a stored empty-array selection is treated as nothing stored, not "select nothing"', async () => {
+  const installRoot = await makeTmpDir();
+  try {
+    await fs.writeFile(
+      path.join(installRoot, '.vskills-config.json'),
+      JSON.stringify({ selection: [] }),
+      'utf8'
+    );
+    const { selection } = await readConfig(installRoot);
+    assert.equal(selection, null);
+  } finally {
+    await cleanup(installRoot);
+  }
+});
+
 test('writeConfig persists the selection without dropping existing targets', async () => {
   const installRoot = await makeTmpDir();
   try {

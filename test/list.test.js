@@ -52,6 +52,21 @@ test('list shows a partially installed set correctly', async () => {
   }
 });
 
+test('list marks each row\'s tier so the opt-in set is discoverable', async () => {
+  const repo = await makeTmpDir();
+  const installRoot = await makeTmpDir();
+  try {
+    await writeSkill(repo, 'alpha', { name: 'alpha', recommended: true });
+    await writeSkill(repo, 'beta', { name: 'beta' });
+    const { rows } = await runList({ repoRoot: repo, installRoot });
+    const byName = Object.fromEntries(rows.map((r) => [r.name, r.tier]));
+    assert.equal(byName.alpha, 'recommended');
+    assert.equal(byName.beta, 'opt-in');
+  } finally {
+    await cleanup(repo, installRoot);
+  }
+});
+
 test('list shows "missing" when the manifest says installed but the folder was deleted', async () => {
   const repo = await makeTmpDir();
   const installRoot = await makeTmpDir();

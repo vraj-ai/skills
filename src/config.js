@@ -17,8 +17,14 @@ export async function readConfig(installRoot) {
     const targets = Array.isArray(parsed.targets) && parsed.targets.length > 0
       ? parsed.targets
       : defaultTargets();
-    const selection = Array.isArray(parsed.selection)
+    // An empty array is corrupt state we wrote ourselves (the now-fixed
+    // empty-selection bug), not a deliberate "select nothing" — treat it the
+    // same as null so it falls through to the normal derivation and self-heals.
+    const selectionArray = Array.isArray(parsed.selection)
       ? parsed.selection.filter((name) => typeof name === 'string')
+      : null;
+    const selection = selectionArray && selectionArray.length > 0
+      ? selectionArray
       : parsed.selection === 'all'
         ? 'all'
         : null;
