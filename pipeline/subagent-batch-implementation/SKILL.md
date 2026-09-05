@@ -98,4 +98,4 @@ States moved: 201,202,203 -> Debugger Ready (readback confirmed)
 
 ## Related
 
-`parallel-subagent-implementation` (route table) · `shared-worktree-delegation` · `controlled-ticket-delivery` · `state-driven-pipeline-recovery`
+`parallel-subagent-implementation` (route table) · `shared-worktree-delegation` · `delivery-constraints`

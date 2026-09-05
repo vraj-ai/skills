@@ -102,4 +102,4 @@ Typecheck, run the gate, and finish the remainder by hand. **Do not blind re-dis
 
 ## Related
 
-`parallel-subagent-implementation` (route table) · `shared-worktree-safety` · `subagent-batch-implementation` · `controlled-ticket-delivery` · `superpowers:using-git-worktrees`
+`parallel-subagent-implementation` (route table) · `shared-worktree-safety` · `subagent-batch-implementation` · `delivery-constraints` · `superpowers:using-git-worktrees`

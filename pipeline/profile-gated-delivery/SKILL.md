@@ -117,8 +117,8 @@ verification to re-run:
 
 Do not proceed to the next stage. Comment the blocker with evidence, leave the state unchanged, and stop. **A stalled pipeline with honest state is recoverable; a moving pipeline with false state is not.**
 
-If the pipeline is already thrashing, load `state-driven-pipeline-recovery`.
+If the pipeline is already thrashing, load `delivery-constraints`.
 
 ## Related
 
-`github-projects-pipeline` · `legacy-planner` · `legacy-coder` · `legacy-debugger` · `state-driven-pipeline-recovery` · `subagent-batch-implementation`
+`github-projects-pipeline` · `legacy-planner` · `legacy-coder` · `legacy-debugger` · `delivery-constraints` · `subagent-batch-implementation`

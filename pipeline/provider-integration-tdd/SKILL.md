@@ -76,4 +76,4 @@ A provider ticket's invariants should pin, concretely:
 
 ## Related
 
-`ticket-implementation-tdd` · `invariant-evidence-review` · `coder` · `debugger` · `controlled-ticket-delivery`
+`ticket-implementation-tdd` · `invariant-evidence-review` · `coder` · `debugger` · `delivery-constraints`

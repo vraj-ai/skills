@@ -303,5 +303,5 @@ Before ending any pipeline run:
 ## Related
 
 `legacy-planner` · `legacy-coder` · `legacy-debugger` · `legacy-reviewer` · `profile-gated-delivery` ·
-`specialist-profiles` · `state-driven-pipeline-recovery` ·
+`specialist-profiles` · `delivery-constraints` ·
 `subagent-batch-implementation`
