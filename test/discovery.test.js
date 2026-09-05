@@ -117,6 +117,21 @@ test('warns and defaults recommended to false when malformed', async () => {
   }
 });
 
+test('skips a duplicate SKILL.md under CONTEXT/ (worktree copy) and keeps the real skill', async () => {
+  const repo = await makeTmpDir();
+  try {
+    await writeSkill(repo, 'foo', { name: 'foo', description: 'Foo skill.' });
+    await writeSkill(repo, 'CONTEXT/worktrees/some-branch/foo', { name: 'foo', description: 'Foo skill.' });
+
+    const { skills, warnings } = await discoverSkills(repo);
+    assert.equal(warnings.length, 0);
+    assert.ok(skills.has('foo'));
+    assert.equal(skills.get('foo').description, 'Foo skill.');
+  } finally {
+    await cleanup(repo);
+  }
+});
+
 test('detects a name collision between two skills and drops both', async () => {
   const repo = await makeTmpDir();
   try {
