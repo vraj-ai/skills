@@ -1,7 +1,7 @@
 ---
 name: multi-agent-review
 version: 1.0.0
-description: Run one task through several model/provider agents in isolated worktrees, relay cross-critiques, and compare the final artifacts. Use when the user invokes /multi-agent-review, wants competing implementations/plans/fixes, or explicitly runs the preserved legacy fleet's multi-model mechanism.
+description: Run one task through several model/provider agents in isolated worktrees, relay cross-critiques, and compare the final artifacts. Use when the user invokes /multi-agent-review or wants competing implementations/plans/fixes.
 ---
 
 # Multi-Agent Review
@@ -10,24 +10,24 @@ Same task, several models, no one merges anyone else's work. Every participant
 works in its own worktree; the orchestrator only relays and, at the end, rates.
 
 This skill is invoked two ways: **directly** by a human (interactive operating
-mode), or by the preserved `legacy-coder`, `legacy-debugger`, and
-`legacy-planner` workflow. The round mechanics (Steps 2-4) are
-identical either way — only how participants are picked (Step 1) and how the
-result is resolved (Step 5) differ.
+mode), or by another skill's own coding pipeline as one of its steps
+(pipeline operating mode). The round mechanics (Steps 2-4) are identical
+either way — only how participants are picked (Step 1) and how the result is
+resolved (Step 5) differ.
 
 ## Mode — what "the task" actually is
 
-| Mode | Used by | Task | Artifact |
-|---|---|---|---|
-| `build` (default) | `/legacy-coder` Step 2 | Implement the ticket's acceptance criteria test-first | A code diff, gated by the ticket's `Verification-command` |
-| `harden` | `/legacy-debugger` Steps 1-2 | Run the four-nets audit + red-team pass against the ticket's landed diff, fix everything found, test-first | A fix diff on top of the existing branch, same gate |
-| `plan` | `/legacy-planner` chain steps 3-4 | Turn the already-**grilled** decisions + locked invariants into a spec and dependency-ordered tickets | A spec + ticket set per participant, no code gate |
+| Mode | Task | Artifact |
+|---|---|---|
+| `build` (default) | Implement the ticket's acceptance criteria test-first | A code diff, gated by the ticket's `Verification-command` |
+| `harden` | Run the four-nets audit + red-team pass against the ticket's landed diff, fix everything found, test-first | A fix diff on top of the existing branch, same gate |
+| `plan` | Turn already-**grilled** decisions + locked invariants into a spec and dependency-ordered tickets | A spec + ticket set per participant, no code gate |
 
 `plan` mode never runs the interactive grill itself (`grill-with-docs` stays a
 single human conversation — you can't parallelize asking the user a question).
-It starts only after `/legacy-planner`'s Step 1 (grill) and Step 2 (lock invariants)
-are already done; participants compete on turning those locked decisions into
-a spec/tickets, not on what the decisions should be.
+It starts only after the calling pipeline's own grill and lock-invariants
+steps are already done; participants compete on turning those locked
+decisions into a spec/tickets, not on what the decisions should be.
 
 ## Operating mode — interactive vs pipeline
 
@@ -35,8 +35,8 @@ a spec/tickets, not on what the decisions should be.
   Step 1 asks the user, via `AskUserQuestion`, which model/provider fills each
   of the 3 slots, every run. Step 5 presents every final result side by side,
   rated, and asks the user which to keep.
-- **Pipeline** (used when `/legacy-coder`/`/legacy-debugger`/`/legacy-planner` invoke this as their
-  own step, e.g. while draining a ticket queue unattended): Step 1 uses a
+- **Pipeline** (used when a calling pipeline invokes this as its own step,
+  e.g. while draining a ticket queue unattended): Step 1 uses a
   **fixed default trio** instead of asking — the first 3 distinct models, in
   this priority order, that are not the current orchestrator's own model:
   `Kimi K3, GLM 5.2, GPT-5.6 Sol, Grok 4.5, Fable 5, Opus 5, Sonnet 5`. Step 5
@@ -58,10 +58,8 @@ new models ship — this is the one place to update):
   Qwen3 Max, MiniMax M2, and **anything not on the good-tier list** (unknown
   models default here).
 
-In pipeline mode, the orchestrator is that stage's own model (e.g. Kimi K3 for
-`/legacy-coder`, GPT-5.6 Luna for `/legacy-debugger`, Opus 5 for `/legacy-planner`
-per the repository's durable context/profile docs) — check it against the same
-list.
+In pipeline mode, the orchestrator is that stage's own model (per the calling
+pipeline's durable context/profile docs) — check it against the same list.
 
 ## Step 1 — Pick the 3 subagent slots
 
@@ -149,7 +147,5 @@ asked to keep them for reference.
 
 `shared-worktree-delegation` (lane/gatekeeper mechanics this borrows from),
 `superpowers:using-git-worktrees` (worktree setup), `push-handoff` (once the
-chosen diff is merged and ready to ship), `grilling` (for scoping the task
-brief itself before a run, if it's still fuzzy), `legacy-coder`,
-`legacy-debugger`, and `legacy-planner` (the preserved stages that invoke this
-in pipeline mode).
+chosen diff is merged and ready to ship), `grill` (for scoping the task brief
+itself before a run, if it's still fuzzy).
