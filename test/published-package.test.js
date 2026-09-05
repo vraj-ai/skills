@@ -102,8 +102,8 @@ test('shipped skills never invoke a skill this repo does not ship', async () => 
 
   assert.ok(skills.has('ship') && skills.has('push-handoff'), 'skill discovery failed');
   assert.ok(
-    skills.has('github-projects-pipeline') && skills.has('legacy-coder'),
-    'nested skills under pipeline/ and legacy-workflow/ are invisible to this gate',
+    skills.has('codebase-audit') && skills.has('ticket-implementation-tdd'),
+    'nested skills under pipeline/ are invisible to this gate',
   );
 
   // Known references to things outside this package. Each is deliberate:
