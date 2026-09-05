@@ -1,6 +1,6 @@
 ---
 name: council
-version: 1.3.0
+version: 1.4.0
 description: Run independent multi-model research, evidence-based debate, voting, and scoped T0/T1 reviews without rubber-stamping. Use when goals encounters a genuinely contested research item, Phase B needs backlog sanity checks, an item needs independent T0 reviewers, or a milestone needs one rotating integration reviewer.
 recommended: true
 ---
@@ -8,9 +8,12 @@ recommended: true
 # Council
 
 Council is a protocol run either by the selectable `council` primary for
-standalone work or by the `goals` primary inside a goal run. Members are flat
-`task: deny` subagents with read-only filesystem, skill, web, and MCP access.
-The configured roster is:
+standalone work or by the `goals` primary inside a goal run. What it needs from
+the harness: seven members, each a non-spawning subagent with read-only
+filesystem, skill, web, and MCP access, on models that differ from each other
+and from the parent. Any provider that supplies those satisfies the protocol;
+the slugs below are the shipped defaults, not a requirement, and the runner
+overrides them per member through `COUNCIL_<MEMBER>_MODEL`:
 
 - `council-grok`: `opencode-go/grok-4.5`
 - `council-kimi`: `openrouter/moonshotai/kimi-k3`
@@ -24,20 +27,21 @@ The active primary performs its own independent pass alongside all seven,
 making eight perspectives for contested research. Never pre-solve the question
 and ask members to ratify an answer.
 
-**When the OpenCode roster is unreachable** (no binary, no auth, an exhausted
-workspace balance), the parent session runs members through local CLIs instead
-of skipping review. Two are enough to keep maker separate from checker:
+**When the configured roster is unreachable** (no binary, no auth, an
+exhausted workspace balance), the parent session runs members through whatever
+headless CLIs the machine does have, instead of skipping review. Two are enough
+to keep maker separate from checker. For example:
 
 ```bash
 grok -p "<prompt>" --output-format plain                    # council-grok
 codex exec --model gpt-5.6-sol --sandbox read-only -        # council-sol
 ```
 
-`grok` needs `--output-format plain`; without it the TUI never returns in a
-headless shell. `codex exec` reads the prompt from stdin when passed `-`, which
-is how a long diff gets in. Record the substitute in the review verdict so the
-run's provenance stays honest, and never let the fallback silently become no
-review at all.
+Two things generalise from that example: a TUI-first CLI usually needs a plain
+or non-interactive output flag, or it never returns in a headless shell; and a
+long diff has to arrive on stdin rather than as an argument. Record the
+substitute in the review verdict so the run's provenance stays honest, and
+never let the fallback silently become no review at all.
 
 ## Research rounds
 

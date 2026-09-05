@@ -1,6 +1,6 @@
 ---
 name: goals
-version: 1.5.0
+version: 1.6.0
 description: Drive a plan document to verified completion through a resumable single-writer backlog, named Worker Role research and review, worktree-isolated parallel builds, milestone gates, and a final adversarial teardown. Use when the user invokes /goal, asks to execute an architecture plan autonomously, resumes a goal, or needs a large issue set delivered milestone by milestone.
 dependencies: [council, council-adversary]
 recommended: true
@@ -280,26 +280,32 @@ other than the fixed contributor pin.
 
 ## CLI path
 
-When `OPENCODE_BIN`, `~/.opencode/bin/opencode`, or `opencode` on `PATH` is
-available, run:
+Goals needs one thing here: a headless agent CLI it can launch once per item,
+in a directory you name, on a model you name. When such a binary is reachable,
+run:
 
 ```bash
 delivery/goals/scripts/parallel.sh <repo-root> <worktree-root> <manifest>
 ```
 
-The runner creates worktrees and launches one
-`opencode run --dir <worktree> --model <model>` process per item concurrently.
-CLI cannot directly select a `mode: subagent` agent, so each process uses the
-built-in Build primary with an injected `task: deny` permission; reviewer
-processes additionally receive `edit: deny`. It waits for committed worker
-results, runs the locked command, then launches pinned reviewer models
-concurrently per item in disposable detached review worktrees, so shell
-activity cannot alter the contributor branch. Full output goes to `.log` files;
-only result contracts return to goals.
+The bundled runner drives one such CLI and reads its binary from an
+environment variable (`OPENCODE_BIN` for the shipped driver), falling back to
+`PATH`. No particular vendor is required: swap the runner for any CLI that
+accepts a working directory, a model, and a prompt, and exits when the turn
+ends.
+
+The runner creates worktrees and launches one process per item concurrently.
+A CLI generally cannot select a non-spawning subagent directly, so each
+process runs the harness's default builder with spawning denied; reviewer
+processes additionally deny edits. It waits for committed worker results, runs
+the locked command, then launches pinned reviewer models concurrently per item
+in disposable detached review worktrees, so shell activity cannot alter the
+contributor branch. Full output goes to `.log` files; only result contracts
+return to goals.
 
 ## In-session fallback
 
-If no OpenCode binary exists, goals creates every worktree, then sends one
+If no agent CLI is reachable, goals creates every worktree, then sends one
 tool message containing one `contributor` task call per item. Each worker is
 told to operate only inside its absolute worktree, build test-first, run the
 locked command, and commit.
