@@ -102,4 +102,4 @@ An unenforced cap is a wish. Each of these needs an enforcement point and a sign
 
 ## Related
 
-`planner` (invariant lock) · `audit` · `controlled-ticket-delivery` · `claude-api`
+`audit` · `delivery-constraints` · `claude-api`

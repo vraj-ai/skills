@@ -118,4 +118,4 @@ Report per ticket: verified / failed parent gate / partial. **Never report a bat
 
 ## Related
 
-`shared-worktree-delegation` · `shared-worktree-safety` · `subagent-batch-implementation` · `controlled-ticket-delivery` · `coder` · `superpowers:subagent-driven-development` · `superpowers:dispatching-parallel-agents`
+`shared-worktree-delegation` · `shared-worktree-safety` · `subagent-batch-implementation` · `delivery-constraints` · `coder` · `superpowers:subagent-driven-development` · `superpowers:dispatching-parallel-agents`
