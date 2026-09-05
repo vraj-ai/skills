@@ -10,12 +10,13 @@ export async function makeTmpDir(prefix = 'vskills-test-') {
   return mkdtemp(path.join(os.tmpdir(), prefix));
 }
 
-export async function writeSkill(repoRoot, relDir, { name, description = '', dependencies = [], body = 'Body text.', version = null }) {
+export async function writeSkill(repoRoot, relDir, { name, description = '', dependencies = [], body = 'Body text.', version = null, recommended = null }) {
   const dir = path.join(repoRoot, relDir);
   await mkdir(dir, { recursive: true });
   const versionLine = version ? `version: ${version}\n` : '';
   const depsLine = dependencies.length > 0 ? `dependencies: [${dependencies.join(', ')}]\n` : '';
-  const content = `---\nname: ${name}\n${versionLine}description: ${description}\n${depsLine}---\n\n${body}\n`;
+  const recommendedLine = recommended === null ? '' : `recommended: ${recommended}\n`;
+  const content = `---\nname: ${name}\n${versionLine}description: ${description}\n${depsLine}${recommendedLine}---\n\n${body}\n`;
   await writeFile(path.join(dir, 'SKILL.md'), content, 'utf8');
   return dir;
 }

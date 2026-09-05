@@ -72,12 +72,19 @@ export async function discoverSkills(repoRoot) {
     }
     seenAt.set(name, dir);
 
+    let recommended = parsed.data.recommended ?? false;
+    if (typeof recommended !== 'boolean') {
+      warnings.push(`${skillMdPath}: "recommended" must be a boolean, got ${JSON.stringify(recommended)}`);
+      recommended = false;
+    }
+
     const version = parsed.data.version;
     byName.set(name, {
       name,
       description: description ?? '',
       dependencies,
       version: typeof version === 'string' && version.length > 0 ? version : null,
+      recommended,
       dir,
     });
   }
