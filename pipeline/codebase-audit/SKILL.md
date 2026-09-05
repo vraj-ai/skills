@@ -37,7 +37,7 @@ For each layer, look for the specific things that layer gets wrong:
 
 **Data layer** — missing constraints/indexes; N+1 queries; transactions that don't wrap what they claim; migrations that aren't reversible; no tenancy filter on a shared table.
 
-**Integrations** — see `provider-integration-tdd`: replay, ordering, idempotency, signature verification, cost exposure.
+**Integrations** — see `implementation-tdd`: replay, ordering, idempotency, signature verification, cost exposure.
 
 **Auth & permissions** — the boundary enforced in one path but not another; wrong-tenant access untested; secrets in code, logs, or committed env files.
 
@@ -101,4 +101,4 @@ The **"not investigated"** section is mandatory. An audit that implies total cov
 
 ## Related
 
-`debugger` · `invariant-evidence-review` · `provider-integration-tdd` · `to-issues` · `improve-codebase-architecture`
+`debugger` · `invariant-evidence-review` · `implementation-tdd` · `to-issues` · `improve-codebase-architecture`
