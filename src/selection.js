@@ -1,8 +1,4 @@
-// Turns a requested selection (an explicit CLI flag, or nothing) plus
-// whatever was last persisted into the concrete set of skill names `runInit`
-// should install. Kept separate from init.js so the not-yet-written
-// interactive prompt can produce the same `{ only: [...] }` shape without
-// touching this resolution logic.
+// selection: iterable of skill names to install; omit for all discovered.
 
 export class UnknownSkillsError extends Error {
   constructor(names) {

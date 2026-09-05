@@ -139,10 +139,10 @@ export async function main(argv) {
     // and nothing stored, resolveSelection's own default is the recommended
     // tier, which is what an interactive/non-interactive run both get for now.
 
-    const { skills } = await discoverSkills(repoRoot);
+    const discovered = await discoverSkills(repoRoot);
     let resolved;
     try {
-      resolved = resolveSelection({ skills, selection: flag, stored: storedSelection });
+      resolved = resolveSelection({ skills: discovered.skills, selection: flag, stored: storedSelection });
     } catch (err) {
       if (err instanceof UnknownSkillsError) {
         console.error(`vskills init: ${err.message}`);
@@ -152,7 +152,7 @@ export async function main(argv) {
     }
     if (resolved.toPersist) await writeConfig(installRoot, { selection: resolved.toPersist });
 
-    const result = await runInit({ repoRoot, installRoot, targets, resolveConflicts, selection: resolved.names });
+    const result = await runInit({ repoRoot, installRoot, targets, resolveConflicts, selection: resolved.names, discovered });
     report("V's Skills — installing", result);
     return result.ok ? 0 : 1;
   }

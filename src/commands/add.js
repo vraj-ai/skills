@@ -2,6 +2,7 @@ import { discoverSkills } from '../discovery.js';
 import { resolveClosure } from '../deps.js';
 import { installOne } from '../install.js';
 import { readManifest, writeManifest } from '../manifest.js';
+import { readConfig, writeConfig } from '../config.js';
 
 export async function runAdd({ names, repoRoot, installRoot, targets }) {
   const { skills, warnings: discoveryWarnings } = await discoverSkills(repoRoot);
@@ -39,6 +40,15 @@ export async function runAdd({ names, repoRoot, installRoot, targets }) {
     linkFailures.push(...failures);
   }
   await writeManifest(installRoot, manifest);
+
+  // A stored selection is init's install list — a later plain `init` would
+  // otherwise retire what `add` just installed. No selection stored means
+  // "everything", so there's nothing to add to.
+  const { selection: storedSelection } = await readConfig(installRoot);
+  if (Array.isArray(storedSelection)) {
+    const merged = new Set([...storedSelection, ...order]);
+    await writeConfig(installRoot, { selection: [...merged] });
+  }
 
   return {
     ok: errors.length === 0 && linkFailures.length === 0,

@@ -25,13 +25,11 @@ async function readInstalledVersion(installedDir) {
 //      it returns the names to overwrite. Without a resolver, every conflict
 //      is overwritten — but installOne always backs up unmanaged content.
 //   3. apply
-// `selection`, when given, is an already-resolved iterable of skill names
-// (the CLI derives it from --recommended/--all/--only or a stored config
-// selection; a future interactive prompt can produce the same shape). Omit
-// it to install every discovered skill, as before — existing callers that
-// don't care about tiering are unaffected.
-export async function runInit({ repoRoot, installRoot, targets, resolveConflicts = null, selection = null }) {
-  const { skills, warnings: discoveryWarnings } = await discoverSkills(repoRoot);
+// selection: iterable of skill names to install; omit for all discovered.
+// discovered: pass a prior `{ skills, warnings }` from discoverSkills to
+// skip re-scanning the repo (the CLI already scans once to resolve `selection`).
+export async function runInit({ repoRoot, installRoot, targets, resolveConflicts = null, selection = null, discovered = null }) {
+  const { skills, warnings: discoveryWarnings } = discovered ?? await discoverSkills(repoRoot);
   const manifest = await readManifest(installRoot);
   const selectedNames = selection ? new Set(selection) : new Set(skills.keys());
 
@@ -159,12 +157,11 @@ export async function runInit({ repoRoot, installRoot, targets, resolveConflicts
     }
   }
 
-  // A skill that vanished from the repo AND a skill that simply dropped out
-  // of the selection both mean "no longer wanted" — retireVanished doesn't
-  // need to tell them apart, so pass selectedNames (not the full discovered
-  // set) as what should still be installed.
+  // "Still wanted" means in the repo AND selected — a name can be in
+  // `selectedNames` (stored selection) but no longer in `skills` (deleted
+  // from the repo), or in `skills` but not selected. Either way it retires.
   const vanished = await retireVanished({
-    discoveredNames: selectedNames,
+    discoveredNames: new Set([...skills.keys()].filter((n) => selectedNames.has(n))),
     installRoot,
     targets,
     manifest,
