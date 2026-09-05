@@ -1,7 +1,7 @@
 ---
 name: setup-vskills
-version: 1.11.0
-description: Sets up this skills repo on a new machine — installs the skills with the vskills CLI, then regenerates the local-only context docs (CONTEXT.md, docs/) that are deliberately not published in the public repo.
+version: 1.12.0
+description: Sets up this skills repo on a new machine — installs the skills with the vskills CLI, configures pstack model routing for any harness, ensures a verification skill, then regenerates the local-only context docs (CONTEXT.md, docs/) that are deliberately not published in the public repo.
 recommended: true
 ---
 
@@ -79,6 +79,86 @@ The initializer creates missing files only:
 It also adds only goal runtime paths to `.gitignore`. It never overwrites an
 existing `AGENTS.md`, architecture, progress, or project decision. It does not
 create a goal backlog; `/goals` creates `CONTEXT/goals/<slug>/` when a plan runs.
+
+## Step 1.3 — Configure model routing (pstack)
+
+pstack skills (`poteto-mode`, `how`, `why`, `arena`, `swarm`, `architect`,
+`interrogate`, `reflect`) split work by role across models. Without routing
+they fall back to inline defaults, which rot as entitlements change. Write the
+override once per machine; re-running updates it.
+
+Confirm the pstack skills resolve first (`poteto-mode`, `how`, `why`,
+`arena`, `swarm`, `architect`, `interrogate` in the install root). If any is
+missing, install pstack skills before continuing — routing without runners
+silently does nothing.
+
+1. Detect available models. Enumerate the model slugs you can pass to a
+   subagent in this session; that is the dependable source. If the harness
+exposes a models API or CLI, prefer it for completeness. If you cannot
+detect any, ask the user to paste the slugs they have access to. Never write
+a real slug you have not confirmed is available. The aliases
+`inherit-parent` and `auto` are always valid (the role runs on the parent
+chat model, which is how Auto users stay on Auto).
+2. Load current state. If a routing file already exists (step 4), treat its
+values as the current choices. Otherwise start from the defaults in step 4.
+3. Map and confirm. Show every role with its current model, marking any real
+slug not in the detected set as needing a choice. Offer the detected models
+plus `inherit-parent`/`auto`. Panel roles (`how critics`, `arena runners`,
+`architect runners`, `interrogate reviewers`) take lists — one subagent runs
+per entry, alias entries included, so list length sets fan-out.
+`arena cross-judge pool` is also a list; Arena picks one value from it whose
+model family differs from the parent's when possible. `swarm workers` is the
+default model for every worker unless a race assigns per-arm models.
+4. Write the routing file, overwriting it whole so re-runs stay idempotent.
+Location is harness-dependent — reuse the Step 1.1 harness research. Cursor:
+`~/.cursor/rules/pstack-models.mdc` with `alwaysApply: true` frontmatter.
+Any other harness: its always-applied rules/custom-instructions location; if
+it has none, write `docs/agents/model-routing.md` in the project and point
+the `## Agent skills` block at it, and say so. Never fail with an 'unknown
+harness' error. Shape (defaults — replace slugs with detected ones):
+
+```
+---
+description: pstack per-role model choices (overrides skill defaults)
+alwaysApply: true
+---
+# pstack model configuration. One line per role. Delete a line to fall back to the skill default.
+# `inherit-parent` or `auto` as a value: the role runs on the parent chat model (omit Task `model`). Alias entries in a panel list still count toward its fan-out.
+feature, refactoring: grok-4.6-fast-xhigh
+bug-fix: gpt-5.6-sol-max
+perf-issue: gpt-5.6-sol-max
+hillclimb: gpt-5.6-sol-max
+judgment and prose: claude-fable-5-thinking-max
+hardest tasks: claude-fable-5-thinking-max
+how explorer: grok-4.6-fast-xhigh
+how explainer: claude-fable-5-thinking-max
+how critics: claude-fable-5-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
+why investigators: grok-4.6-fast-xhigh
+why synthesizer: claude-fable-5-thinking-max
+reflect tooling: gpt-5.6-sol-max
+reflect judgment, divergent, synthesizer: claude-fable-5-thinking-max
+arena runners: claude-fable-5-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
+arena cross-judge pool: claude-fable-5-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
+swarm workers: grok-4.6-fast-xhigh
+architect runners: claude-fable-5-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
+interrogate reviewers: claude-fable-5-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
+```
+
+5. Validate. Every real slug written must be in the detected set;
+`inherit-parent` and `auto` always pass. A routing file pointing at a model
+the user cannot use breaks every delegation that reads it. Slugs only —
+never secrets or keys.
+
+## Step 1.4 — Ensure a verification skill
+
+A production project needs a way to drive the real app for proof. Check for a
+project-local `verify-*` skill or an existing harness that drives the app the
+way a user does. If one exists, record its command — `/issues` will lock it
+as the ticket acceptance command and `/snapshot` will use it as its code
+gate. If not, offer once to generate one with `/create-verification-skill`
+(resolves wherever pstack is installed — workspace, user, or plugin). On yes,
+invoke it. On no, move on without pushing, and record the gap as a follow-up
+in the tracker closeout review.
 
 ## Step 2 — Regenerate CONTEXT.md
 
@@ -194,3 +274,5 @@ Ownership rules carry across skills:
 - Bump the `version:` in a skill's frontmatter whenever you change its
   content; init uses versions to auto-resolve otherwise-ambiguous updates.
 - Quit and restart the harness (e.g. OpenCode or omp) after installing; config-time files are loaded once.
+- Re-run Step 1.3 whenever model entitlements change; stale slugs break every delegation that reads them.
+- Keep model routing (slugs, roles) and secrets (keys, tokens) in separate files; routing files never carry secret values.

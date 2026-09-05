@@ -109,7 +109,8 @@ test('shipped skills never invoke a skill this repo does not ship', async () => 
   // Known references to things outside this package. Each is deliberate:
   // `/goal` is the goals skill's own invocation alias; `/loop` and `/schedule`
   // are Claude Code built-ins; `/code-review` and `/wayfinder` live in other
-  // agent skill sets. The point of the allowlist is the ratchet: a NEW
+  // agent skill sets, as does `/create-verification-skill` (pstack, invoked by
+  // setup-vskills Step 1.4). The point of the allowlist is the ratchet: a NEW
   // unshipped reference fails this gate, which is how `/handoff` reached the
   // published package unnoticed (#31).
   const external = new Set([
@@ -118,6 +119,7 @@ test('shipped skills never invoke a skill this repo does not ship', async () => 
     'schedule',
     'code-review',
     'wayfinder',
+    'create-verification-skill',
     'plugin',
     'reload-plugins',
   ]);
