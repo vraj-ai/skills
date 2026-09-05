@@ -61,6 +61,62 @@ test('skips a skill with malformed frontmatter (no closing delimiter), with a wa
   }
 });
 
+test('parses recommended: true', async () => {
+  const repo = await makeTmpDir();
+  try {
+    await writeSkill(repo, 'foo', { name: 'foo', recommended: true });
+    const { skills, warnings } = await discoverSkills(repo);
+    assert.equal(warnings.length, 0);
+    assert.equal(skills.get('foo').recommended, true);
+  } finally {
+    await cleanup(repo);
+  }
+});
+
+test('parses recommended: false', async () => {
+  const repo = await makeTmpDir();
+  try {
+    await writeSkill(repo, 'foo', { name: 'foo', recommended: false });
+    const { skills, warnings } = await discoverSkills(repo);
+    assert.equal(warnings.length, 0);
+    assert.equal(skills.get('foo').recommended, false);
+  } finally {
+    await cleanup(repo);
+  }
+});
+
+test('defaults recommended to false when absent', async () => {
+  const repo = await makeTmpDir();
+  try {
+    await writeSkill(repo, 'foo', { name: 'foo' });
+    const { skills, warnings } = await discoverSkills(repo);
+    assert.equal(warnings.length, 0);
+    assert.equal(skills.get('foo').recommended, false);
+  } finally {
+    await cleanup(repo);
+  }
+});
+
+test('warns and defaults recommended to false when malformed', async () => {
+  const repo = await makeTmpDir();
+  try {
+    const dir = path.join(repo, 'broken');
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(
+      path.join(dir, 'SKILL.md'),
+      '---\nname: broken\ndescription: bad recommended\nrecommended: yes\n---\nbody\n',
+      'utf8'
+    );
+
+    const { skills, warnings } = await discoverSkills(repo);
+    assert.equal(warnings.length, 1);
+    assert.match(warnings[0], /"recommended" must be a boolean/);
+    assert.equal(skills.get('broken').recommended, false);
+  } finally {
+    await cleanup(repo);
+  }
+});
+
 test('detects a name collision between two skills and drops both', async () => {
   const repo = await makeTmpDir();
   try {
