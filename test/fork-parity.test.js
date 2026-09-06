@@ -47,8 +47,6 @@ test('the two parallel runners diverge only on their approved differences', asyn
     /process\.env\.REVIEWERS/,               // default reviewer list
     /reviewers\.length !== [12]/,            // one vs two T0 reviewers
     /T0 reviewers must be distinct/,         // goals-only distinct ids
-    /T0 reviewers must use distinct model families/,
-    /reviewers\.map\(\(reviewer\) => modelFamily/,
     /const guard =/,                         // contributor brief
   ];
 

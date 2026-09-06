@@ -114,26 +114,16 @@ on a clean final gate. `/snapshot` pushes because you invoked it.
 | `issues` | User-invoked; one-time project setup, then spec plus tickets |
 | `snapshot` | User-invoked closeout: sync docs and tracker, handoff, proven push |
 | `push-handoff` | Commit and push under explicit authority, proven by remote SHA |
-| `hands-free` | Finish the task without pausing, then wait for a push and PR merge |
-| `loop-engineer` | Wrap any task in a maker/checker loop with a done-condition |
-| `gauntlet-loop` | Blind maker/critic loop against a real quality bar |
-| `multi-agent-review` | Several models attempt and cross-examine the same task |
-| `herdr-orchestrator` | Run `/goals` through Codex and three council agents across live [Herdr](https://herdr.dev) panes |
+| `herdr-orchestrator` | Manual-only: run `/goals` through Codex and three council agents across live [Herdr](https://herdr.dev) panes |
 | `setup-obsidian` | Turn a docs folder into a retrieval graph |
 | `setup-vskills` | Set this repo up on a new machine |
 | `pr-review` | GitHub Actions PR review bot: summary, confidence, checks, fix-on-comment |
-| `browser-control` | Manual-only browser navigation, inspection, and local web testing |
-| `github-workflow` | Manual-only GitHub orientation, review, CI, and explicit publish workflow |
-| `pi-usage-maintenance` | Manual-only Pi usage/index/report maintenance |
-| `pi-setup-maintenance` | Manual-only, reversible Pi setup maintenance |
 
-The Ponytail family is vendored under `standalone/` (MIT, pinned to v4.9.0):
-`ponytail`, `ponytail-review`, `ponytail-audit`, `ponytail-debt`,
-`ponytail-gain`, and `ponytail-help`.
-`pipeline/` holds reusable disciplines you can pull in on their own:
-`codebase-audit`, `invariant-evidence-review`, `provider-integration-tdd`,
-`ticket-implementation-tdd`, worktree safety, subagent batching, pipeline
-recovery, and more. `legacy-workflow/` holds the older chain.
+The decision ladder is vendored as `ponytail` (MIT, DietrichGebert, pinned to
+v4.9.0; see VENDORED.md for provenance).
+`pipeline/` holds reusable disciplines you can pull in on their own: `audit`,
+`delivery-constraints`, `implementation-tdd`, `subagent-delegation`, and
+`ai-subscription-unit-economics`.
 
 Install one skill and its dependencies with `npx @vskills/cli add <skill>`.
 
@@ -156,9 +146,9 @@ want his originals. This repo's chain is `/grill` → `/issues` → `/ship` or `
 
 Plugins install through Claude Code's `/plugin` command, not `vskills`.
 
-[ponytail](https://github.com/DietrichGebert/ponytail) is vendored as a
-standalone family here, so `vskills` installs all six skills without duplicate
-local names. The optional Claude plugin remains useful for hosts that support
+[ponytail](https://github.com/DietrichGebert/ponytail) is vendored here as the
+single `ponytail` skill (see VENDORED.md), so `vskills` installs it without a
+duplicate local name. The optional Claude plugin remains useful for hosts that support
 marketplace plugins. It forces the laziest solution that works; the build
 ladder is adapted from it. From the
 [official marketplace](https://github.com/anthropics/claude-plugins-official):
@@ -175,11 +165,36 @@ ladder is adapted from it. From the
 ## Installing with `vskills`
 
 ```bash
-npx @vskills/cli init               # install every skill
-npx @vskills/cli list               # what is installed, what has drifted
-npx @vskills/cli add <skill>        # one skill plus its dependencies
-npx @vskills/cli update [skill...]  # refresh, skipping your local edits
+npx @vskills/cli init                    # install the recommended set (default)
+npx @vskills/cli init --recommended      # exactly the recommended set, dropping anything else
+npx @vskills/cli init --all              # install every skill
+npx @vskills/cli init --only ship,goals  # install exactly these skills
+npx @vskills/cli list                    # what is installed, what has drifted
+npx @vskills/cli add <skill>             # one skill plus its dependencies
+npx @vskills/cli update [skill...]       # refresh, skipping your local edits
 ```
+
+`init` leads with the recommended set — `ship`, `goals`, `grill`, `issues`,
+`snapshot`, `council`, `council-adversary`, `setup-vskills`, and `ponytail` —
+and nothing more is needed for the workflow above. `snapshot` pulls in its
+`push-handoff` dependency, so a fresh machine lands ten skills. On a TTY,
+`init` shows that set and offers to accept it (plain Enter), install
+everything, or pick names; `--yes` and non-TTY runs take the recommended set
+without asking. `list` marks each row's tier, and `add <skill>` still installs
+any skill regardless of tier.
+
+The choice persists in `.vskills-config.json` under a `selection` key and is
+honoured by later `init` and `update` runs without re-prompting — a plain
+`update` refreshes only the selection (through its dependency closure) and
+retires what dropped out, while `update <name>` stays an explicit, unfiltered
+refresh of that name; an explicit flag overrides and rewrites it, and explicit
+`--recommended` opts back into exactly the tier, dropping anything else. An
+install made before selection existed keeps everything already on disk plus the
+recommended tier. The stored value is the
+`recommended` sentinel, not a frozen list: if the tier ever changes, a skill
+that drops out retires into `.vskills-backup/` on the next run instead of
+lingering. Discovery only looks at skill directories in the repo itself and
+skips `CONTEXT/`, so worktree copies never collide with the real skills.
 
 On Windows PowerShell the commands are the same, but `<` and `>` are reserved,
 so replace `<skill>` with a real name. Content is copied to an install root and
@@ -235,12 +250,10 @@ src/              vskills implementation
 test/             vskills test suite (node --test)
 
 delivery/         ship, goals, council, council-adversary
-standalone/       grill, issues, snapshot, push-handoff, hands-free, loop-engineer,
-                  gauntlet-loop, multi-agent-review, herdr-orchestrator,
-                  setup-obsidian, setup-vskills, browser-control, github-workflow,
-                  pi-usage-maintenance, pi-setup-maintenance, ponytail family
-pipeline/         reusable delivery disciplines
-legacy-workflow/  the preserved planner/coder/debugger/reviewer chain
+standalone/       grill, issues, snapshot, push-handoff, herdr-orchestrator,
+                  setup-obsidian, setup-vskills, pr-review, ponytail
+pipeline/         audit, delivery-constraints, implementation-tdd,
+                  subagent-delegation, ai-subscription-unit-economics
 harness/          per-client Role and profile templates (omp, opencode, ...)
 ```
 
@@ -255,9 +268,9 @@ OpenCode profiles live under `harness/opencode/` and install to
   `0a4dd63ad4541f4f655c4108a295916f3c1d8fda`): the vendored decision ladder
   and the `delete / stdlib / native / yagni / shrink` rubric.
 - [OpenAI skills catalog](https://github.com/openai/skills) (reference commit
-  `49f948faa9258a0c61caceaf225e179651397431`): reviewed as inspiration for
-  the original Vraj-authored MIT browser-control and github-workflow skills;
-  see VENDORED.md for provenance.
+  `49f948faa9258a0c61caceaf225e179651397431`): reviewed as inspiration while
+  authoring local manual-only workflows. No external source text is a
+  dependency of any kept skill; see VENDORED.md for provenance.
 - [mattpocock/skills](https://github.com/mattpocock/skills) by Matt Pocock: `/grill-with-docs`, `/to-spec`, `/handoff`, `/to-tickets`, and the shape of the workflow. `/grill`, `/issues`, and `/snapshot` are this repo's versions, writing `CONTEXT/` and combining setup, spec, tickets, and closeout.
 - [pstack](https://github.com/backnotprop/pstack) by poteto (MIT): exhaust the design space, prove safety by running code, expand-contract for wide blast radius, and settle caller usage before module shape.
 

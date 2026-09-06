@@ -1,6 +1,6 @@
 ---
 name: setup-vskills
-version: 1.13.0
+version: 1.14.0
 description: Sets up this skills repo on a new machine — installs the skills with the vskills CLI, configures pstack model routing for any harness, ensures a verification skill, then regenerates the local-only context docs (CONTEXT.md, docs/) that are deliberately not published in the public repo.
 recommended: true
 ---
@@ -35,8 +35,17 @@ Ask the user which coding agent harness is in use (e.g. omp, OpenCode, Claude Co
 Install the tightest integration for `grill`, `issues`, `ship`/`goals`, and `snapshot`:
 
 ```bash
+# research only — prints the plan, writes nothing
 node standalone/setup-vskills/scripts/install-harness.mjs <harness>
+# only after the user has said yes to installing it
+node standalone/setup-vskills/scripts/install-harness.mjs <harness> --install
 ```
+
+Ask before installing, every time. The installers write into the user's own
+harness config, so a bare run is research: it prints the integration plan and
+exits without touching anything. `--install` is the user's explicit yes, and
+the direct installers (`install-omp.mjs`, `install-opencode.mjs`) refuse to run
+without it.
 
 Supported harnesses are data, not prose. This table is the whole allowlist;
 every destination is overridable by its environment variable, and a harness not
@@ -44,8 +53,8 @@ listed here is handled by the fallback row rather than by an error.
 
 | harness | template source | install destination (override) | routing file for Step 1.3 (override) | direct installer |
 | --- | --- | --- | --- | --- |
-| `omp` | `harness/omp/agent/` | user agents dir, `~/.omp/agent/agents/` (`$OMP_AGENTS_DIR`) | harness always-applied rules location | `scripts/install-omp.mjs` |
-| `opencode` | `harness/opencode/` | user config dir, `~/.config/opencode/` (`$OPENCODE_CONFIG_DIR`) | harness always-applied rules location | `scripts/install-opencode.mjs` |
+| `omp` | `harness/omp/agent/` | user agents dir, `~/.omp/agent/agents/` (`$OMP_AGENTS_DIR`) | harness always-applied rules location | `scripts/install-omp.mjs --install` |
+| `opencode` | `harness/opencode/` | user config dir, `~/.config/opencode/` (`$OPENCODE_CONFIG_DIR`) | harness always-applied rules location | `scripts/install-opencode.mjs --install` |
 | `cursor` | — (research) | harness rules dir | `~/.cursor/rules/pstack-models.mdc`, `alwaysApply: true` | — |
 | *anything else* | — (research) | harness-defined | `docs/agents/model-routing.md` in the project | — |
 
@@ -302,7 +311,8 @@ Ownership rules carry across skills:
 - Never edit installed copies under the install root — edit the repo source
   and re-run `node bin/vskills.js init`.
 - Never edit installed harness agent/role copies directly — edit `harness/<harness>/`
-  and rerun the installer (`install-harness.mjs`, `install-omp.mjs`, or `install-opencode.mjs`).
+  and rerun the installer with the user's approval (`install-harness.mjs <harness> --install`,
+  `install-omp.mjs --install`, or `install-opencode.mjs --install`).
 - Bump the `version:` in a skill's frontmatter whenever you change its
   content; init uses versions to auto-resolve otherwise-ambiguous updates.
 - Quit and restart the harness after installing; config-time files are loaded once.

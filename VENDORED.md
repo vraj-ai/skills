@@ -21,18 +21,11 @@ Attribution: Copyright DietrichGebert and contributors; MIT license text is
 provided by the upstream project at
 https://github.com/DietrichGebert/ponytail/blob/main/LICENSE.
 
-## GitHub workflow
+## Inspiration without vendored text
 
-`standalone/github-workflow/SKILL.md` is an original, complete, manual-only
-workflow authored by Vraj / vraj-ai and licensed MIT. It is standalone and
-harness/model agnostic: it selects among available connector, API, and CLI
-capabilities and contains its review, CI, and explicit-write-authority
-procedures without sibling-skill routes or host-specific runtime assumptions.
-
-The OpenAI curated GitHub skill at the
+The OpenAI curated skill collection at the
 [skills catalog](https://github.com/openai/skills), commit
 49f948faa9258a0c61caceaf225e179651397431, was reviewed as inspiration while
-addressing the P1; no external source text or unavailable host language is a
-dependency of the local workflow.
-
-The GitHub workflow names connector and CLI capabilities rather than a model.
+authoring local manual-only workflows. No external source text is a dependency
+of any kept skill: the catalog's wording, structure, and host assumptions were
+never copied in, and every kept skill stands alone without it.

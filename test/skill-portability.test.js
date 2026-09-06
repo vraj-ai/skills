@@ -27,10 +27,6 @@ const EXEMPT = new Set([
   // It enumerates them as a table of harness -> destination and degrades
   // gracefully when a harness is absent.
   'standalone/setup-vskills/SKILL.md',
-  // ponytail is vendored MIT content pinned in VENDORED.md;
-  // test/credited-skills.test.js asserts it is byte-unmodified upstream, so it
-  // must not be rewritten to satisfy this gate.
-  'standalone/ponytail/SKILL.md',
 ]);
 
 // git ls-files, not a filesystem walk: CONTEXT/ holds working state and full

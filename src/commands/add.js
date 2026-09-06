@@ -51,9 +51,12 @@ export async function runAdd({ names, repoRoot, installRoot, targets }) {
   const { selection: storedSelection } = await readConfig(installRoot);
   if (storedSelection === 'recommended') {
     // Adding a skill the tier already covers changes nothing, so keep the
-    // subscription rather than freezing it for a no-op.
+    // subscription rather than freezing it for a no-op. Only the requested
+    // names decide that: a recommended root can pull an opt-in dependency
+    // into the closure, and init installs that closure anyway, so it must
+    // not end the subscription.
     const tier = new Set([...skills.values()].filter((s) => s.recommended).map((s) => s.name));
-    const outsideTier = order.filter((n) => !tier.has(n));
+    const outsideTier = names.filter((n) => !tier.has(n));
     if (outsideTier.length > 0) {
       await writeConfig(installRoot, { selection: [...new Set([...tier, ...order])] });
     }

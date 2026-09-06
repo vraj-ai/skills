@@ -1,6 +1,6 @@
 ---
 name: ship
-version: 1.6.0
+version: 1.7.0
 description: Drive a published spec to verified, pushed completion through a resumable backlog, worktree-isolated parallel builds under a lazy-senior-dev ladder, gate-first review, a milestone reviewer, and a final adversarial teardown. Use when the user invokes /ship, asks to build out a spec autonomously, or resumes a ship run.
 dependencies: [council-adversary]
 recommended: true
@@ -131,7 +131,7 @@ follows is the quality pass, and it has three lenses.
 > Missing trust-boundary validation, data-loss handling, security,
 > accessibility, or an unmet acceptance criterion stays P0/P1 under-build.
 
-The rubric is adapted from [ponytail-review](https://github.com/DietrichGebert/ponytail)
+The rubric is adapted from [ponytail](https://github.com/DietrichGebert/ponytail)
 (MIT, DietrichGebert), Cursor's `deslop` and `thermo-nuclear-code-quality-review`,
 and [@elithrar](https://github.com/elithrar)'s `simplify`. It is inlined here for
 the same reason the ladder is: worktree subagents may not load plugins.
@@ -150,7 +150,22 @@ The task carries the plan/item path, exact acceptance criteria, the locked
 Verification-command, `MAIN_BRANCH`, the absolute worktree path, and the ladder
 above. Set `TEST_CMDS_JSON` to a complete JSON map from id to its locked
 command; `TEST_CMD` is only accepted for a one-item batch. Reject any manifest
-model other than the fixed contributor pin.
+model other than the run's contributor pin.
+
+The runner resolves its agent binary as `AGENT_BIN`, then `OPENCODE_BIN`, then
+the bundled harness's default install path, then a `PATH` lookup, so any agent
+CLI taking the same `run --dir --agent --model --format` flags works. The
+flags alone are not the whole contract: a substitute CLI must also honour the
+read-only permissions injected through `OPENCODE_CONFIG_CONTENT` for reviewer
+runs, because the runner's snapshot and ref-diff check proves only that nothing
+local changed — it cannot prove a reviewer caused no remote effect.
+`CONTRIBUTOR_MODEL` sets the maker pin and `COUNCIL_<NAME>_MODEL` each reviewer
+pin, defaulting to the pins the bundled harness profile ships. A model the
+runner does not recognise needs its family declared (`CONTRIBUTOR_FAMILY`,
+`COUNCIL_<NAME>_FAMILY`) so maker-is-never-checker stays provable; only the
+reviewers a run actually selects constrain it. A declaration cannot reclassify
+a model the runner already recognises, and under `HARDENED` the extra
+adversary is checked the same way.
 
 ### Gate-first review and merge
 

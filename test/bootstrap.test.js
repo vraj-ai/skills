@@ -4,7 +4,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { mkdtemp, readdir, rm, symlink } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rm, symlink } from 'node:fs/promises';
 import os from 'node:os';
 
 const execFileAsync = promisify(execFile);
@@ -71,6 +71,32 @@ test('init on a fresh HOME with no install root yet succeeds and installs the re
     }
     // Opt-in skills must stay out of the default install.
     assert.ok(!installed.has('herdr-orchestrator'), 'herdr-orchestrator is opt-in and must not install by default');
+  } finally {
+    await rm(fakeHome, { recursive: true, force: true });
+  }
+});
+
+test('a second init run honours the persisted selection and is a no-op with zero retirements', async () => {
+  const fakeHome = await mkdtemp(path.join(os.tmpdir(), 'vskills-second-run-'));
+  try {
+    const env = { ...process.env, HOME: fakeHome };
+    await execFileAsync(process.execPath, [binPath, 'init', '--yes'], { env });
+    const installRoot = path.join(fakeHome, '.agents', 'skills');
+
+    const config = JSON.parse(await readFile(path.join(installRoot, '.vskills-config.json'), 'utf8'));
+    assert.equal(config.selection, 'recommended', 'init must persist the recommended sentinel, not a frozen snapshot');
+
+    const before = await readdir(installRoot);
+    const second = await execFileAsync(process.execPath, [binPath, 'init', '--yes'], { env });
+    assert.doesNotMatch(second.stdout, /retired/i);
+    assert.deepEqual(await readdir(installRoot), before);
+
+    const installed = new Set(
+      (await readdir(installRoot, { withFileTypes: true }))
+        .filter((e) => !e.name.startsWith('.'))
+        .map((e) => e.name),
+    );
+    assert.ok(installed.has('ship'), `named skill "ship" went missing on the second run, got: ${[...installed].sort().join(', ')}`);
   } finally {
     await rm(fakeHome, { recursive: true, force: true });
   }

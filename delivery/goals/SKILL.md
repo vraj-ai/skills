@@ -1,6 +1,6 @@
 ---
 name: goals
-version: 1.6.0
+version: 1.7.0
 description: Drive a plan document to verified completion through a resumable single-writer backlog, named Worker Role research and review, worktree-isolated parallel builds, milestone gates, and a final adversarial teardown. Use when the user invokes /goal, asks to execute an architecture plan autonomously, resumes a goal, or needs a large issue set delivered milestone by milestone.
 dependencies: [council, council-adversary]
 recommended: true
@@ -88,7 +88,7 @@ follows is the quality pass, and it has three lenses.
 > Missing trust-boundary validation, data-loss handling, security,
 > accessibility, or an unmet acceptance criterion stays P0/P1 under-build.
 
-The rubric is adapted from [ponytail-review](https://github.com/DietrichGebert/ponytail)
+The rubric is adapted from [ponytail](https://github.com/DietrichGebert/ponytail)
 (MIT, DietrichGebert), Cursor's `deslop` and `thermo-nuclear-code-quality-review`,
 and [@elithrar](https://github.com/elithrar)'s `simplify`. It is inlined here for
 the same reason the ladder is: worktree subagents may not load plugins.
@@ -276,7 +276,7 @@ The task contains the plan/item path, exact acceptance criteria, locked
 Verification-command, MAIN_BRANCH, and absolute worktree path. Set
 `TEST_CMDS_JSON` to a complete JSON map from id to its locked command;
 `TEST_CMD` is only accepted for a one-item batch. Reject any manifest model
-other than the fixed contributor pin.
+other than the run's contributor pin.
 
 ## CLI path
 
@@ -288,11 +288,22 @@ run:
 delivery/goals/scripts/parallel.sh <repo-root> <worktree-root> <manifest>
 ```
 
-The bundled runner drives one such CLI and reads its binary from an
-environment variable (`OPENCODE_BIN` for the shipped driver), falling back to
-`PATH`. No particular vendor is required: swap the runner for any CLI that
-accepts a working directory, a model, and a prompt, and exits when the turn
-ends.
+The bundled runner drives one such CLI and resolves its binary as `AGENT_BIN`,
+then `OPENCODE_BIN`, then the bundled harness's default install path, then a
+`PATH` lookup, so any agent CLI taking the same
+`run --dir --agent --model --format` flags works. The flags alone are not the
+whole contract: a substitute CLI must also honour the read-only permissions
+injected through `OPENCODE_CONFIG_CONTENT` for reviewer runs, because the
+runner's snapshot and ref-diff check proves only that nothing local changed —
+it cannot prove a reviewer caused no remote effect. `CONTRIBUTOR_MODEL` sets
+the maker pin and `COUNCIL_<NAME>_MODEL` each reviewer pin, defaulting to the pins
+the bundled harness profile ships. A model the runner does not recognise needs
+its family declared (`CONTRIBUTOR_FAMILY` for the maker,
+`COUNCIL_<NAME>_FAMILY` for a reviewer) so maker-is-never-checker stays
+provable: the maker and the selected reviewers must resolve to different
+families, and only the reviewers a run actually selects constrain it. A
+declaration cannot reclassify a model the runner already recognises, and
+under `HARDENED` the extra adversary is checked the same way.
 
 The runner creates worktrees and launches one process per item concurrently.
 A CLI generally cannot select a non-spawning subagent directly, so each
