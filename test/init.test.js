@@ -419,3 +419,38 @@ test('init leaves a drifted vanished skill installed', async () => {
   }
 });
 
+
+test('a stored empty-array selection (the persisted end state of the old empty-selection bug) self-heals to the recommended default and retires nothing', async () => {
+  const { repo, installRoot, target } = await setup();
+  try {
+    await writeSkill(repo, 'beta', { name: 'beta', description: 'Beta.', recommended: true });
+    await runInit({ repoRoot: repo, installRoot, targets: [target] }); // alpha (not recommended) + beta installed
+    await assert.doesNotReject(fs.access(path.join(installRoot, 'alpha', 'SKILL.md')));
+    await assert.doesNotReject(fs.access(path.join(installRoot, 'beta', 'SKILL.md')));
+
+    await fs.writeFile(
+      path.join(installRoot, '.vskills-config.json'),
+      JSON.stringify({ selection: [] }),
+      'utf8'
+    );
+
+    const { readConfig } = await import('../src/config.js');
+    const { discoverSkills } = await import('../src/discovery.js');
+    const { resolveSelection } = await import('../src/selection.js');
+    const { readManifest: readManifestFresh } = await import('../src/manifest.js');
+
+    const { selection: stored } = await readConfig(installRoot);
+    assert.equal(stored, null); // normalised from [], not treated as "select nothing"
+
+    const { skills } = await discoverSkills(repo);
+    const manifest = await readManifestFresh(installRoot);
+    const resolved = resolveSelection({ skills, selection: null, stored, installedNames: Object.keys(manifest.skills) });
+
+    const result = await runInit({ repoRoot: repo, installRoot, targets: [target], selection: resolved.names });
+    assert.ok(!result.results.some((r) => r.status === 'retired'));
+    await assert.doesNotReject(fs.access(path.join(installRoot, 'alpha', 'SKILL.md')));
+    await assert.doesNotReject(fs.access(path.join(installRoot, 'beta', 'SKILL.md')));
+  } finally {
+    await cleanup(repo, installRoot, target);
+  }
+});

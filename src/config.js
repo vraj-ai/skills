@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -17,10 +17,16 @@ export async function readConfig(installRoot) {
     const targets = Array.isArray(parsed.targets) && parsed.targets.length > 0
       ? parsed.targets
       : defaultTargets();
-    const selection = Array.isArray(parsed.selection)
+    // An empty array is corrupt state we wrote ourselves (the now-fixed
+    // empty-selection bug), not a deliberate "select nothing" — treat it the
+    // same as null so it falls through to the normal derivation and self-heals.
+    const selectionArray = Array.isArray(parsed.selection)
       ? parsed.selection.filter((name) => typeof name === 'string')
-      : parsed.selection === 'all'
-        ? 'all'
+      : null;
+    const selection = selectionArray && selectionArray.length > 0
+      ? selectionArray
+      : parsed.selection === 'all' || parsed.selection === 'recommended'
+        ? parsed.selection
         : null;
     return { targets, selection };
   } catch (err) {
@@ -39,5 +45,6 @@ export async function writeConfig(installRoot, patch) {
     if (err.code !== 'ENOENT') throw err;
   }
   const next = { ...current, ...patch };
+  await mkdir(installRoot, { recursive: true });
   await writeFile(configPath(installRoot), `${JSON.stringify(next, null, 2)}\n`, 'utf8');
 }

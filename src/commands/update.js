@@ -1,11 +1,47 @@
 import { discoverSkills } from '../discovery.js';
 import { installOne, retireVanished } from '../install.js';
 import { readManifest, writeManifest } from '../manifest.js';
+import { readConfig } from '../config.js';
+import { resolveSelection } from '../selection.js';
+import { resolveClosure } from '../deps.js';
 
 export async function runUpdate({ names, repoRoot, installRoot, targets, force = false }) {
   const { skills, warnings: discoveryWarnings } = await discoverSkills(repoRoot);
   const manifest = await readManifest(installRoot);
-  const targetNames = names.length > 0 ? names : Object.keys(manifest.skills);
+  // A whole-install update honours the persisted selection exactly like init
+  // does — same resolution, same dependency closure — so a deselected skill is
+  // retired instead of being refreshed forever. Named updates stay explicit,
+  // and an install with no stored selection keeps its pre-selection behaviour.
+  const stored = names.length > 0 ? null : (await readConfig(installRoot)).selection;
+  let keep = null;
+  if (stored) {
+    // A selected name that left the repo is the ordinary retirement case, not
+    // a broken graph — only what is still discoverable gets resolved.
+    const selected = [...resolveSelection({ skills, selection: null, stored }).names].filter((name) => skills.has(name));
+    const { order, errors } = resolveClosure(skills, selected);
+    // Unlike init, this keep-set decides what gets retired on a path that also
+    // rewrites the manifest, and a dropped branch silently shrinks it. A broken
+    // graph stops the run before anything is installed, retired or written.
+    if (errors.length > 0) {
+      return {
+        ok: false,
+        results: [],
+        messages: [
+          ...discoveryWarnings,
+          ...errors.map((err) => (err.cycle
+            ? `dependency cycle detected: ${err.cycle.join(' -> ')}`
+            : `unknown dependency "${err.missing}" referenced`)),
+          'update stopped before changing anything: the selected dependency graph is invalid. Fix it, or update a single skill by name.',
+        ],
+        discoveryWarnings,
+        linkFailures: [],
+      };
+    }
+    keep = new Set(order);
+  }
+  const targetNames = names.length > 0
+    ? names
+    : Object.keys(manifest.skills).filter((name) => !keep || keep.has(name));
 
   const results = [];
   const messages = [...discoveryWarnings];
@@ -30,7 +66,7 @@ export async function runUpdate({ names, repoRoot, installRoot, targets, force =
   }
 
   const vanished = await retireVanished({
-    discoveredNames: new Set(skills.keys()),
+    discoveredNames: new Set([...skills.keys()].filter((name) => !keep || keep.has(name))),
     installRoot,
     targets,
     manifest,

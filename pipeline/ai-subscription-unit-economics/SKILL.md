@@ -80,7 +80,9 @@ In rough order of preference:
 
 ## Step 5 — Encode the result as invariants
 
-Feed these into `planner`'s invariant lock so they become testable, not aspirational:
+Lock these as invariants so they become testable, not aspirational. Each one needs an
+enforcement point, a test that fails when it is violated, and a production signal --
+`audit` runs exactly that triad:
 
 ```
 - Cost per <action> must not exceed $X at p95 (measured, with a test/monitor)
@@ -90,7 +92,7 @@ Feed these into `planner`'s invariant lock so they become testable, not aspirati
 - Cache hit rate assumed: H% — alert if it drops below H−10
 ```
 
-An unenforced cap is a wish. Each of these needs an enforcement point and a signal — see `invariant-evidence-review`.
+An unenforced cap is a wish. Each of these needs an enforcement point and a signal — see `audit`.
 
 ## Non-negotiables
 
@@ -102,4 +104,4 @@ An unenforced cap is a wish. Each of these needs an enforcement point and a sign
 
 ## Related
 
-`planner` (invariant lock) · `invariant-evidence-review` · `controlled-ticket-delivery` · `claude-api`
+`audit` · `delivery-constraints` · `claude-api`

@@ -42,12 +42,26 @@ export async function runAdd({ names, repoRoot, installRoot, targets }) {
   await writeManifest(installRoot, manifest);
 
   // A stored selection is init's install list — a later plain `init` would
-  // otherwise retire what `add` just installed. No selection stored means
-  // "everything", so there's nothing to add to.
+  // otherwise retire what `add` just installed. No selection stored, or the
+  // 'all' sentinel, already covers everything, so there's nothing to add to.
+  // The 'recommended' sentinel does NOT cover an opt-in skill, so it has to
+  // become an explicit list here: the tier as it stands today plus what was
+  // just added. That gives up the tier subscription, which is the cost of
+  // pinning a skill the tier does not include.
   const { selection: storedSelection } = await readConfig(installRoot);
-  if (Array.isArray(storedSelection)) {
-    const merged = new Set([...storedSelection, ...order]);
-    await writeConfig(installRoot, { selection: [...merged] });
+  if (storedSelection === 'recommended') {
+    // Adding a skill the tier already covers changes nothing, so keep the
+    // subscription rather than freezing it for a no-op. Only the requested
+    // names decide that: a recommended root can pull an opt-in dependency
+    // into the closure, and init installs that closure anyway, so it must
+    // not end the subscription.
+    const tier = new Set([...skills.values()].filter((s) => s.recommended).map((s) => s.name));
+    const outsideTier = names.filter((n) => !tier.has(n));
+    if (outsideTier.length > 0) {
+      await writeConfig(installRoot, { selection: [...new Set([...tier, ...order])] });
+    }
+  } else if (Array.isArray(storedSelection)) {
+    await writeConfig(installRoot, { selection: [...new Set([...storedSelection, ...order])] });
   }
 
   return {

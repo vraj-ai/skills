@@ -146,6 +146,23 @@ function modelFamily(model) {
   return id;
 }
 
+// Maker-is-never-checker needs real families on both sides of the
+// comparison: two provider aliases of one model fall through modelFamily to
+// different bare ids, compare unequal, and let the maker review its own
+// code. A family declaration covers only what the runner cannot recognise
+// itself: a known family always wins, so no env override can reclassify a
+// known model into a different family. An operator running a model the
+// runner does not know declares the family explicitly and takes
+// responsibility for the claim.
+const KNOWN_FAMILIES = new Set(['glm', 'grok', 'kimi', 'qwen', 'gpt-5.6-sol']);
+function declaredFamily(model, envName) {
+  const family = modelFamily(model);
+  if (KNOWN_FAMILIES.has(family)) return family;
+  const declared = (process.env[envName] ?? '').trim().toLowerCase();
+  if (declared) return declared;
+  fail(`${model} does not resolve to a model family this runner recognises (${[...KNOWN_FAMILIES].join(', ')}), so maker-is-never-checker cannot be proven. Set ${envName} to declare it.`);
+}
+
 const REVIEW_RUBRIC = `QUALITY PASS, after correctness. Three lenses. over-build: reinvented stdlib, a dependency for what the platform ships, an abstraction with one implementation, a wrapper that only delegates, config nobody sets. slop: a comment restating the line below it, a defensive try/catch on a path that cannot fail, a cast that silences the compiler instead of fixing the type, nesting where a guard clause would return early, code whose shape does not match the file it was added to. structure: a special case bolted into a flow that does not own it, feature logic in a shared path, a bespoke helper duplicating one this repo already has, a file this diff pushed past the size the rest of the tree keeps. One line per finding: <file>:<line>: <lens>: <what to cut>. <replacement>. A finding is admissible only when it names the replacement: a stdlib function, an existing symbol in this repo, a native platform feature, or 'delete, nothing replaces it'. Without a named replacement it is taste, and taste does not block a merge. An admissible over-build or structure finding is P1 and blocks the merge; slop is P2. Cap the quality pass at 5 findings, biggest cut first, and print 'net: -<N> lines possible.' (or 'Lean already.') on its own line IMMEDIATELY BEFORE the VERDICT line, never after FOLLOWUPS: the contract parses the last three lines and a trailing net line would displace VERDICT. One runnable check per piece of non-trivial logic is the required minimum and is never an over-build finding. Under-build stays P0/P1: missing trust-boundary validation, data-loss handling, security, accessibility, or an unmet acceptance criterion.`;
 
 const [repoArg, worktreeArg, manifestArg] = process.argv.slice(2);
@@ -156,9 +173,12 @@ if (!repoArg || !worktreeArg || !manifestArg) {
 const repo = path.resolve(repoArg);
 const worktreeRoot = path.resolve(repo, worktreeArg);
 const manifest = path.resolve(manifestArg);
-const defaultOpenCode = path.join(os.homedir(), '.opencode', 'bin', 'opencode');
-const opencode = process.env.OPENCODE_BIN
-  || (await access(defaultOpenCode).then(() => defaultOpenCode).catch(() => null))
+// Harness-agnostic: AGENT_BIN names any agent CLI, OPENCODE_BIN stays for the
+// bundled OpenCode driver, then the usual install path, then a bare PATH lookup.
+const installedAgentBin = path.join(os.homedir(), '.opencode', 'bin', 'opencode');
+const agentBin = process.env.AGENT_BIN
+  || process.env.OPENCODE_BIN
+  || (await access(installedAgentBin).then(() => installedAgentBin).catch(() => null))
   || 'opencode';
 const defaultTestCommand = process.env.TEST_CMD;
 const reviewers = (process.env.REVIEWERS || 'council-grok').split(',').map((value) => value.trim()).filter(Boolean);
@@ -174,21 +194,33 @@ const modelByReviewer = {
   'council-qwen': process.env.COUNCIL_QWEN_MODEL || 'openrouter/qwen/qwen3.8-max',
   'council-sol': process.env.COUNCIL_SOL_MODEL || 'openai/gpt-5.6-sol',
   'council-glm': process.env.COUNCIL_GLM_MODEL || 'opencode-go/glm-5.2',
-  'council-adversary': process.env.COUNCIL_ADVERSARY_MODEL || 'opencode-go/grok-4.5',
+  // Default to a family no default T0 reviewer uses: an adversary pinned
+  // to the reviewer's own model is a second pass, not an independent one.
+  'council-adversary': process.env.COUNCIL_ADVERSARY_MODEL || 'openai/gpt-5.6-sol',
 };
 for (const reviewer of reviewers) {
   if (!modelByReviewer[reviewer]) fail(`no model pin configured for reviewer ${reviewer}`);
-  if (reviewer === 'council-glm') fail('the fixed GLM contributor cannot review its own code');
 }
 
-const contributorModel = 'opencode-go/glm-5.2';
-if (process.env.CONTRIBUTOR_MODEL && process.env.CONTRIBUTOR_MODEL !== contributorModel) {
-  fail(`CONTRIBUTOR_MODEL is fixed to ${contributorModel}`);
+const contributorModel = process.env.CONTRIBUTOR_MODEL || 'opencode-go/glm-5.2';
+const contributorFamily = declaredFamily(contributorModel, 'CONTRIBUTOR_FAMILY');
+const reviewerFamily = (reviewer) => declaredFamily(
+  modelByReviewer[reviewer],
+  `COUNCIL_${reviewer.replace(/^council-/, '').toUpperCase()}_FAMILY`,
+);
+// Only SELECTED reviewers constrain a run: scanning every configured pin
+// rejected valid runs (a Grok maker with a Kimi reviewer died on the
+// unused default grok pin). Under HARDENED the extra adversary reviews too,
+// so it is checked like a selected reviewer.
+const selectedReviewers = hardened && !reviewers.includes('council-adversary')
+  ? [...reviewers, 'council-adversary']
+  : reviewers;
+for (const reviewer of selectedReviewers) {
+  if (reviewerFamily(reviewer) === contributorFamily) fail(`${reviewer} resolves to maker model family ${modelByReviewer[reviewer]}`);
+  if (modelByReviewer[reviewer] === contributorModel) fail(`${reviewer} is pinned to the maker's own model ${modelByReviewer[reviewer]}`);
 }
-for (const [reviewer, model] of Object.entries(modelByReviewer)) {
-  if (modelFamily(model) === modelFamily(contributorModel)) {
-    if (reviewer !== 'council-glm') fail(`${reviewer} resolves to maker model family ${model}`);
-  }
+if (new Set(selectedReviewers.map(reviewerFamily)).size !== selectedReviewers.length) {
+  fail('selected reviewers must use distinct model families');
 }
 let testCommands = {};
 if (process.env.TEST_CMDS_JSON) {
@@ -245,7 +277,7 @@ function childEnv({ readOnly }) {
 async function reviewResolvedConflict(item, baseBranch, candidateSha) {
   const beforeRefs = (await git(repo, ['for-each-ref', '--format=%(refname) %(objectname)', 'refs/heads'])).output;
   const conflictReviews = [];
-  for (const reviewer of reviewers) {
+  for (const reviewer of selectedReviewers) {
     const reviewWorktree = path.join(worktreeRoot, '.reviews', item.name, `${reviewer}-conflict`);
     await mkdir(path.dirname(reviewWorktree), { recursive: true });
     if (await stat(reviewWorktree).catch(() => null)) {
@@ -255,7 +287,7 @@ async function reviewResolvedConflict(item, baseBranch, candidateSha) {
     const before = await reviewSnapshot(reviewWorktree);
     const logFile = path.join(worktreeRoot, `${item.name}.${reviewer}.conflict.log`);
     const prompt = `T0 conflict-resolution review. You are a checker, not an author: do not edit. Inspect candidate integration commit ${candidateSha} for ${item.branch} into ${baseBranch}, compare it to both parents and the declared scope, and run the locked command.\n\nTASK:\n${item.prompt}\n\nDECLARED FILES: ${item.filesTouched.join(', ')}\nTEST_CMD: ${item.testCommand}\n\nReturn exact final lines:\nVERDICT: PASS or VERDICT: FAIL\nFINDINGS: <JSON array>\nFOLLOWUPS: <JSON array>\nAny evidenced P0/P1 fails.\n\n${REVIEW_RUBRIC}\n\nNO SUBAGENTS.`;
-    const result = await run(opencode, [
+    const result = await run(agentBin, [
       'run', '--dir', reviewWorktree, '--agent', 'build',
       '--model', modelByReviewer[reviewer], '--format', 'default', prompt,
     ], { cwd: reviewWorktree, logFile, allowFailure: true, env: childEnv({ readOnly: true }) });
@@ -273,7 +305,7 @@ async function reviewResolvedConflict(item, baseBranch, candidateSha) {
     || !review.formatValid
     || !review.integrityValid
     || review.findings.some((finding) => ['P0', 'P1'].includes(String(finding.severity).toUpperCase())));
-  return { conflictReviews, blocking: blocking || conflictReviews.length !== reviewers.length || beforeRefs !== afterRefs };
+  return { conflictReviews, blocking: blocking || conflictReviews.length !== selectedReviewers.length || beforeRefs !== afterRefs };
 }
 
 await mkdir(worktreeRoot, { recursive: true });
@@ -311,7 +343,7 @@ for (const item of items) {
 await Promise.all(items.map(async (item) => {
   const guard = `\n\nTHE LADDER: work down these rungs in order and stop at the first one that solves it.\n1. Necessity - does this need to exist at all? (YAGNI)\n2. Codebase reuse - is it already implemented in this project?\n3. Standard library - does the stdlib solve it?\n4. Native platform - can built-in features (CSS, HTML5 inputs, DB constraints) handle it?\n5. Existing dependencies - use what is installed before adding anything.\n6. One-liner - can this be a single line?\n7. Minimal implementation - only now, write the smallest thing that works.\n\nNEVER SIMPLIFY AWAY: input validation at trust boundaries, error handling that prevents data loss, security measures, accessibility, or anything the acceptance criteria explicitly asked for. Lazy is not negligent.\n\nTESTS: non-trivial logic requires at least one minimal runnable check (assert, demo(), or a single small test). Trivial code gets none. ${item.testCommand} must pass. Write nothing beyond that.\n\nNO SPECULATIVE ABSTRACTIONS: no interface, factory, or config for a single call site. Fix root causes in shared code, not symptoms in callers. Prefer the compact diff and the fewest files. Mark deliberate trade-offs with a \`ship:\` comment naming the upgrade path.\n\nReport as: [what you built] -> skipped: [X], add when [Y].\n\nNO SUBAGENTS: complete this task yourself. Work only in this worktree. Run ${item.testCommand}, then commit the completed item on ${item.branch}.`;
   const prompt = `${item.prompt}${guard}`;
-  const worker = await run(opencode, [
+  const worker = await run(agentBin, [
     'run', '--dir', item.worktree, '--agent', 'build',
     '--model', item.model, '--format', 'default', prompt,
   ], { cwd: item.worktree, logFile: item.workerLog, allowFailure: true, env: childEnv({ readOnly: false }) });
@@ -336,7 +368,7 @@ const reviewWorktrees = [];
 const refsBeforeReview = (await git(repo, ['for-each-ref', '--format=%(refname) %(objectname)', 'refs/heads'])).output;
 for (const item of items.filter((candidate) => !candidate.failure)) {
   item.reviews = [];
-  const activeReviewers = hardened ? [...reviewers, 'council-adversary'] : reviewers;
+  const activeReviewers = selectedReviewers;
   for (const reviewer of activeReviewers) {
     const reviewWorktree = path.join(worktreeRoot, '.reviews', item.name, reviewer);
     await mkdir(path.dirname(reviewWorktree), { recursive: true });
@@ -352,7 +384,7 @@ for (const item of items.filter((candidate) => !candidate.failure)) {
         ? 'Hardened teardown: additionally attack blast radius, API drift, security boundaries, and over/under-engineering.'
         : '';
       const prompt = `T0 per-item review. You are a checker, not an author: do not edit. Review only HEAD against base ${baseSha}. Read the task and acceptance criteria below, inspect the real diff and tests, and run the locked command. ${hardenedText}\n\nTASK:\n${item.prompt}\n\nTEST_CMD: ${item.testCommand}\n\nReturn exact final lines:\nVERDICT: PASS or VERDICT: FAIL\nFINDINGS: <JSON array>\nFOLLOWUPS: <JSON array>\nEvery finding must include severity, file:line, trigger, and wrong_behavior. Any evidenced P0/P1 fails.\n\n${REVIEW_RUBRIC}\n\nNO SUBAGENTS.`;
-      const result = await run(opencode, [
+      const result = await run(agentBin, [
         'run', '--dir', reviewWorktree, '--agent', 'build',
         '--model', modelByReviewer[reviewer],
         '--format', 'default', prompt,
@@ -410,9 +442,9 @@ for (const item of items.filter((candidate) => !candidate.failure)) {
     conflicts = (await git(repo, ['diff', '--name-only', '--diff-filter=U'])).output.split('\n').filter(Boolean);
     results.conflicts.push({ name: item.name, files: conflicts });
     const resolverPrompt = `Resolve the active merge for ${item.branch} into ${strictIntegrationBranch || mainBranch}. Conflicted files: ${conflicts.join(', ')}. Declared incoming scope: ${item.filesTouched.join(', ')}. Keep both unique non-overlapping hunks. For the same hunk, prefer the incoming branch only in its declared scope; otherwise prefer HEAD. Remove every marker, do not broaden scope, run ${item.testCommand}, and do not commit. NO SUBAGENTS.`;
-    const resolver = await run(opencode, [
+    const resolver = await run(agentBin, [
       'run', '--dir', repo, '--agent', 'build',
-      '--model', 'opencode-go/glm-5.2', '--format', 'default', resolverPrompt,
+      '--model', contributorModel, '--format', 'default', resolverPrompt,
     ], { cwd: repo, logFile: path.join(worktreeRoot, `${item.name}.resolver.log`), allowFailure: true, env: childEnv({ readOnly: false }) });
     const unresolved = (await git(repo, ['diff', '--name-only', '--diff-filter=U'])).output.trim();
     if (resolver.code !== 0 || unresolved) {

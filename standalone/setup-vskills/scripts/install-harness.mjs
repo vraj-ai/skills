@@ -168,12 +168,21 @@ export async function installHarness(harnessName, options = {}) {
   };
 }
 
-// CLI entry point
+// CLI entry point. Writing into a user's harness config is not something a
+// bare invocation gets to do: without --install this only reports the plan.
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
-  const harnessArg = process.argv[2] || process.env.HARNESS;
+  const argv = process.argv.slice(2);
+  const install = argv.includes('--install');
+  const harnessArg = argv.find((arg) => !arg.startsWith('--')) || process.env.HARNESS;
   if (!harnessArg || !String(harnessArg).trim()) {
-    console.error('usage: install-harness.mjs <harness>\nSet HARNESS or pass the harness name. Do not assume omp.');
+    console.error('usage: install-harness.mjs <harness> [--install]\nSet HARNESS or pass the harness name. Do not assume omp.');
     process.exit(1);
+  }
+  if (!install) {
+    const plan = researchHarness(harnessArg);
+    console.log(JSON.stringify(plan, null, 2));
+    console.log('dry run: nothing was written. Re-run with --install once the user has approved it.');
+    process.exit(0);
   }
   const result = await installHarness(harnessArg);
 

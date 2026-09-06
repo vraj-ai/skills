@@ -130,3 +130,64 @@ test('add does not create a selection when none is stored (an unfiltered install
     await cleanup(repo, installRoot, target);
   }
 });
+
+test('add against a stored "recommended" sentinel pins the tier plus the added skill, so a later init keeps it', async () => {
+  const repo = await makeTmpDir();
+  const installRoot = await makeTmpDir();
+  try {
+    await writeSkill(repo, 'alpha', { name: 'alpha', recommended: true });
+    await writeSkill(repo, 'bravo', { name: 'bravo', recommended: true });
+    await writeSkill(repo, 'extra', { name: 'extra' });
+    await writeConfig(installRoot, { selection: 'recommended' });
+
+    const result = await runAdd({ names: ['extra'], repoRoot: repo, installRoot, targets: [] });
+    assert.equal(result.ok, true, result.messages.join('; '));
+
+    // The sentinel cannot express "the tier plus extra", so it must have been
+    // resolved to an explicit list — otherwise the next plain init retires extra.
+    const { selection } = await readConfig(installRoot);
+    assert.deepEqual([...selection].sort(), ['alpha', 'bravo', 'extra']);
+  } finally {
+    await cleanup(repo, installRoot);
+  }
+});
+
+test('add of a skill the tier already covers keeps the "recommended" subscription instead of freezing it', async () => {
+  const repo = await makeTmpDir();
+  const installRoot = await makeTmpDir();
+  try {
+    await writeSkill(repo, 'alpha', { name: 'alpha', recommended: true });
+    await writeSkill(repo, 'bravo', { name: 'bravo', recommended: true });
+    await writeConfig(installRoot, { selection: 'recommended' });
+
+    const result = await runAdd({ names: ['alpha'], repoRoot: repo, installRoot, targets: [] });
+    assert.equal(result.ok, true, result.messages.join('; '));
+
+    const { selection } = await readConfig(installRoot);
+    assert.equal(selection, 'recommended', 'a no-op add must not end the tier subscription');
+  } finally {
+    await cleanup(repo, installRoot);
+  }
+});
+
+test('add of a recommended skill whose closure pulls an opt-in dependency keeps the subscription', async () => {
+  const repo = await makeTmpDir();
+  const installRoot = await makeTmpDir();
+  try {
+    // The real catalogue shape: a recommended root (snapshot) depending on an
+    // opt-in skill (push-handoff). The dependency is in the closure, but it is
+    // not what was asked for, so the sentinel must survive.
+    await writeSkill(repo, 'alpha', { name: 'alpha', recommended: true, dependencies: ['helper'] });
+    await writeSkill(repo, 'helper', { name: 'helper' });
+    await writeConfig(installRoot, { selection: 'recommended' });
+
+    const result = await runAdd({ names: ['alpha'], repoRoot: repo, installRoot, targets: [] });
+    assert.equal(result.ok, true, result.messages.join('; '));
+    assert.ok(result.results.some((r) => r.name === 'helper'), 'the dependency is still installed');
+
+    const { selection } = await readConfig(installRoot);
+    assert.equal(selection, 'recommended', 'an opt-in dependency must not freeze the tier subscription');
+  } finally {
+    await cleanup(repo, installRoot);
+  }
+});

@@ -12,6 +12,7 @@ import { readConfig, writeConfig } from '../src/config.js';
 import { readManifest } from '../src/manifest.js';
 import { discoverSkills } from '../src/discovery.js';
 import { resolveSelection, UnknownSkillsError } from '../src/selection.js';
+import { interpretSelectionAnswer, parseNameList } from '../src/prompt-selection.js';
 import { banner, color, installLine, listLine, summarize, warningLine } from '../src/ui.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -22,7 +23,7 @@ const HELP = `V's Skills (vskills) — installer CLI for vraj-ai/skills
 
 Usage:
   vskills init                    Install the recommended skills (or your saved selection)
-  vskills init --recommended      Same as plain init, explicitly
+  vskills init --recommended      Exactly the recommended set, dropping anything else
   vskills init --all              Install every skill in the repo
   vskills init --only a,b,c       Install exactly these skills
   vskills init --yes              Non-interactive; overwrite conflicting skills without asking
@@ -62,12 +63,37 @@ async function promptForConflicts(conflicts) {
     if (answer === 'n' || answer === 'no') return [];
     if (answer === 'e' || answer === 'edit') {
       const keepRaw = await rl.question('  Names to KEEP as-is (comma-separated): ');
-      const keep = new Set(keepRaw.split(',').map((s) => s.trim()).filter(Boolean));
+      const keep = new Set(parseNameList(keepRaw));
       const unknown = [...keep].filter((k) => !conflicts.some((c) => c.name === k));
       for (const u of unknown) console.log(color.yellow(`  ! "${u}" is not in the conflict list — ignored`));
       return conflicts.map((c) => c.name).filter((n) => !keep.has(n));
     }
     return conflicts.map((c) => c.name); // default: overwrite all (backed up)
+  } finally {
+    rl.close();
+  }
+}
+
+// Interactive picker for a plain init on a TTY; returns a
+// resolveSelection-shaped selection.
+export async function promptForSelection(skills) {
+  const { createInterface } = await import('node:readline/promises');
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const recommended = [...skills.values()].filter((s) => s.recommended).map((s) => s.name).sort();
+    console.log(banner("V's Skills — choose what to install"));
+    console.log(`  Recommended: ${recommended.length ? recommended.join(', ') : '(none marked recommended)'}`);
+    console.log(color.dim('  Enter keeps anything already installed and adds the recommended set.'));
+
+    const answer = await rl.question(
+      `\n  ${color.dim('[Enter = keep + recommended / a = install everything / p = pick specific skills]')} `
+    );
+    const decision = interpretSelectionAnswer(answer);
+    if (decision?.pick) {
+      const namesRaw = await rl.question('  Skill names (comma or space separated): ');
+      return { only: parseNameList(namesRaw) };
+    }
+    return decision;
   } finally {
     rl.close();
   }
@@ -132,15 +158,20 @@ export async function main(argv) {
         console.error('vskills init: --only requires a comma-separated list of skill names');
         return 1;
       }
-      flag = { only: arg.split(',').map((s) => s.trim()).filter(Boolean) };
+      flag = { only: parseNameList(arg) };
     } else if (rest.includes('--recommended')) {
       flag = { recommended: true };
     }
-    // ship: no interactive picker yet (separate later item) — with no flag
-    // and nothing stored, resolveSelection's own default is the recommended
-    // tier, which is what an interactive/non-interactive run both get for now.
 
     const { skills } = await discoverSkills(repoRoot);
+
+    // No explicit flag, nothing stored yet, and a human is at the keyboard:
+    // ask instead of silently defaulting. A stored selection or any explicit
+    // flag above already bypasses this.
+    if (!flag && interactive && storedSelection == null) {
+      flag = await promptForSelection(skills);
+    }
+
     const manifest = await readManifest(installRoot);
     let resolved;
     try {
@@ -164,7 +195,7 @@ export async function main(argv) {
   if (command === 'list') {
     const { rows, warnings } = await runList({ repoRoot, installRoot });
     console.log(banner("V's Skills — status"));
-    for (const row of rows) console.log(listLine(row.status, row.name, row.description));
+    for (const row of rows) console.log(listLine(row.status, row.name, row.description, row.tier));
     console.log(color.dim('  ' + '─'.repeat(30)));
     console.log(`  ${summarize(rows)}`);
     for (const w of warnings) console.error(warningLine(w));

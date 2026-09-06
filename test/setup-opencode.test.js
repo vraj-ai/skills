@@ -32,7 +32,7 @@ delegating further. If no objective is supplied, ask for one before spawning
 the council.
 `);
     const env = { ...process.env, OPENCODE_CONFIG_DIR: configRoot };
-    const first = await execFileAsync(process.execPath, [installer], { env });
+    const first = await execFileAsync(process.execPath, [installer, '--install'], { env });
     assert.match(first.stdout, /retired\s+command\/council\.md/);
     assert.match(first.stdout, /installed\s+agent\/goals\.md/);
     assert.match(first.stdout, /installed\s+agent\/council\.md/);
@@ -45,11 +45,11 @@ the council.
     );
     await assert.rejects(fs.access(path.join(configRoot, 'command', 'council.md')));
 
-    const second = await execFileAsync(process.execPath, [installer], { env });
+    const second = await execFileAsync(process.execPath, [installer, '--install'], { env });
     assert.match(second.stdout, /up-to-date\s+agent\/goals\.md/);
 
     await fs.writeFile(path.join(configRoot, 'agent', 'goals.md'), 'local change\n');
-    const third = await execFileAsync(process.execPath, [installer], { env });
+    const third = await execFileAsync(process.execPath, [installer, '--install'], { env });
     assert.match(third.stdout, /updated\s+agent\/goals\.md/);
     const backups = await fs.readdir(path.join(configRoot, '.vskills-backup', 'agent'));
     assert.ok(backups.some((name) => name.startsWith('goals.md-')));
@@ -75,7 +75,7 @@ test('omp profile installer copies all 10 Role files, is idempotent, and backs u
 
   try {
     const env = { ...process.env, OMP_AGENTS_DIR: agentsDir };
-    const first = await execFileAsync(process.execPath, [ompInstaller], { env });
+    const first = await execFileAsync(process.execPath, [ompInstaller, '--install'], { env });
 
     assert.equal(expectedRoles.length, 10);
     for (const role of expectedRoles) {
@@ -88,13 +88,13 @@ test('omp profile installer copies all 10 Role files, is idempotent, and backs u
       );
     }
 
-    const second = await execFileAsync(process.execPath, [harnessInstaller, 'omp'], { env });
+    const second = await execFileAsync(process.execPath, [harnessInstaller, 'omp', '--install'], { env });
     for (const role of expectedRoles) {
       assert.match(second.stdout, new RegExp(`up-to-date\\s+${role}`));
     }
 
     await fs.writeFile(path.join(agentsDir, 'goals.md'), 'local omp goals edit\n');
-    const third = await execFileAsync(process.execPath, [ompInstaller], { env });
+    const third = await execFileAsync(process.execPath, [ompInstaller, '--install'], { env });
     assert.match(third.stdout, /updated\s+goals\.md/);
     const backups = await fs.readdir(path.join(agentsDir, '.vskills-backup'));
     assert.ok(backups.some((name) => name.startsWith('goals.md-')));
@@ -105,7 +105,7 @@ test('omp profile installer copies all 10 Role files, is idempotent, and backs u
 
 test('a made-up harness name does not fail as an allowlist miss and does not claim research', async () => {
   const madeUpHarness = 'custom-agent-runner-xyz';
-  const result = await execFileAsync(process.execPath, [harnessInstaller, madeUpHarness]);
+  const result = await execFileAsync(process.execPath, [harnessInstaller, madeUpHarness, '--install']);
   assert.match(result.stdout, /No bundled installer for 'custom-agent-runner-xyz'/);
   assert.doesNotMatch(result.stdout, /Researched harness/);
   assert.doesNotMatch(result.stderr, /unknown harness/i);
@@ -124,4 +124,30 @@ test('a made-up harness name does not fail as an allowlist miss and does not cla
   assert.equal(installResult.status, 'manual');
   assert.equal(installResult.harness, 'arbitrary-future-harness');
   assert.match(installResult.message, /did not research/i);
+});
+
+test('the installers write nothing without an explicit --install', async () => {
+  const configRoot = await makeTmpDir('opencode-dry-');
+  const agentsDir = await makeTmpDir('omp-dry-');
+  try {
+    const env = { ...process.env, OPENCODE_CONFIG_DIR: configRoot, OMP_AGENTS_DIR: agentsDir };
+
+    // The harness entry point reports the plan and stops.
+    const dry = await execFileAsync(process.execPath, [harnessInstaller, 'opencode'], { env });
+    assert.match(dry.stdout, /dry run: nothing was written/);
+    assert.equal(JSON.parse(dry.stdout.slice(0, dry.stdout.indexOf('\n}') + 2)).normalized, 'opencode');
+
+    // The direct installers refuse outright — they have no dry mode to report.
+    for (const script of [installer, ompInstaller]) {
+      await assert.rejects(
+        execFileAsync(process.execPath, [script], { env }),
+        (error) => error.code === 1 && /Re-run with --install/.test(error.stderr),
+      );
+    }
+
+    assert.deepEqual(await fs.readdir(configRoot), []);
+    assert.deepEqual(await fs.readdir(agentsDir), []);
+  } finally {
+    await cleanup(configRoot, agentsDir);
+  }
 });
