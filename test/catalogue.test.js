@@ -12,6 +12,7 @@ const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // #75: the consolidated catalogue. Seven core pipeline skills stay separate;
 // the rest are independent disciplines. Three former standalone skills
 // (gauntlet-loop, github-workflow, multi-agent-review) were cut here.
+// #78 adds the manual model-throughput benchmark.
 const EXPECTED_KEPT = new Set([
   'ship',
   'goals',
@@ -31,6 +32,7 @@ const EXPECTED_KEPT = new Set([
   'implementation-tdd',
   'subagent-delegation',
   'ai-subscription-unit-economics',
+  'test-tps',
 ]);
 
 const CORE = new Set([
@@ -90,7 +92,7 @@ function trackedFiles() {
     .filter((line) => line && !line.startsWith('CONTEXT/'));
 }
 
-test('the catalogue is exactly the 18 kept skills, with the 7 core skills separate', async () => {
+test('the catalogue is exactly the 19 kept skills, with the 7 core skills separate', async () => {
   const { skills, warnings } = await discoverSkills(repo);
   assert.deepEqual(warnings, []);
   assert.deepEqual(new Set(skills.keys()), EXPECTED_KEPT);

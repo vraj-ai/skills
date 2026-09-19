@@ -1,7 +1,7 @@
 ---
 name: test-tps
 version: 1.0.0
-description: User-invoked benchmark for selected Pi provider/model. Measures TTFT, decode TPS, average TPS, latency, token usage, and aggregate percentiles. Use when user runs /skill:test-tps.
+description: User-invoked benchmark for selected Pi provider/model. Measures TTFT, decode TPS, average TPS, latency, token usage, and aggregate percentiles. Use when user invokes test-tps.
 disable-model-invocation: true
 argument-hint: "[--runs N] [--warmup N] [--output-tokens N] [--provider ID] [--model ID] [--json]"
 ---
