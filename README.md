@@ -118,6 +118,7 @@ on a clean final gate. `/snapshot` pushes because you invoked it.
 | `setup-obsidian` | Turn a docs folder into a retrieval graph |
 | `setup-vskills` | Set this repo up on a new machine |
 | `pr-review` | GitHub Actions PR review bot: summary, confidence, checks, fix-on-comment |
+| `test-tps` | Benchmark selected Pi model: TTFT, decode/average TPS, usage, cost, percentiles |
 
 The decision ladder is vendored as `ponytail` (MIT, DietrichGebert, pinned to
 v4.9.0; see VENDORED.md for provenance).
