@@ -512,6 +512,9 @@ after the final merge:
    `gh issue comment` / `gh pr comment`): SHA, T3 verdict, remaining
    follow-ups. Do not create tickets. Do not rotate `goals:*` labels. A failed
    tracker write is a report, not a reason to undo the push.
+4. Name `/snapshot` as the session close — it flushes CONTEXT, syncs the
+   tracker, and hands back the next session's starting prompt. Chain:
+   `/grill` → `/issues` → **ship** → `/snapshot`.
 
 Release the lock.
 

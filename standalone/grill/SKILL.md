@@ -1,7 +1,7 @@
 ---
 name: grill
-version: 1.3.0
-description: User-invoked interview that stress-tests a plan and writes glossary, architecture, and ADRs into CONTEXT/. Use when the user runs /grill.
+version: 1.4.0
+description: User-invoked interview that stress-tests a plan and writes glossary, architecture, and ADRs into CONTEXT/. Use when the user runs /grill. Part of the grill → /issues → /ship → /snapshot chain.
 disable-model-invocation: true
 argument-hint: "[topic]"
 recommended: true
@@ -118,6 +118,6 @@ Optional: Status, Considered Options, Consequences — only when they add value.
 
 ## Done
 
-The session is done when the frontier is empty and the user confirms shared understanding. Do not act on the plan. Do not start `/issues`. Say the grill is locked and `/issues` is the next invocation if they want a spec and tickets.
+The session is done when the frontier is empty and the user confirms shared understanding. Do not act on the plan. Do not start `/issues`. Close by printing the next invocation ready to paste: `/issues <topic-or-spec-ref>`, built from what just locked. One paste starts the next stage — the chain is **grill** → `/issues` → `/ship` → `/snapshot`.
 
 If `docs/agents/issue-tracker.md` exists, write one review through that tracker using its commands. Read issues, pull requests, and commits this session produced or touched. Post one comment on the parent spec or open PR (GitHub: `gh issue comment` / `gh pr comment`) pointing at the CONTEXT files just written. Do not create tickets. Do not rotate `goals:*` labels. If the tracker file is missing, skip and say so.

@@ -1,7 +1,7 @@
 ---
 name: issues
-version: 1.3.0
-description: User-invoked. Sets up a project's tracker and CONTEXT/ once, then turns a grill into a spec and tracer-bullet tickets. Use when the user runs /issues.
+version: 1.4.0
+description: User-invoked. Sets up a project's tracker and CONTEXT/ once, then turns a grill into a spec and tracer-bullet tickets. Use when the user runs /issues. Part of the /grill → issues → /ship → /snapshot chain.
 disable-model-invocation: true
 argument-hint: "[spec-ref]"
 recommended: true
@@ -150,6 +150,6 @@ Avoid file paths and code except a prototype snippet that encodes a decision.
 
 ## 4. Stop
 
-Print the spec reference and the ticket list. Ask `/ship` (lean, unattended) or `/goals` (milestone stops, more review). Wait. Do not start either.
+Print the spec reference and the ticket list. Then print the next invocation ready to paste: the `/ship pre-authorized` starting prompt with the published spec and ticket references filled in — objective from the spec, pointers at the tracker docs, the Verification-commands already in the tickets, authority to commit and push branches and open PRs. Mention `/goals` in one line as the heavier alternative. Do not start either — the paste is the handoff. Chain: `/grill` → **issues** → `/ship` → `/snapshot`.
 
 Then write one tracker closeout review using `docs/agents/issue-tracker.md` commands. Read the issues, pull requests, and commits this session produced. Post one comment on the parent spec (GitHub: `gh issue comment` / `gh pr comment`) covering what was published and remaining follow-ups. Do not create extra tickets. Do not rotate `goals:*` labels. If the tracker file is missing, skip and say so.
