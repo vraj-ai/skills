@@ -1,7 +1,7 @@
 ---
 name: snapshot
-version: 1.4.0
-description: User-invoked session close. Syncs CONTEXT/ and the issue tracker, writes a handoff, then commits and pushes under /snapshot authority. Use when the user runs /snapshot.
+version: 1.5.0
+description: User-invoked session close. Syncs CONTEXT/ and the issue tracker, writes a handoff, then commits and pushes under /snapshot authority. Use when the user runs /snapshot. Part of the /grill → /issues → /ship → snapshot chain.
 dependencies: [push-handoff]
 disable-model-invocation: true
 argument-hint: "[next session focus]"
@@ -74,6 +74,12 @@ A failed tracker write is a report, not a reason to skip the handoff.
 Write a handoff to the OS temp directory, not the workspace. Do not duplicate specs, plans, ADRs, issues, commits, diffs, or test output. Reference them by path or URL.
 
 Sections: Objective, Important Details, Work State, Next Move, Relevant Files, Suggested Skills.
+
+Next Move always ends with one paste-ready block — the `/ship pre-authorized`
+starting prompt for the next focus (objective, pointers, constraints,
+verification, authority), or the one-line `/grill <topic>` when the next work
+needs design first. One paste starts the next session. If the user described
+the next session, tailor Next Move to it.
 
 Redact secrets, tokens, passwords, and PII. Short declarative sentences. No jargon.
 
