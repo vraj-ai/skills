@@ -1,7 +1,7 @@
 ---
 name: ship
-version: 1.7.0
-description: Drive a published spec to verified, pushed completion through a resumable backlog, worktree-isolated parallel builds under a lazy-senior-dev ladder, gate-first review, a milestone reviewer, and a final adversarial teardown. Use when the user invokes /ship, asks to build out a spec autonomously, or resumes a ship run.
+version: 2.0.0
+description: The implementation skill — a spec, ticket, or raw task in; verified, pushed delivery out. Resumable backlog, worktree-parallel builds, gate-first TDD at real seams, lazy-senior-dev ladder, two-axis review, milestone gate, adversarial teardown. Merges implementation-tdd, ponytail's ladder and rubric, poteto-mode's craft rules, and code-review's axes. Use for /ship, "implement", "build", "fix", "ship this", "do #N", or any request with acceptance criteria. Never interviews: a task message alone is a complete input.
 dependencies: [council-adversary]
 recommended: true
 ---
@@ -11,13 +11,26 @@ recommended: true
 `/ship` takes a spec reference and builds it, unattended, until a final adversary
 says it can go — then pushes it.
 
-It is the lean pipeline. Where `goals` gates and stops at every milestone,
-`/ship` runs one builder and one reviewer per item, checks the gate before
-spending either, and stops only for trouble. `goals` remains available for work
-that earns the ceremony.
+`/ship` is the merge for implementation. `implementation-tdd`'s gate-first loop,
+ponytail's ladder and review rubric, poteto-mode's craft rules, and
+code-review's two axes all live in the briefs below — one skill, passed to
+workers verbatim. Reach for those skills alone only when running one piece in
+isolation. It is the lean pipeline: where `goals` gates and stops at every
+milestone, `/ship` runs one builder and one reviewer per item, checks the gate
+before spending either, and stops only for trouble. `goals` remains available
+for multi-spec programs that earn the ceremony.
 
 Start `/ship` with the spec reference. The handoff and push happen inside
 `/ship`.
+
+## No interview
+
+`/ship` never interviews. A spec reference, a ticket, or a plain task message
+is a complete input. Missing facts become the smallest recorded assumptions in
+`goal.md` — an assumption recorded and moved past beats a question asked. Only
+two situations warrant a user message at all: the three stop conditions in
+"When to stop", and a genuinely contested design fork. Everything else is
+reported, not asked.
 
 
 ## Worker Roles
@@ -91,11 +104,58 @@ The ladder is adapted from [ponytail](https://github.com/DietrichGebert/ponytail
 (MIT, DietrichGebert). Interactive sessions can invoke the plugin directly;
 this copy exists because worktree subagents may not load plugins.
 
+### The build loop
+
+Pass this to every contributor with the ladder, verbatim. One item, one gate,
+red-green at the seam production actually uses.
+
+> **Lock the gate before editing.** Run the item's locked Verification-command
+> first. Red or green, record which. The gate does not move to fit the code;
+> a wrong gate is a ticket defect to report, never to quietly relax.
+>
+> **Red at the production seam.** Write the failing check at the outermost
+> seam that still fails fast and specifically — the path production traffic
+> actually takes. Watch it fail: a check that passes before the code tests
+> nothing. Assert on anchored values, not substrings.
+>
+> **Green with the smallest change the ladder allows.** No opportunistic
+> rewrites tangled into the item. Scope is one item; a discovery outside it
+> becomes a follow-up, not extra diff.
+>
+> **Provider-safe seams.** Anything crossing a network or costing money sits
+> behind an injected client the production path also uses. Tests drive a
+> contract-shaped double, never a mock of the code under test. No test suite
+> hits a paid API by default.
+>
+> **Prove it before claiming it.** Re-run the locked gate after the last edit
+> and paste its output. Typecheck and lint where the repo has them. "It
+> compiles" is not evidence; the real artifact is.
+
+### The discipline
+
+Also verbatim. Craft rules that bind the diff and the reply.
+
+> - A comment only states a non-obvious *why* the code cannot show. No
+>   narrating comments ("Phase 1: add cards"). The assertion or log string
+>   documents the step: `assert(ok, 'persisted across restart')`.
+> - Never fabricate a link, citation, command output, or transcript reference.
+>   Report only artifacts this run produced.
+> - Focused commits. One item's files, nothing unrelated. Unrelated dirty
+>   files are sacred.
+> - Short declarative sentences in the report. Every claim carries its
+>   evidence path or the command output that proves it.
+
 ### The review rubric
 
 Pass this to every reviewer, verbatim, after the correctness brief. Correctness,
-security, and data loss are judged first and keep their existing weight. What
-follows is the quality pass, and it has three lenses.
+security, and data loss are judged first and keep their existing weight. Two
+axes run beside that — code-review's axes, folded in here so one reviewer pass
+covers both. **Spec**: every acceptance criterion is met and the diff does
+nothing the criteria do not ask for; missing work is P0/P1 under-build, extra
+work is an `over-build` finding. **Standards**: the diff matches the repo's
+documented conventions and the shape of the file it lands in; a violation is a
+`slop` or `structure` finding with the broken convention named as the
+replacement. What follows is the quality pass, and it has three lenses.
 
 > **over-build** — reinvented standard library, a dependency for what the
 > platform already ships, an abstraction with one implementation, a factory with
@@ -225,8 +285,9 @@ ancestry, and Git are producer truth for Phase R.
 that reference. If the repo has a tracker-location document, use it only as an
 optional hint. With no argument, look for the most recent spec carrying the
 `ready-for-agent` label — on GitHub that is `gh issue list --label ready-for-agent
---limit 1`. If no tracker is reachable, ask the user for the spec reference
-rather than guessing.
+--limit 1`. If no tracker is reachable and the conversation holds a task with
+acceptance criteria, the task message is the spec — pin it verbatim into
+`goal.md` and go. Ask what to build only when nothing task-shaped exists at all.
 
 Derive a stable `<slug>` from the spec's identifier (issue number + title slug,
 or the filename). The slug is the resume key — pin it in `goal.md` and never
@@ -372,9 +433,12 @@ Only when no backlog exists.
    done — e.g. `npm test -- auth.spec && tsc --noEmit`. An item with no runnable
    gate is not ready.
 4. Pin `MAIN_BRANCH`, `WORKTREE_ROOT`, the pre-ship merge base, the Worker Role roster, and the success criteria in both `goal.md` and `handoff.md`.
-5. **Present the plan and its gates once, together, for approval.** Show every
-   item with the command that will judge it. This is the only approval in the
-   run — after it, the gates are locked and never re-asked.
+5. **Present the plan and its gates once, together.** Show every item with the
+   command that will judge it. If the run is pre-authorized — the standard
+   starting prompt, or any user message granting unattended execution — this
+   presentation is the record, not a question: write it and continue. Otherwise
+   this is the run's single approval; after it the gates are locked and never
+   re-asked.
 6. Atomically write the backlog. Then publish the plan's milestones and mirror
    each item's initial state to its `goals:*` label, creating no duplicates of
    either. Always resume from the local backlog, never from the published view.
