@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { cleanup, makeTmpDir } from './helpers.js';
 import { skillPath } from './helpers.js';
 
@@ -112,7 +112,7 @@ test('a made-up harness name does not fail as an allowlist miss and does not cla
   assert.doesNotMatch(result.stderr, /allowlist/i);
 
   const { installHarness, researchHarness } = await import(
-    path.join(repo, 'standalone', 'setup-vskills', 'scripts', 'install-harness.mjs')
+    pathToFileURL(path.join(repo, 'standalone', 'setup-vskills', 'scripts', 'install-harness.mjs')).href
   );
 
   const plan = researchHarness('arbitrary-future-harness');

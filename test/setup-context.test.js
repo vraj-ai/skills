@@ -17,8 +17,9 @@ test('context initializer creates the durable project architecture without overw
   try {
     const first = await execFileAsync(process.execPath, [initializer, projectRoot]);
     assert.match(first.stdout, /created\s+AGENTS\.md/);
-    assert.match(first.stdout, /created\s+CONTEXT\/architecture\.md/);
-    assert.match(first.stdout, /created\s+CONTEXT\/progress\.md/);
+    // The initializer prints native path separators.
+    assert.match(first.stdout, /created\s+CONTEXT[\\/]architecture\.md/);
+    assert.match(first.stdout, /created\s+CONTEXT[\\/]progress\.md/);
 
     const agents = await fs.readFile(path.join(projectRoot, 'AGENTS.md'), 'utf8');
     const architecture = await fs.readFile(path.join(projectRoot, 'CONTEXT', 'architecture.md'), 'utf8');

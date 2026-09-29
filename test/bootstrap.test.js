@@ -57,7 +57,7 @@ test('init on a fresh HOME with no install root yet succeeds and installs the re
   const fakeHome = await mkdtemp(path.join(os.tmpdir(), 'vskills-fresh-home-'));
   try {
     const { stdout } = await execFileAsync(process.execPath, [binPath, 'init', '--yes'], {
-      env: { ...process.env, HOME: fakeHome },
+      env: { ...process.env, HOME: fakeHome, USERPROFILE: fakeHome },
     });
     assert.match(stdout, /installing/i);
 
@@ -79,7 +79,7 @@ test('init on a fresh HOME with no install root yet succeeds and installs the re
 test('a second init run honours the persisted selection and is a no-op with zero retirements', async () => {
   const fakeHome = await mkdtemp(path.join(os.tmpdir(), 'vskills-second-run-'));
   try {
-    const env = { ...process.env, HOME: fakeHome };
+    const env = { ...process.env, HOME: fakeHome, USERPROFILE: fakeHome };
     await execFileAsync(process.execPath, [binPath, 'init', '--yes'], { env });
     const installRoot = path.join(fakeHome, '.agents', 'skills');
 
