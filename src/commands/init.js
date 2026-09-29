@@ -33,7 +33,10 @@ export async function runInit({ repoRoot, installRoot, targets, resolveConflicts
   // Expand through the dependency closure so a dependency of a selected
   // skill is itself selected — otherwise it gets treated as deselected and
   // retired right after this function installs the skill that needs it.
-  const selectedNames = selection ? new Set(resolveClosure(skills, [...selection]).order) : new Set(skills.keys());
+  // `order` omits any skill whose dependency is broken, so union the selection
+  // back in: a skill the user named must never fall out and get retired.
+  const closure = selection ? resolveClosure(skills, [...selection]) : null;
+  const selectedNames = closure ? new Set([...selection, ...closure.order]) : new Set(skills.keys());
 
   const plan = [];
   for (const skill of skills.values()) {
@@ -95,6 +98,10 @@ export async function runInit({ repoRoot, installRoot, targets, resolveConflicts
 
   const results = [];
   const messages = [...discoveryWarnings];
+  for (const err of closure?.errors ?? []) {
+    if (err.cycle) messages.push(`dependency cycle detected: ${err.cycle.join(' -> ')}`);
+    else if (err.missing) messages.push(`unknown dependency "${err.missing}" referenced by a selected skill`);
+  }
   const linkFailures = [];
 
   for (const item of plan) {
