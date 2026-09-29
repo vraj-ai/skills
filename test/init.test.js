@@ -150,7 +150,8 @@ test('a malformed skill is skipped at discovery, not partially installed', async
   }
 });
 
-test('an interrupted copy never leaves the install-root folder replaced or partial', async () => {
+// chmod 000 is not enforced on Windows or for root, so the copy never fails.
+test('an interrupted copy never leaves the install-root folder replaced or partial', { skip: skipLinkCreationFailureTest }, async () => {
   const { repo, installRoot, target } = await setup();
   try {
     await runInit({ repoRoot: repo, installRoot, targets: [target] });
@@ -355,6 +356,36 @@ test('a selected skill pulls in its non-selected dependency instead of retiring 
     const linkPath = path.join(target, 'helper');
     const stat = await fs.lstat(linkPath);
     assert.ok(stat.isSymbolicLink());
+  } finally {
+    await cleanup(repo, installRoot, target);
+  }
+});
+
+test('a selected skill with a missing dependency is kept and warned about, not retired', async () => {
+  const { repo, installRoot, target } = await setup();
+  try {
+    await writeSkill(repo, 'broken', { name: 'broken', description: 'Broken.', dependencies: ['ghost'] });
+
+    const result = await runInit({ repoRoot: repo, installRoot, targets: [target], selection: ['broken'] });
+
+    assert.ok(!result.results.some((r) => r.status === 'retired'));
+    await assert.doesNotReject(fs.access(path.join(installRoot, 'broken', 'SKILL.md')));
+    assert.ok(result.messages.some((m) => m.includes('ghost')));
+  } finally {
+    await cleanup(repo, installRoot, target);
+  }
+});
+
+test('a dependency cycle in the selection keeps both members installed', async () => {
+  const { repo, installRoot, target } = await setup();
+  try {
+    await writeSkill(repo, 'ping', { name: 'ping', description: 'Ping.', dependencies: ['pong'] });
+    await writeSkill(repo, 'pong', { name: 'pong', description: 'Pong.', dependencies: ['ping'] });
+
+    const result = await runInit({ repoRoot: repo, installRoot, targets: [target], selection: ['ping', 'pong'] });
+
+    assert.ok(!result.results.some((r) => r.status === 'retired'));
+    assert.ok(result.messages.some((m) => m.includes('cycle')));
   } finally {
     await cleanup(repo, installRoot, target);
   }

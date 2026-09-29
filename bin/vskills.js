@@ -149,17 +149,28 @@ export async function main(argv) {
     const interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY) && !assumeYes;
     const resolveConflicts = interactive ? promptForConflicts : null;
 
+    // Normalise `--only=a,b` to `--only a,b`, then refuse anything unrecognised
+    // rather than silently installing the stored selection instead.
+    const args = rest.flatMap((a) => (a.startsWith('--only=') ? ['--only', a.slice('--only='.length)] : [a]));
+    const known = ['--yes', '-y', '--all', '--only', '--recommended'];
+    const onlyValue = args.indexOf('--only') + 1;
+    const bad = args.filter((a, i) => a.startsWith('-') && !known.includes(a) && !(i === onlyValue && args[i - 1] === '--only'));
+    if (bad.length > 0) {
+      console.error(`vskills init: unknown option(s): ${bad.join(', ')}`);
+      return 1;
+    }
+
     let flag = null;
-    if (rest.includes('--all')) {
+    if (args.includes('--all')) {
       flag = { all: true };
-    } else if (rest.includes('--only')) {
-      const arg = rest[rest.indexOf('--only') + 1];
+    } else if (args.includes('--only')) {
+      const arg = args[args.indexOf('--only') + 1];
       if (!arg) {
         console.error('vskills init: --only requires a comma-separated list of skill names');
         return 1;
       }
       flag = { only: parseNameList(arg) };
-    } else if (rest.includes('--recommended')) {
+    } else if (args.includes('--recommended')) {
       flag = { recommended: true };
     }
 
