@@ -5,6 +5,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 export async function makeTmpDir(prefix = 'vskills-test-') {
   return mkdtemp(path.join(os.tmpdir(), prefix));
@@ -43,10 +44,16 @@ export async function setupParallelFixture(root) {
   await git(repo, 'add', 'README.md');
   await git(repo, 'commit', '-m', 'base');
 
-  const fake = path.join(root, 'fake-opencode.mjs');
-  await fs.writeFile(fake, `#!/usr/bin/env node
+  const script = path.join(root, 'fake-opencode.mjs');
+  const fake = process.platform === 'win32' ? path.join(root, 'fake-opencode.exe') : script;
+  await fs.writeFile(script, `#!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
+// NODE_OPTIONS preloads this on Windows. Only the explicitly selected fake
+// executable runs the fixture; the runner and losing binaries do not.
+const active = process.platform !== 'win32'
+  || process.execPath.toLowerCase() === process.env.FAKE_AGENT_PATH?.toLowerCase();
+if (active) {
 const args = process.argv.slice(2);
 const dir = args[args.indexOf('--dir') + 1];
 const model = args[args.indexOf('--model') + 1];
@@ -85,9 +92,26 @@ if (prompt.includes('Resolve the active merge')) {
   console.log('FOLLOWUPS: []');
   if (process.env.FAKE_TRAILING_PROSE === '1') console.log('This is not part of the required footer.');
 }
+process.exit(0);
+}
 `);
-  await fs.chmod(fake, 0o755);
+  if (process.platform === 'win32') {
+    // A hard link to node.exe is a spawnable .exe without a compiler, cmd
+    // quoting, or copying a large binary for every fixture and PATH test.
+    await fs.link(process.execPath, fake);
+  } else {
+    await fs.chmod(fake, 0o755);
+  }
   return { repo, fake, worktrees: path.join(repo, 'CONTEXT', 'worktrees', 'demo') };
+}
+
+export function fakeAgentEnv(fake, selected = fake) {
+  if (process.platform !== 'win32') return {};
+  const script = path.join(path.dirname(fake), 'fake-opencode.mjs');
+  return {
+    NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${pathToFileURL(script).href}`.trim(),
+    FAKE_AGENT_PATH: selected,
+  };
 }
 
 // Skills are grouped into category folders (`delivery/`, `standalone/`,
