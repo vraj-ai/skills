@@ -5,11 +5,15 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { cleanup, makeTmpDir, setupParallelFixture as setup } from './helpers.js';
+import { cleanup, fakeAgentEnv, makeTmpDir, setupParallelFixture as setup } from './helpers.js';
 import { skillPath } from './helpers.js';
 
 // #51: `ship/scripts/parallel.mjs` is the runner `/ship` owns and executes.
-const execFileAsync = promisify(execFile);
+const rawExecFileAsync = promisify(execFile);
+const execFileAsync = (file, args, options) => rawExecFileAsync(file, args, {
+  ...options,
+  env: { ...options.env, ...fakeAgentEnv(options.env.OPENCODE_BIN) },
+});
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const runner = skillPath(path.resolve(__dirname, '..'), 'ship', 'scripts', 'parallel.mjs');
 

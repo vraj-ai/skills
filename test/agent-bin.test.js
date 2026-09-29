@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { cleanup, makeTmpDir, setupParallelFixture as setup, skillPath } from './helpers.js';
+import { cleanup, fakeAgentEnv, makeTmpDir, setupParallelFixture as setup, skillPath } from './helpers.js';
 
 // #75: the runners must work under any agent harness, so the binary and the
 // model pins are resolved from the environment instead of being hard-coded.
@@ -20,17 +20,26 @@ const runners = [
 // so a passing run proves the earlier rung won.
 async function shim(dir, name) {
   await fs.mkdir(dir, { recursive: true });
-  const file = path.join(dir, name);
-  await fs.writeFile(file, '#!/bin/sh\nexit 99\n');
-  await fs.chmod(file, 0o755);
+  const file = path.join(dir, process.platform === 'win32' ? `${name}.exe` : name);
+  if (process.platform === 'win32') {
+    // This is an executable losing rung, but not the hard-linked fake; Node
+    // will reject its "run" argument if the runner accidentally selects it.
+    await fs.link(process.execPath, file);
+  } else {
+    await fs.writeFile(file, '#!/bin/sh\nexit 99\n');
+    await fs.chmod(file, 0o755);
+  }
   return file;
 }
 
 async function copyBin(fake, dir, name) {
   await fs.mkdir(dir, { recursive: true });
-  const file = path.join(dir, name);
-  await fs.copyFile(fake, file);
-  await fs.chmod(file, 0o755);
+  const file = path.join(dir, process.platform === 'win32' ? `${name}.exe` : name);
+  if (process.platform === 'win32') await fs.link(fake, file);
+  else {
+    await fs.copyFile(fake, file);
+    await fs.chmod(file, 0o755);
+  }
   return file;
 }
 
@@ -45,6 +54,7 @@ async function runOne({ skill, branch }, env, root, repo, extra = {}) {
   const { stdout } = await execFileAsync(process.execPath, [runner, repo, worktrees, manifest], {
     env: {
       ...process.env,
+      ...fakeAgentEnv(path.join(root, process.platform === 'win32' ? 'fake-opencode.exe' : 'fake-opencode.mjs'), env.FAKE_AGENT_PATH),
       MAIN_BRANCH: 'main',
       TEST_CMDS_JSON: JSON.stringify({ a: 'test -f done-a.txt' }),
       CLEANUP: '0',
@@ -74,7 +84,7 @@ for (const runner of runners) {
       const { repo, fake } = await setup(root);
       const home = path.join(root, 'home');
       await shim(path.join(home, '.opencode', 'bin'), 'opencode');
-      const result = await runOne(runner, { OPENCODE_BIN: fake, HOME: home, AGENT_BIN: '' }, root, repo);
+      const result = await runOne(runner, { OPENCODE_BIN: fake, HOME: home, USERPROFILE: home, AGENT_BIN: '' }, root, repo);
       assert.equal(result.failed.length, 0, JSON.stringify(result));
       assert.equal(result.merged.length, 1);
     } finally {
@@ -87,13 +97,15 @@ for (const runner of runners) {
     try {
       const { repo, fake } = await setup(root);
       const home = path.join(root, 'home');
-      await copyBin(fake, path.join(home, '.opencode', 'bin'), 'opencode');
+      const installed = await copyBin(fake, path.join(home, '.opencode', 'bin'), 'opencode');
       const pathDir = path.join(root, 'bin');
       await shim(pathDir, 'opencode');
       const result = await runOne(runner, {
         AGENT_BIN: '',
         OPENCODE_BIN: '',
         HOME: home,
+        USERPROFILE: home,
+        FAKE_AGENT_PATH: installed,
         PATH: `${pathDir}${path.delimiter}${process.env.PATH}`,
       }, root, repo);
       assert.equal(result.failed.length, 0, JSON.stringify(result));
@@ -108,11 +120,13 @@ for (const runner of runners) {
     try {
       const { repo, fake } = await setup(root);
       const pathDir = path.join(root, 'bin');
-      await copyBin(fake, pathDir, 'opencode');
+      const onPath = await copyBin(fake, pathDir, 'opencode');
       const result = await runOne(runner, {
         AGENT_BIN: '',
         OPENCODE_BIN: '',
         HOME: path.join(root, 'empty-home'),
+        USERPROFILE: path.join(root, 'empty-home'),
+        FAKE_AGENT_PATH: onPath,
         PATH: `${pathDir}${path.delimiter}${process.env.PATH}`,
       }, root, repo);
       assert.equal(result.failed.length, 0, JSON.stringify(result));
@@ -336,6 +350,7 @@ for (const runner of runners) {
       ], {
         env: {
           ...process.env,
+          ...fakeAgentEnv(fake),
           AGENT_BIN: fake,
           MAIN_BRANCH: 'main',
           HARDENED: '1',

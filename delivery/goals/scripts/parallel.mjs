@@ -55,7 +55,12 @@ async function git(repo, args, options = {}) {
 }
 
 async function shell(command, cwd, logFile) {
-  return run('/bin/sh', ['-lc', command], { cwd, logFile, allowFailure: true });
+  // Verification commands use POSIX sh. Git for Windows bundles one, but
+  // Windows cannot spawn the Unix /bin/sh path directly.
+  const sh = process.platform === 'win32'
+    ? path.resolve((await git(cwd, ['--exec-path'])).output.trim(), '../../..', 'usr', 'bin', 'sh.exe')
+    : '/bin/sh';
+  return run(sh, ['-lc', command], { cwd, logFile, allowFailure: true });
 }
 
 function parseManifest(raw) {
@@ -175,7 +180,7 @@ const worktreeRoot = path.resolve(repo, worktreeArg);
 const manifest = path.resolve(manifestArg);
 // Harness-agnostic: AGENT_BIN names any agent CLI, OPENCODE_BIN stays for the
 // bundled OpenCode driver, then the usual install path, then a bare PATH lookup.
-const installedAgentBin = path.join(os.homedir(), '.opencode', 'bin', 'opencode');
+const installedAgentBin = path.join(os.homedir(), '.opencode', 'bin', process.platform === 'win32' ? 'opencode.exe' : 'opencode');
 const agentBin = process.env.AGENT_BIN
   || process.env.OPENCODE_BIN
   || (await access(installedAgentBin).then(() => installedAgentBin).catch(() => null))
