@@ -33,45 +33,13 @@ test('native workflow skills state durable context ownership', async () => {
   assert.match(setup, /AGENTS\.md/);
 });
 
-test('grill issues and snapshot own CONTEXT paths and do not steal goal state', async () => {
-  const [grill, issues, snapshot] = await Promise.all([
-    readSkill('grill', 'SKILL.md'),
-    readSkill('issues', 'SKILL.md'),
-    readSkill('snapshot', 'SKILL.md'),
-  ]);
-
-  assert.match(grill, /disable-model-invocation: true/);
-  assert.match(grill, /CONTEXT\/glossary\.md/);
-  assert.match(grill, /CONTEXT\/architecture\.md/);
-  assert.match(grill, /CONTEXT\/adr\//);
-  assert.match(grill, /Never/);
-  assert.match(grill, /progress\.md/);
-
-  assert.match(issues, /disable-model-invocation: true/);
-  assert.match(issues, /docs\/agents\/issue-tracker\.md/);
-  assert.match(issues, /ready-for-agent/);
-  assert.match(issues, /Verification-command/);
-  assert.match(issues, /\/ship/);
-  assert.match(issues, /\/goals/);
-
-  assert.match(snapshot, /disable-model-invocation: true/);
-  assert.match(snapshot, /\$TMPDIR|OS temp directory/);
-  assert.match(snapshot, /push-handoff/);
-  assert.match(snapshot, /dependencies: \[push-handoff\]/);
-  assert.match(snapshot, /npm test/);
-  assert.doesNotMatch(snapshot, /node --test 'test\/\*\.test\.js'/);
-  assert.match(snapshot, /remote SHA/);
-  assert.match(snapshot, /Never write `CONTEXT\/progress\.md`/);
-  assert.match(snapshot, /tracker closeout review/i);
-  assert.match(grill, /gh pr comment/);
-  assert.match(issues, /gh pr comment/);
-});
-
 test('workflow skills use named one-level Worker Roles and host-neutral dispatch', async () => {
-  const names = ['grill', 'issues', 'ship', 'snapshot', 'goals'];
+  const names = ['goals'];
   const docs = Object.fromEntries(await Promise.all(
     names.map(async (name) => [name, await readSkill(name, 'SKILL.md')]),
   ));
+
+  docs.ship = await readSkill('ship', 'references', 'program.md');
 
   for (const content of Object.values(docs)) {
     assert.match(content, /Worker Roles/);
@@ -80,10 +48,6 @@ test('workflow skills use named one-level Worker Roles and host-neutral dispatch
     assert.doesNotMatch(content, /~\/\.omp\b|Task API|opencode-go\/|openrouter\//i);
   }
 
-  for (const name of ['grill', 'issues', 'snapshot']) {
-    assert.match(docs[name], /`researcher`/);
-    assert.match(docs[name], /`small-task`/);
-  }
   for (const name of ['ship', 'goals']) {
     for (const role of ['researcher', 'builder', 'reviewer', 'adversary', 'small-task']) {
       assert.match(docs[name], new RegExp(`\`${role}\``));
@@ -93,8 +57,6 @@ test('workflow skills use named one-level Worker Roles and host-neutral dispatch
     assert.doesNotMatch(docs[name], /council-(?:grok|kimi|qwen|sol|gemini|deepseek|glm)\b/i);
   }
 
-  assert.match(docs.grill, /sole writer[\s\S]{0,100}glossary/);
-  assert.match(docs.snapshot, /orchestrator alone[\s\S]{0,80}push/i);
   assert.match(docs.ship, /Orchestrator/);
   assert.match(docs.ship, /never write the backlog, lock, handoff, or push/);
   assert.match(docs.ship, /Tracker closeout review/);
@@ -124,7 +86,7 @@ function phrase(text) {
 
 test('ship and goals share one state-label vocabulary', async () => {
   const [ship, goals] = await Promise.all([
-    readSkill('ship', 'SKILL.md'),
+    readSkill('ship', 'references', 'program.md'),
     readSkill('goals', 'SKILL.md'),
   ]);
 
@@ -138,7 +100,7 @@ test('ship and goals share one state-label vocabulary', async () => {
 });
 
 test('ship publishes native milestones without goals ceremony', async () => {
-  const ship = await readSkill('ship', 'SKILL.md');
+  const ship = await readSkill('ship', 'references', 'program.md');
 
   assert.match(ship, phrase('native GitHub Milestones'));
 

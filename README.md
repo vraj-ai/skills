@@ -13,19 +13,19 @@ Same command on macOS, Linux, and Windows PowerShell.
 
 ## The workflow
 
-| Step | What it does |
-|---|---|
-| `/setup-vskills` | First on a new machine. Asks which harness you use, researches it, installs Roles |
-| `/grill` | Stress-tests the plan and writes glossary, architecture, and ADRs into `CONTEXT/` |
-| `/issues` | Sets up the tracker once, then publishes a spec and tracer-bullet tickets |
-| `/ship <spec>` | Builds it, reviews it, pushes it. Use `/goals` when you want more review |
-| `/snapshot` | Syncs `CONTEXT/` and the tracker, writes a handoff, commits and pushes with remote SHA proof |
+Start with an outcome or a referenced issue. Use only the stages the task needs.
 
-There is no separate review step. `/ship` and `/goals` review their own output at
-three widths: the item gate, the milestone gate, and a read-only adversary over
-the whole diff. `/grill`, `/issues`, and `/snapshot` are this repo's planning and
-closeout skills. Matt Pocock's originals remain available, see
-[Skills from elsewhere](#skills-from-elsewhere).
+| Skill | Use it for |
+|---|---|
+| `/grill` | Consequential product/design choices when intent is unclear |
+| `/issues` | A durable work queue with acceptance, references, and verification |
+| `/ship #123` | Find or execute work, verify behavior, obtain review, and deliver under repo policy |
+| `/snapshot` | A short resume note for unfinished work |
+
+A clear task goes straight to `/ship`. Snapshot is optional and does not grant
+push authority. Issues/PRs hold intent and shared status; source/checks establish
+behavior; small decision docs preserve rationale. Inside T3, ship uses native
+child tasks, PR links/watches, and browser evidence.
 
 ## Agents
 
@@ -41,13 +41,14 @@ in the harness. Reload the Agents tab with Ctrl+R. `/skill:grill` still works.
 Workers never spawn. The Invocation Role is the only writer of backlog, locks,
 and push.
 
-## Two pipelines
+## Optional program execution
 
-Both drive a plan to verified, merged code using isolated worktrees, locked
-verification commands, a resumable backlog, and a mandatory final adversary.
-Only `/ship` and `/snapshot` push on their own.
+Explicit `/ship <spec> program` and `/goals` retain isolated worktrees, locked
+checks, resumable backlogs, and wider review. Ordinary issue work does not load
+this machinery. Existing ship backlogs resume through the preserved program
+profile. Repo policy and existing authority still govern delivery and merging.
 
-| | `/ship` | `/goals` |
+| | `/ship program` | `/goals` |
 |---|---|---|
 | Item review | 1 reviewer, only if the gate is already green | 2 independent reviewers |
 | Milestone | Mechanical checks, then 1 rotating reviewer | Same, plus a stop for your go-ahead |
@@ -55,17 +56,14 @@ Only `/ship` and `/snapshot` push on their own.
 | Stops | Only for trouble | After every milestone |
 | Cost | Lower | Higher |
 
-Reach for `/goals` when a defect is expensive to find late: auth, payments,
-migrations. `/ship` is the right default everywhere else. Neither is worth it
-for a throwaway script, a one-line fix, or exploratory work where you do not
-know the question yet, and both need a test suite: without one the gate has
-nothing to check.
+Use a program profile for work that genuinely needs dependency coordination
+and durable recovery. Select review by risk and verify the affected behavior;
+ordinary work uses the short ship contract.
 
 ## How it works
 
-`/ship` and `/goals` each start one long-lived, resumable process. Whichever you
-run is the only writer of its `backlog.jsonl` and the only thing that merges
-branches.
+In program mode, ship and goals each own their resumable process and backlog.
+The parent alone integrates branches, under the repository's merge policy.
 
 *Maker is never checker.* The contributor builds in its own worktree and cannot
 judge its own code. Reviewers are different models in a different context, and
@@ -92,8 +90,8 @@ stdlib function, an existing symbol in the repo, a native feature, or "delete,
 nothing replaces it". Without one it is taste, and taste does not block a merge.
 
 *Handoff is not delivery.* `push-handoff` is the explicit delivery step: it
-verifies, commits, pushes, and proves the fetched remote SHA. `/ship` pushes
-on a clean final gate. `/snapshot` pushes because you invoked it.
+verifies, commits, pushes, and proves the fetched remote SHA when delivery is
+authorized. Snapshot only checkpoints; it does not grant push authority.
 
 ## The skills
 
@@ -101,7 +99,7 @@ on a clean final gate. `/snapshot` pushes because you invoked it.
 
 | Skill | Use when |
 |---|---|
-| `ship` | Spec to pushed code, gate-first review, owns its farm |
+| `ship` | Thin task navigator and verified delivery; explicit program profile for a farm |
 | `goals` | Wider-net plan driver with milestone stops, owns its farm |
 | `council` | Independent research, debate, and scoped review |
 | `council-adversary` | Read-only teardown of a converged diff |
@@ -110,9 +108,9 @@ on a clean final gate. `/snapshot` pushes because you invoked it.
 
 | Skill | Use when |
 |---|---|
-| `grill` | User-invoked interview; writes language and decisions into `CONTEXT/` |
-| `issues` | User-invoked; one-time project setup, then spec plus tickets |
-| `snapshot` | User-invoked closeout: sync docs and tracker, handoff, proven push |
+| `grill` | Clarify consequential intent and preserve missing durable decisions |
+| `issues` | Publish proportionate tracker work with acceptance and verification |
+| `snapshot` | Optional short checkpoint for unfinished work |
 | `push-handoff` | Commit and push under explicit authority, proven by remote SHA |
 | `herdr-orchestrator` | Manual-only: run `/goals` through Codex and three council agents across live [Herdr](https://herdr.dev) panes |
 | `setup-obsidian` | Turn a docs folder into a retrieval graph |
@@ -141,7 +139,8 @@ npx skills add mattpocock/skills/handoff
 ```
 
 Run `npx skills add mattpocock/skills/setup-matt-pocock-skills` only if you still
-want his originals. This repo's chain is `/grill` → `/issues` → `/ship` or `/goals` → `/snapshot`.
+want his originals. This repo uses grill and issues when needed, ship for execution,
+and snapshot only for a checkpoint. Goals is the larger program route.
 
 ## Plugins
 
