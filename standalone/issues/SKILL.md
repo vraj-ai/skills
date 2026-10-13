@@ -27,4 +27,4 @@ Each issue contains:
 
 Present a substantial breakdown once. Honor existing publishing authority and approval; do not ask again for already authorized work. Publish blockers first and use the repo's ready label, such as ready-for-agent, with all required label axes. Avoid a duplicate local backlog and an extra closeout comment repeating the published issues.
 
-Return issue URLs and a concise starting instruction, such as /ship #123. /goals remains available for an explicitly requested larger program. Start the next stage only when requested.
+Return issue URLs and a concise starting instruction, such as /ship #123. Start the next stage only when requested.

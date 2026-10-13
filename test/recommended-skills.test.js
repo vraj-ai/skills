@@ -9,9 +9,6 @@ const repoRoot = path.resolve(__dirname, '..');
 
 const EXPECTED_RECOMMENDED = new Set([
   'ship',
-  'goals',
-  'council',
-  'council-adversary',
   'grill',
   'issues',
   'snapshot',
@@ -19,7 +16,7 @@ const EXPECTED_RECOMMENDED = new Set([
   'ponytail',
 ]);
 
-test('exactly the nine recommended skills are marked recommended: true', async () => {
+test('exactly the six recommended skills are marked recommended: true', async () => {
   const { skills, warnings } = await discoverSkills(repoRoot);
   assert.equal(warnings.length, 0);
 

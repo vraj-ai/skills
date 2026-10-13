@@ -32,62 +32,13 @@ child tasks, PR links/watches, and browser evidence.
 The author runs this workflow in omp. The skills themselves stay harness-agnostic:
 any client that can load a `SKILL.md` can run them, with any model.
 
-`/setup-vskills` writes Invocation Roles (`grill`, `issues`, `ship`, `snapshot`,
-`goals`) and Worker Roles (`researcher`, `builder`, `reviewer`, `adversary`,
+`/setup-vskills` writes Invocation Roles (`grill`, `issues`, `ship`, `snapshot`) and Worker Roles (`researcher`, `builder`, `reviewer`, `adversary`,
 `small-task`) into the harness it researched. On omp that is
 `~/.omp/agent/agents/`. Role templates leave model and effort unset; assign those
 in the harness. Reload the Agents tab with Ctrl+R. `/skill:grill` still works.
 
 Workers never spawn. The Invocation Role is the only writer of backlog, locks,
 and push.
-
-## Optional program execution
-
-Explicit `/ship <spec> program` and `/goals` retain isolated worktrees, locked
-checks, resumable backlogs, and wider review. Ordinary issue work does not load
-this machinery. Existing ship backlogs resume through the preserved program
-profile. Repo policy and existing authority still govern delivery and merging.
-
-| | `/ship program` | `/goals` |
-|---|---|---|
-| Item review | 1 reviewer, only if the gate is already green | 2 independent reviewers |
-| Milestone | Mechanical checks, then 1 rotating reviewer | Same, plus a stop for your go-ahead |
-| Batch size | 4, capped at 8 | 3, capped at 4 |
-| Stops | Only for trouble | After every milestone |
-| Cost | Lower | Higher |
-
-Use a program profile for work that genuinely needs dependency coordination
-and durable recovery. Select review by risk and verify the affected behavior;
-ordinary work uses the short ship contract.
-
-## How it works
-
-In program mode, ship and goals each own their resumable process and backlog.
-The parent alone integrates branches, under the repository's merge policy.
-
-*Maker is never checker.* The contributor builds in its own worktree and cannot
-judge its own code. Reviewers are different models in a different context, and
-they never see the author's rationale.
-
-*Done is a command, not a claim.* Every item locks one verification command that
-must exit 0, run after the final edit.
-
-*Resume is state, not memory.* A fresh session reads the backlog, the handoff,
-producer digests, and branch ancestry, never the chat history.
-
-*One item, one branch, one worktree,* so parallel agents cannot overwrite each
-other by construction. Green items merge even when a peer fails.
-
-*The ladder.* Every contributor stops at the first rung that solves the problem:
-necessity, codebase reuse, standard library, native platform, existing
-dependencies, one-liner, minimal implementation. Input validation, error
-handling, security, accessibility, and anything the acceptance criteria asked
-for are never on the chopping block.
-
-*The review rubric.* Every reviewer gets three lenses: `over-build`, `slop`, and
-`structure`. A finding is admissible only when it names its replacement, a
-stdlib function, an existing symbol in the repo, a native feature, or "delete,
-nothing replaces it". Without one it is taste, and taste does not block a merge.
 
 *Handoff is not delivery.* `push-handoff` is the explicit delivery step: it
 verifies, commits, pushes, and proves the fetched remote SHA when delivery is
@@ -99,10 +50,7 @@ authorized. Snapshot only checkpoints; it does not grant push authority.
 
 | Skill | Use when |
 |---|---|
-| `ship` | Thin task navigator and verified delivery; explicit program profile for a farm |
-| `goals` | Wider-net plan driver with milestone stops, owns its farm |
-| `council` | Independent research, debate, and scoped review |
-| `council-adversary` | Read-only teardown of a converged diff |
+| `ship` | Thin task navigator and verified delivery |
 
 **Standalone** (`standalone/`)
 
@@ -112,7 +60,6 @@ authorized. Snapshot only checkpoints; it does not grant push authority.
 | `issues` | Publish proportionate tracker work with acceptance and verification |
 | `snapshot` | Optional short checkpoint for unfinished work |
 | `push-handoff` | Commit and push under explicit authority, proven by remote SHA |
-| `herdr-orchestrator` | Manual-only: run `/goals` through Codex and three council agents across live [Herdr](https://herdr.dev) panes |
 | `setup-obsidian` | Turn a docs folder into a retrieval graph |
 | `setup-vskills` | Set this repo up on a new machine |
 | `pr-review` | GitHub Actions PR review bot: summary, confidence, checks, fix-on-comment |
@@ -140,7 +87,7 @@ npx skills add mattpocock/skills/handoff
 
 Run `npx skills add mattpocock/skills/setup-matt-pocock-skills` only if you still
 want his originals. This repo uses grill and issues when needed, ship for execution,
-and snapshot only for a checkpoint. Goals is the larger program route.
+and snapshot only for a checkpoint.
 
 ## Plugins
 
@@ -168,16 +115,16 @@ ladder is adapted from it. From the
 npx @vskills/cli init                    # install the recommended set (default)
 npx @vskills/cli init --recommended      # exactly the recommended set, dropping anything else
 npx @vskills/cli init --all              # install every skill
-npx @vskills/cli init --only ship,goals  # install exactly these skills
+npx @vskills/cli init --only ship,grill  # install exactly these skills
 npx @vskills/cli list                    # what is installed, what has drifted
 npx @vskills/cli add <skill>             # one skill plus its dependencies
 npx @vskills/cli update [skill...]       # refresh, skipping your local edits
 ```
 
-`init` leads with the recommended set — `ship`, `goals`, `grill`, `issues`,
-`snapshot`, `council`, `council-adversary`, `setup-vskills`, and `ponytail` —
+`init` leads with the recommended set — `ship`, `grill`, `issues`,
+`snapshot`, `setup-vskills`, and `ponytail` —
 and nothing more is needed for the workflow above. `snapshot` pulls in its
-`push-handoff` dependency, so a fresh machine lands ten skills. On a TTY,
+`push-handoff` dependency, so a fresh machine lands seven skills. On a TTY,
 `init` shows that set and offers to accept it (plain Enter), install
 everything, or pick names; `--yes` and non-TTY runs take the recommended set
 without asking. `list` marks each row's tier, and `add <skill>` still installs
@@ -249,8 +196,8 @@ bin/              the vskills CLI entrypoint
 src/              vskills implementation
 test/             vskills test suite (node --test)
 
-delivery/         ship, goals, council, council-adversary
-standalone/       grill, issues, snapshot, push-handoff, herdr-orchestrator,
+delivery/         ship
+standalone/       grill, issues, snapshot, push-handoff,
                   setup-obsidian, setup-vskills, pr-review, ponytail
 pipeline/         audit, delivery-constraints, implementation-tdd,
                   subagent-delegation, ai-subscription-unit-economics

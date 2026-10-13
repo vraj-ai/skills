@@ -66,11 +66,9 @@ test('init on a fresh HOME with no install root yet succeeds and installs the re
     // count-only check passed even when zero skills were installed.
     const entries = await readdir(path.join(fakeHome, '.agents', 'skills'), { withFileTypes: true });
     const installed = new Set(entries.filter((e) => !e.name.startsWith('.')).map((e) => e.name));
-    for (const name of ['ship', 'goals', 'grill', 'issues', 'snapshot', 'council']) {
+    for (const name of ['ship', 'grill', 'issues', 'snapshot']) {
       assert.ok(installed.has(name), `expected recommended skill "${name}" to be installed, got: ${[...installed].sort().join(', ')}`);
     }
-    // Opt-in skills must stay out of the default install.
-    assert.ok(!installed.has('herdr-orchestrator'), 'herdr-orchestrator is opt-in and must not install by default');
   } finally {
     await rm(fakeHome, { recursive: true, force: true });
   }

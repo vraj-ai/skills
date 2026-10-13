@@ -2,9 +2,8 @@
 name: ship
 version: 3.0.0
 description: Find or carry out a referenced task using the project's tracker, source, verification, and delivery rules. Return a verified, reviewed PR or an evidenced blocker.
-dependencies: [council-adversary]
 recommended: true
-argument-hint: "[issue-or-task] [program]"
+argument-hint: "[issue-or-task]"
 ---
 
 # Ship
@@ -32,5 +31,3 @@ Deliver under repo policy and existing user authority: commit, push a named bran
 Use one owner per task and branch. Delegate when authorized and independent lanes or a fresh review help. The parent owns integration and shared status; children receive explicit ownership and return evidence. They do not start another orchestration layer. Keep user-specified models, effort, and concurrency limits.
 
 Inside T3 Code, read [references/t3.md](references/t3.md) when dispatching children, working on PRs, monitoring, or verifying a UI. Use native T3 capabilities rather than another CLI farm. Other hosts use available native capabilities and report missing ones honestly.
-
-For an explicitly requested resumable program, or an existing CONTEXT/ship backlog, read [references/program.md](references/program.md). Preserve existing locks, state, and ownership during recovery. That profile and /goals retain the larger farm/milestone machinery; ordinary issue work creates no local backlog or mandatory milestone/final-adversary ceremony.
