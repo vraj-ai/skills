@@ -51,26 +51,6 @@ test('OpenCode profile pins the selected models and a one-level spawn tree', asy
   assert.match(contributor, /edit: allow/);
 });
 
-test('workflow skills preserve the required phase and result contracts', async () => {
-  const goals = await fs.readFile(skillPath(repo, 'goals', 'SKILL.md'), 'utf8');
-  for (const marker of [
-    'Phase R',
-    'Phase 0',
-    'Phase B',
-    'Execution loop',
-    'T1:',
-    'T2 and T3',
-    'backlog.jsonl',
-    'MAX_BATCH',
-    'STRICT_BATCH',
-    'results.json',
-    '<id>.digest.json',
-    'glm-5.2',
-  ]) {
-    assert.ok(goals.includes(marker), `goals skill is missing ${marker}`);
-  }
-});
-
 test('OpenCode profile exposes goal as a command and council as a selectable primary', async () => {
   const goal = await fs.readFile(path.join(repo, 'harness', 'opencode', 'command', 'goal.md'), 'utf8');
   assert.match(goal, /agent: goals/);
@@ -79,7 +59,7 @@ test('OpenCode profile exposes goal as a command and council as a selectable pri
 });
 
 test('omp profile provides Invocation and Worker Role templates without model pins', async () => {
-  const invocations = ['grill', 'issues', 'ship', 'snapshot', 'goals'];
+  const invocations = ['grill', 'issues', 'ship', 'snapshot'];
   const workers = ['researcher', 'builder', 'reviewer', 'adversary', 'small-task'];
   const ompAgentDir = path.join(repo, 'harness', 'omp', 'agent');
 

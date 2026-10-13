@@ -15,9 +15,6 @@ const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // #78 adds the manual model-throughput benchmark.
 const EXPECTED_KEPT = new Set([
   'ship',
-  'goals',
-  'council',
-  'council-adversary',
   'grill',
   'issues',
   'snapshot',
@@ -26,7 +23,6 @@ const EXPECTED_KEPT = new Set([
   'push-handoff',
   'pr-review',
   'setup-obsidian',
-  'herdr-orchestrator',
   'audit',
   'delivery-constraints',
   'implementation-tdd',
@@ -39,10 +35,7 @@ const CORE = new Set([
   'grill',
   'issues',
   'ship',
-  'goals',
   'snapshot',
-  'council',
-  'council-adversary',
 ]);
 
 // Every skill this repo has ever shipped under another name. A tracked file
@@ -92,25 +85,13 @@ function trackedFiles() {
     .filter((line) => line && !line.startsWith('CONTEXT/'));
 }
 
-test('the catalogue is exactly the 19 kept skills, with the 7 core skills separate', async () => {
+test('the catalogue is exactly the 15 kept skills, with the 4 core skills separate', async () => {
   const { skills, warnings } = await discoverSkills(repo);
   assert.deepEqual(warnings, []);
   assert.deepEqual(new Set(skills.keys()), EXPECTED_KEPT);
   for (const name of CORE) {
     assert.ok(skills.has(name), `core skill is not a separate skill: ${name}`);
   }
-});
-
-test('herdr-orchestrator stays manual-only and opt-in', async () => {
-  const { skills } = await discoverSkills(repo);
-  assert.ok(skills.has('herdr-orchestrator'), 'herdr-orchestrator is missing from the catalogue');
-  assert.equal(
-    skills.get('herdr-orchestrator').recommended,
-    false,
-    'herdr-orchestrator must not be recommended',
-  );
-  const content = await fs.readFile(skillPath(repo, 'herdr-orchestrator', 'SKILL.md'), 'utf8');
-  assert.match(content, /disable-model-invocation:\s*true/);
 });
 
 test('every declared dependency resolves to a kept skill', async () => {

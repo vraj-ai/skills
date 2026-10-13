@@ -119,7 +119,7 @@ The initializer creates missing files only:
 
 It also adds only goal runtime paths to `.gitignore`. It never overwrites an
 existing `AGENTS.md`, architecture, progress, or project decision. It does not
-create a goal backlog; `/goals` creates `CONTEXT/goals/<slug>/` when a plan runs.
+create a goal backlog.
 
 ## Step 1.3 — Configure model routing (pstack)
 
