@@ -29,3 +29,34 @@ The OpenAI curated skill collection at the
 authoring local manual-only workflows. No external source text is a dependency
 of any kept skill: the catalog's wording, structure, and host assumptions were
 never copied in, and every kept skill stands alone without it.
+
+## Third-party packs
+
+These trees are complete upstream copies. They sit outside the vskills
+catalogue: src/discovery.js skips the third-party directory, so vskills init
+does not install them and they do not change the kept skill set. Re-vendor
+only after reviewing the upstream diff and its license.
+
+### Matt Pocock
+
+third-party/mattpocock/skills is mattpocock/skills at commit
+49dd158d1076134a641b33efb035946536778336, MIT. The license file is
+third-party/mattpocock/LICENSE. Copyright Matt Pocock.
+
+### Addy Osmani
+
+third-party/addyosmani/skills and third-party/addyosmani/references are
+addyosmani/agent-skills at commit
+aeac41d4d005999432bb7312f7ff06383a91d59d, MIT. The license file is
+third-party/addyosmani/LICENSE. Copyright Addy Osmani. Skill files refer to
+the references directory one level above skills, so that directory is part of
+the copy.
+
+### Frontend design
+
+third-party/frontend-design is the frontend-design skill from
+anthropics/skills at commit
+dbd4588f9e1033efb41dad4bef2f7947c8993d44, Apache-2.0. The license file is
+third-party/frontend-design/LICENSE.txt. This is the design skill the fleet
+roster audit measured and did not prune. design-an-interface is not in
+this tree.

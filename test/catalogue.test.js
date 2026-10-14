@@ -77,12 +77,14 @@ const RETIRED = [
 
 // git ls-files, not a filesystem walk: CONTEXT/ holds working state and full
 // repo copies (including worktrees of this repo) that must never be scanned,
-// and gitignored worktree paths never appear here at all.
+// and gitignored worktree paths never appear here at all. third-party/ is
+// vendored upstream text, not this catalogue, so a slash name in that tree
+// is not an invocation this package ships.
 function trackedFiles() {
   return execFileSync('git', ['ls-files'], { cwd: repo, encoding: 'utf8' })
     .split('\n')
     .map((line) => line.trim())
-    .filter((line) => line && !line.startsWith('CONTEXT/'));
+    .filter((line) => line && !line.startsWith('CONTEXT/') && !line.startsWith('third-party/'));
 }
 
 test('the catalogue is exactly the 15 kept skills, with the 4 core skills separate', async () => {
