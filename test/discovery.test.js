@@ -117,6 +117,23 @@ test('warns and defaults recommended to false when malformed', async () => {
   }
 });
 
+test('skips a project-local skill under .cursor/skills', async () => {
+  const repo = await makeTmpDir();
+  try {
+    await writeSkill(repo, 'ship', { name: 'ship', description: 'Ship skill.' });
+    await writeSkill(repo, '.cursor/skills/verify-skills', {
+      name: 'verify-skills',
+      description: 'Local verifier.',
+    });
+
+    const { skills, warnings } = await discoverSkills(repo);
+    assert.deepEqual(warnings, []);
+    assert.deepEqual([...skills.keys()], ['ship']);
+  } finally {
+    await cleanup(repo);
+  }
+});
+
 test('skips a duplicate SKILL.md under CONTEXT/ (worktree copy) and keeps the real skill', async () => {
   const repo = await makeTmpDir();
   try {

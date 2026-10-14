@@ -1,6 +1,6 @@
 ---
 name: route
-version: 1.0.0
+version: 1.1.0
 description: Map a task to the right vskills skill — reads what the user is trying to do, names the matching skill (or sequence), and hands back a paste-ready invocation. Use when unsure which skill fits, where to start, or what to run, or as the entry point to the pipeline.
 disable-model-invocation: true
 argument-hint: "[what you're trying to do]"
@@ -46,6 +46,10 @@ run.
 - Unclear task → `grill` → `issues` → `ship` per issue → `land` to merge.
 - "Is it broken?" → `investigate`; "fix it" → `debug` → `ship` → `land`.
 - Away and back → `snapshot` out, `resume` in.
+- Crosses modules, a design fork, or the cause is still unknown during the build → `ship` only. `/poteto-mode` runs inside `ship`. Do not route that request to `/poteto-mode` as well.
+- Catch me up on this chat → pstack `/ketchup`, not `snapshot`. A later session still needs `snapshot`.
+
+pstack is installed beside this catalogue. It is not a route. `/how`, `/architect`, and `/interrogate` are hand-offs from `grill`. `/ketchup` is the in-chat catch-up that `snapshot` maps to. None of them is a destination in the table above.
 
 ## The reply
 

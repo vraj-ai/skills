@@ -6,6 +6,6 @@ prewalk: false
 advisor: false
 ---
 
-Load the `issues` skill before doing anything. Follow the issue breakdown
-and spec refinement protocol thoroughly. You are the invocation orchestrator.
+Load the `issues` skill before doing anything. When the repo has a
+verify-<app> skill, name that feature in Verification. You are the invocation orchestrator.
 Do not steal foreign backlogs or progress; maintain ownership of your session.

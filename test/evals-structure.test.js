@@ -45,3 +45,45 @@ test('retired-name invocations are caught in prose and inline code', async () =>
   const retired = violations.filter((v) => v.rule === 'retired-name');
   assert.equal(retired.length, 1, `expected one offending line, got ${JSON.stringify(violations)}`);
 });
+
+test('a relative link that does not resolve is a cross-reference violation', async () => {
+  const tmp = await mkdtemp(path.join(os.tmpdir(), 'vskills-links-'));
+  const dir = path.join(tmp, 'standalone', 'linked');
+  await mkdir(dir, { recursive: true });
+  await writeFile(path.join(dir, 'SKILL.md'), [
+    '---',
+    'name: linked',
+    'version: 1.0.0',
+    'description: A fixture skill whose body links to a sibling markdown file that was never created.',
+    'recommended: false',
+    '---',
+    '',
+    'See [missing](missing.md).',
+  ].join('\n'), 'utf8');
+
+  const { violations } = await validateSkills(tmp);
+  const links = violations.filter((v) => v.rule === 'cross-reference' && v.detail.includes('missing.md'));
+  assert.equal(links.length, 1, JSON.stringify(violations));
+});
+
+test('a route table target outside the catalogue is a cross-reference violation', async () => {
+  const tmp = await mkdtemp(path.join(os.tmpdir(), 'vskills-route-'));
+  const dir = path.join(tmp, 'standalone', 'route');
+  await mkdir(dir, { recursive: true });
+  await writeFile(path.join(dir, 'SKILL.md'), [
+    '---',
+    'name: route',
+    'version: 1.0.0',
+    'description: A fixture router whose intent table names a skill this catalogue does not contain.',
+    'recommended: false',
+    '---',
+    '',
+    '| Intent | Skill |',
+    '|---|---|',
+    '| Do a thing | `not-a-skill` |',
+  ].join('\n'), 'utf8');
+
+  const { violations } = await validateSkills(tmp);
+  const links = violations.filter((v) => v.rule === 'cross-reference' && v.detail.includes('not-a-skill'));
+  assert.equal(links.length, 1, JSON.stringify(violations));
+});

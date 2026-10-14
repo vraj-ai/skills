@@ -1,6 +1,6 @@
 ---
 name: grill
-version: 2.1.0
+version: 2.2.0
 description: Clarify an ambiguous feature or design through direct questions before work is queued. Resolve consequential decisions and preserve only durable intent.
 disable-model-invocation: true
 argument-hint: "[topic]"
@@ -13,7 +13,7 @@ Clarify the outcome, boundaries, and decisions needed to make work actionable. D
 
 Read repo instructions and relevant code first. Consult relevant parts of CONTEXT/glossary.md, CONTEXT/architecture.md, and CONTEXT/adr/ when present. Follow CONTEXT-MAP.md in a multi-context repo.
 
-Find observable facts yourself. Use a short experiment for an empirical fork when it fits the requested scope. Ask the user about product intent, preferences, or trade-offs an experiment cannot settle. Present distinct options and a recommendation for consequential architectural choices.
+Find observable facts yourself. Use a short experiment for an empirical fork when it fits the requested scope. Ask the user about product intent, preferences, or trade-offs an experiment cannot settle. Hand an architecture fork to pstack `/how` and `/architect`. A contested design can hand off to pstack `/interrogate`; this skill does not apply that verdict. When pstack is not installed, present distinct options and a recommendation instead.
 
 Ask independent questions together; settle prerequisites before dependent questions. Stop when outcome, acceptance, constraints, and important unresolved risks are clear enough to proceed. An exhaustive implementation interview is unnecessary.
 

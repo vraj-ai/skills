@@ -112,9 +112,12 @@ test('shipped skills never invoke a skill this repo does not ship', async () => 
   // `/goal` is the goals skill's own invocation alias; `/loop` and `/schedule`
   // are Claude Code built-ins; `/code-review` and `/wayfinder` live in other
   // agent skill sets, as does `/create-verification-skill` (pstack, invoked by
-  // setup-vskills Step 1.4). The point of the allowlist is the ratchet: a NEW
-  // unshipped reference fails this gate, which is how `/handoff` reached the
-  // published package unnoticed (#31).
+  // setup-vskills Step 1.4). `/poteto-mode`, `/how`, `/architect`,
+  // `/interrogate`, and `/ketchup` are pstack skills installed beside this
+  // catalogue: ship, grill, and snapshot name them and do not ship them.
+  // The point of the allowlist is the ratchet: a NEW unshipped reference
+  // fails this gate, which is how `/handoff` reached the published package
+  // unnoticed (#31).
   const external = new Set([
     'goal',
     'loop',
@@ -124,6 +127,11 @@ test('shipped skills never invoke a skill this repo does not ship', async () => 
     'create-verification-skill',
     'plugin',
     'reload-plugins',
+    'poteto-mode',
+    'how',
+    'architect',
+    'interrogate',
+    'ketchup',
   ]);
 
   const offenders = [];

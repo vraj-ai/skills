@@ -233,21 +233,25 @@ async function runBehavioral(skillName) {
   }
 }
 
-const argv = process.argv.slice(2);
-const bIdx = argv.indexOf('--behavioral');
-if (bIdx !== -1) {
-  const skill = argv[bIdx + 1];
-  if (!skill) {
-    console.error('--behavioral requires a skill name');
-    process.exit(2);
+// Importing this module (the routing test does) must not run the CLI. An
+// unguarded call process.exit's the test runner as soon as tier 2 finishes.
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const argv = process.argv.slice(2);
+  const bIdx = argv.indexOf('--behavioral');
+  if (bIdx !== -1) {
+    const skill = argv[bIdx + 1];
+    if (!skill) {
+      console.error('--behavioral requires a skill name');
+      process.exit(2);
+    }
+    runBehavioral(skill).catch((err) => {
+      console.error(`behavioral eval failed: ${err.message}`);
+      process.exit(1);
+    });
+  } else {
+    runTier2().catch((err) => {
+      console.error(`routing evals failed: ${err.message}`);
+      process.exit(1);
+    });
   }
-  runBehavioral(skill).catch((err) => {
-    console.error(`behavioral eval failed: ${err.message}`);
-    process.exit(1);
-  });
-} else {
-  runTier2().catch((err) => {
-    console.error(`routing evals failed: ${err.message}`);
-    process.exit(1);
-  });
 }

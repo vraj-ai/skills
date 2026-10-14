@@ -1,6 +1,6 @@
 ---
 name: issues
-version: 2.0.0
+version: 2.1.0
 description: Turn an agreed outcome into tracker issues with acceptance, dependencies, references, and verification. Keep planning proportional to the work.
 disable-model-invocation: true
 argument-hint: "[task-or-spec-reference]"
@@ -23,7 +23,7 @@ Each issue contains:
 - Checkable acceptance and important boundaries.
 - Relevant issue, design, source, and test references.
 - Dependencies, or an explicit statement that it can start.
-- A Verification-command derived from existing checks, plus runtime or manual acceptance when needed. A build pass must not masquerade as behavior verification.
+- A Verification-command derived from existing checks, plus runtime or manual acceptance when needed. A build pass must not masquerade as behavior verification. When the repo has a `verify-<app>` skill, name the feature that proves this issue (`.cursor/skills/verify-<app>/features/<feature>.md`) in Verification.
 
 Present a substantial breakdown once. Honor existing publishing authority and approval; do not ask again for already authorized work. Publish blockers first and use the repo's ready label, such as ready-for-agent, with all required label axes. Avoid a duplicate local backlog and an extra closeout comment repeating the published issues.
 

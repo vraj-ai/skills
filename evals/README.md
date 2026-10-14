@@ -12,7 +12,7 @@ every prompt routes nothing.
 
 | Tier | What it checks | Runs | Cost |
 |---|---|---|---|
-| 1. Structural | Frontmatter, name==dir, version, description budget, dependency closure, no retired-name invocations | CI (`scripts/validate-skills.mjs`, wired by `test/evals-structure.test.js`) | Free |
+| 1. Structural | Frontmatter, name==dir, version, description budget, dependency closure, relative links, route-table targets, no retired-name invocations | CI (`scripts/validate-skills.mjs`, wired by `test/evals-structure.test.js`) | Free |
 | 2. Routing | A natural prompt ranks the intended skill top-1; negative prompts don't rank a wrong-but-tempting skill top-1 | CI (`scripts/run-evals.mjs`, wired by `test/evals-routing.test.js`) | Free |
 | 3. Behavioral | An agent following the skill satisfies its `expectations[]` | On demand (`scripts/run-evals.mjs --behavioral <skill>`) | Tokens |
 
@@ -26,7 +26,7 @@ fix the description, not the eval.
 ## Running
 
 ```bash
-node scripts/validate-skills.mjs            # tier 1
+node scripts/validate-skills.mjs            # tier 1: frontmatter and cross-references
 node scripts/run-evals.mjs                  # tier 2, all cases
 node scripts/run-evals.mjs --verbose        # show the top-3 ranking per case
 node scripts/run-evals.mjs --min-rank1 90   # relax the pass floor
