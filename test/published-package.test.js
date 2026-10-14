@@ -47,7 +47,9 @@ test('every relative README link points at something that actually ships', async
 
 test('relative SKILL.md references resolve to skills in the published tree', async () => {
   const tracked = await trackedFiles();
-  const skillMd = new Set([...tracked].filter((file) => file.endsWith('/SKILL.md')));
+  const skillMd = new Set(
+    [...tracked].filter((file) => file.endsWith('/SKILL.md') && !file.startsWith('third-party/')),
+  );
 
   // Include an untracked standalone skill while the change is under review;
   // once committed it is already covered by the tracked-file set.
@@ -97,7 +99,7 @@ test('no stale handoff artifacts ship in the tarball', async () => {
 
 test('shipped skills never invoke a skill this repo does not ship', async () => {
   const tracked = await trackedFiles();
-  const skillMd = [...tracked].filter((f) => f.endsWith('/SKILL.md'));
+  const skillMd = [...tracked].filter((f) => f.endsWith('/SKILL.md') && !f.startsWith('third-party/'));
   const skills = new Set(skillMd.map((f) => f.split('/').at(-2)));
 
   assert.ok(skills.has('ship') && skills.has('push-handoff'), 'skill discovery failed');

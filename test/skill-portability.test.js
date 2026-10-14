@@ -31,6 +31,7 @@ const EXEMPT = new Set([
 
 // git ls-files, not a filesystem walk: CONTEXT/ holds working state and full
 // repo copies (including worktrees of this repo) that must never be scanned.
+// third-party/ is upstream text and is not held to this repo's path rules.
 function trackedSkillFiles() {
   return execFileSync('git', ['ls-files', '*/SKILL.md', '*/REFERENCE.md'], {
     cwd: repo,
@@ -38,7 +39,7 @@ function trackedSkillFiles() {
   })
     .split('\n')
     .map((line) => line.trim())
-    .filter(Boolean);
+    .filter((line) => line && !line.startsWith('third-party/'));
 }
 
 test('skill bodies contain no harness-specific or absolute home paths', async () => {

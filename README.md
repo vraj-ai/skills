@@ -75,19 +75,17 @@ Install one skill and its dependencies with `npx @vskills/cli add <skill>`.
 
 ## Skills from elsewhere
 
-`/grill-with-docs`, `/to-spec`, and `/handoff` are Matt Pocock's, from
-[mattpocock/skills](https://github.com/mattpocock/skills).
+Pinned copies live under `third-party/`. They are not part of the vskills
+catalogue: `vskills init` and `vskills add` do not install them. Provenance
+and commits are in VENDORED.md.
 
-```bash
-npx skills add mattpocock/skills                    # all of them
-npx skills add mattpocock/skills/grill-with-docs    # or one at a time
-npx skills add mattpocock/skills/to-spec
-npx skills add mattpocock/skills/handoff
-```
+| Pack | Path | Source |
+|---|---|---|
+| Matt Pocock | `third-party/mattpocock/skills` | [mattpocock/skills](https://github.com/mattpocock/skills) |
+| Addy Osmani | `third-party/addyosmani/skills` | [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) |
+| Frontend design | `third-party/frontend-design` | [anthropics/skills](https://github.com/anthropics/skills) `frontend-design` |
 
-Run `npx skills add mattpocock/skills/setup-matt-pocock-skills` only if you still
-want his originals. This repo uses grill and issues when needed, ship for execution,
-and snapshot only for a checkpoint.
+This repo's own loop stays grill, issues, ship, and snapshot.
 
 ## Plugins
 

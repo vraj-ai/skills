@@ -5,7 +5,10 @@ import { parseFrontmatter, FrontmatterError } from './frontmatter.js';
 // CONTEXT/ holds this pipeline's own git worktrees (full repo checkouts), so
 // walking into it would see every skill twice and drop both as a name
 // collision. Skip it like .git and node_modules.
-const SKIP_DIRS = new Set(['.git', 'node_modules', 'CONTEXT']);
+// third-party/ is vendored upstream packs (Matt Pocock, Addy Osmani,
+// frontend-design). They are not the vskills catalogue: init/add/list must
+// keep shipping the kept skills only.
+const SKIP_DIRS = new Set(['.git', 'node_modules', 'CONTEXT', 'third-party']);
 
 async function findSkillMdFiles(root) {
   const found = [];
