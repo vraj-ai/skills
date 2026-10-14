@@ -1,7 +1,7 @@
 ---
 name: setup-obsidian
 version: 1.1.0
-description: Turn a repo's docs folder into a retrieval graph — router, generated indexes, state file — and open it as an Obsidian vault.
+description: Turn a repo's markdown docs folder into a searchable retrieval graph — router, generated indexes, state file — and open it as an Obsidian vault.
 disable-model-invocation: true
 ---
 

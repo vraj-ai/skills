@@ -1,0 +1,13 @@
+{
+  "prompt": "Users report the cart total shows $0.00 whenever a discount code is applied. Find the cause and fix it.",
+  "setup_files": {
+    "cart.js": "export function total(items, discount) {\n  let sum = items.reduce((a, i) => a + i.price, 0);\n  if (discount) {\n    sum = sum - discount.amount;\n    // display uses cents-to-dollars conversion below\n  }\n  return (sum / 100).toFixed(2);\n}\nexport function displayTotal(items, discount) {\n  if (discount) return '0.00';\n  return total(items, null);\n}\n",
+    "README.md": "cart.js exports total() (cents->dollars) and displayTotal(). displayTotal short-circuits on any discount.\n"
+  },
+  "expectations": [
+    "Reproduced the failure before editing (called displayTotal with a discount and observed '0.00')",
+    "Identified the short-circuit in displayTotal as the root cause, not a rounding or discount-math symptom",
+    "Fixed at the cause rather than patching the symptom",
+    "Proved the fix with the failing case itself (discount applied now shows the discounted total)"
+  ]
+}

@@ -1,7 +1,7 @@
 ---
 name: grill
 version: 2.0.0
-description: Clarify an ambiguous feature or design before work is queued. Resolve consequential decisions and preserve only durable intent.
+description: Clarify an ambiguous feature or design through direct questions before work is queued. Resolve consequential decisions and preserve only durable intent.
 disable-model-invocation: true
 argument-hint: "[topic]"
 recommended: true

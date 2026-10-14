@@ -13,6 +13,9 @@ const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // the rest are independent disciplines. Three former standalone skills
 // (gauntlet-loop, github-workflow, multi-agent-review) were cut here.
 // #78 adds the manual model-throughput benchmark.
+// Later additions: the merge loop (land), read-only and failure work
+// (investigate, debug), session continuity (resume), the intent router
+// (route), and the principles/ bucket the delivery skills compose.
 const EXPECTED_KEPT = new Set([
   'ship',
   'grill',
@@ -29,6 +32,16 @@ const EXPECTED_KEPT = new Set([
   'subagent-delegation',
   'ai-subscription-unit-economics',
   'test-tps',
+  'land',
+  'investigate',
+  'debug',
+  'resume',
+  'route',
+  'principle-real-artifact',
+  'principle-evidence-over-report',
+  'principle-bounded-repair',
+  'principle-named-constraints',
+  'principle-independent-verdict',
 ]);
 
 const CORE = new Set([
@@ -85,7 +98,7 @@ function trackedFiles() {
     .filter((line) => line && !line.startsWith('CONTEXT/'));
 }
 
-test('the catalogue is exactly the 15 kept skills, with the 4 core skills separate', async () => {
+test('the catalogue is exactly the 25 kept skills, with the 4 core skills separate', async () => {
   const { skills, warnings } = await discoverSkills(repo);
   assert.deepEqual(warnings, []);
   assert.deepEqual(new Set(skills.keys()), EXPECTED_KEPT);
