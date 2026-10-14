@@ -28,7 +28,10 @@ A verdict covers the code the verifier saw. A rebase, retarget, or new push
 moves the head to a new SHA without failing any check. Before trusting a
 verdict made at an older SHA:
 
-1. Compare `git patch-id` at the verdict SHA with the current head.
+1. Compare the patch-id of the whole diff under review —
+   `git diff <base>...<sha> | git patch-id` — at the verdict SHA and the
+   current head. The head commit's patch-id misses an earlier commit drifting
+   under an unchanged tip patch.
 2. Same patch-id — the verdict stands.
 3. Differing only in tests, docs, or lint config — the verdict stands if the
    evidence it ran builds the same at both SHAs, modulo recorded noise (an

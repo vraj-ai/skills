@@ -25,19 +25,8 @@ import { parseFrontmatter } from '../src/frontmatter.js';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 // Skill names that shipped and were later cut. Invoking one advertises a skill
-// that no longer exists. Keep in sync with test/catalogue.test.js RETIRED.
-const RETIRED = [
-  'loop-engineer', 'browser-control', 'hands-free', 'pi-setup-maintenance',
-  'pi-usage-maintenance', 'ponytail-audit', 'ponytail-debt', 'ponytail-gain',
-  'ponytail-help', 'ponytail-review', 'legacy-planner', 'legacy-coder',
-  'legacy-debugger', 'legacy-reviewer', 'github-projects-pipeline',
-  'profile-gated-delivery', 'specialist-profiles', 'parallel-subagent-implementation',
-  'subagent-batch-implementation', 'shared-worktree-delegation',
-  'shared-worktree-safety', 'ticket-implementation-tdd',
-  'provider-integration-tdd', 'codebase-audit', 'invariant-evidence-review',
-  'controlled-ticket-delivery', 'state-driven-pipeline-recovery',
-  'gauntlet-loop', 'github-workflow', 'multi-agent-review',
-];
+// that no longer exists. evals/retired-names.json is the single source —
+// test/catalogue.test.js scans tracked files with the same list.
 
 const SEMVER = /^\d+\.\d+\.\d+$/;
 const MIN_DESCRIPTION = 40;
@@ -48,8 +37,12 @@ export async function validateSkills(root = repoRoot) {
   const violations = warnings.map((warning) => ({ file: null, rule: 'discovery', detail: warning }));
 
   // Retired-name invocations in bodies. Frontmatter fields are free to mention
-  // history; bodies may not invoke.
-  const invocation = new RegExp(`(?:\\b/|\`)(?:${RETIRED.join('|')})\\b`);
+  // history; bodies may not invoke. The retired list is global history, so it
+  // always loads from this repo — even when root is a fixture directory.
+  const RETIRED = JSON.parse(
+    await readFile(path.join(repoRoot, 'evals', 'retired-names.json'), 'utf8')
+  );
+  const invocation = new RegExp(`/(?:${RETIRED.join('|')})\\b|\`(?:${RETIRED.join('|')})\\b`);
 
   for (const [name, skill] of skills) {
     const rel = path.relative(root, skill.dir);

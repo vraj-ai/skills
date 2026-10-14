@@ -51,42 +51,11 @@ const CORE = new Set([
   'snapshot',
 ]);
 
-// Every skill this repo has ever shipped under another name. A tracked file
-// that still invokes one by /name or `name` advertises an `add <name>` that
-// now fails. Plain historical prose (VENDORED.md's satellite sentence) is
-// allowed; invocations are not.
-const RETIRED = [
-  'loop-engineer',
-  'browser-control',
-  'hands-free',
-  'pi-setup-maintenance',
-  'pi-usage-maintenance',
-  'ponytail-audit',
-  'ponytail-debt',
-  'ponytail-gain',
-  'ponytail-help',
-  'ponytail-review',
-  'legacy-planner',
-  'legacy-coder',
-  'legacy-debugger',
-  'legacy-reviewer',
-  'github-projects-pipeline',
-  'profile-gated-delivery',
-  'specialist-profiles',
-  'parallel-subagent-implementation',
-  'subagent-batch-implementation',
-  'shared-worktree-delegation',
-  'shared-worktree-safety',
-  'ticket-implementation-tdd',
-  'provider-integration-tdd',
-  'codebase-audit',
-  'invariant-evidence-review',
-  'controlled-ticket-delivery',
-  'state-driven-pipeline-recovery',
-  'gauntlet-loop',
-  'github-workflow',
-  'multi-agent-review',
-];
+// Every skill this repo has ever shipped under another name lives in
+// evals/retired-names.json — the single source shared with
+// scripts/validate-skills.mjs. A tracked file that still invokes one by /name
+// or `name` advertises an `add <name>` that now fails. Plain historical prose
+// (VENDORED.md's satellite sentence) is allowed; invocations are not.
 
 // git ls-files, not a filesystem walk: CONTEXT/ holds working state and full
 // repo copies (including worktrees of this repo) that must never be scanned,
@@ -140,8 +109,9 @@ test("README's catalogue section names every kept skill and only discoverable on
 });
 
 test('no tracked file invokes a retired skill by /name or `name`', async () => {
-  // This file is its own retired-name fixture, so it is excluded from the
-  // scan rather than blessed by an exemption list that could rot.
+  const RETIRED = JSON.parse(await fs.readFile(path.join(repo, 'evals', 'retired-names.json'), 'utf8'));
+  // This file once listed the retired names inline and stays excluded from
+  // the scan rather than blessed by an exemption list that could rot.
   const self = 'test/catalogue.test.js';
   const offences = [];
   for (const file of trackedFiles()) {

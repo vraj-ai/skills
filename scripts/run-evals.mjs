@@ -73,6 +73,18 @@ function hasMatch(term, termSet) {
   return false;
 }
 
+// A prompt term unseen in the catalogue still carries signal when one of its
+// inflections is — 'merging' should score like 'merged', not like silence.
+function termWeight(term, idf) {
+  const direct = idf.get(term);
+  if (direct !== undefined) return direct;
+  let best = 0;
+  for (const [candidate, weight] of idf) {
+    if (termMatch(term, candidate) && weight > best) best = weight;
+  }
+  return best;
+}
+
 export function scorePrompt(prompt, skills, index) {
   const terms = tokenize(prompt);
   const scores = new Map();
@@ -81,7 +93,7 @@ export function scorePrompt(prompt, skills, index) {
     const nameTerms = new Set(tokenize(skill.name));
     let score = 0;
     for (const term of terms) {
-      const w = index.idf.get(term) ?? 0;
+      const w = termWeight(term, index.idf);
       if (hasMatch(term, skillTerms)) score += w;
       if (hasMatch(term, nameTerms)) score += w * 2; // hitting the name itself
     }
@@ -134,6 +146,11 @@ async function runBehavioral(skillName) {
   const agentCmd = process.env.VSKILLS_EVAL_AGENT_CMD || 'claude -p';
   const graderCmd = process.env.VSKILLS_EVAL_GRADER_CMD || agentCmd;
 
+  const { skills } = await discoverSkills(repoRoot);
+  const skillEntry = skills.get(skillName);
+  if (!skillEntry) throw new Error(`unknown skill "${skillName}"`);
+  const skillDoc = await readFile(path.join(skillEntry.dir, 'SKILL.md'), 'utf8');
+
   const caseFile = path.join(repoRoot, 'evals', 'behavioral', `${skillName}.json`);
   const evalCase = JSON.parse(await readFile(caseFile, 'utf8'));
 
@@ -154,9 +171,20 @@ async function runBehavioral(skillName) {
     await writeFile(target, content, 'utf8');
   }
 
+  // The skill under test goes in the prompt: without it the run measures a
+  // generic agent, not an agent following the skill.
+  const agentPrompt = [
+    'Apply the following skill instructions exactly while completing the task.',
+    '',
+    skillDoc,
+    '',
+    'TASK:',
+    evalCase.prompt,
+  ].join('\n');
+
   const [agentBin, ...agentArgs] = agentCmd.split(' ');
   const transcript = await new Promise((resolve, reject) => {
-    const child = spawn(agentBin, [...agentArgs, evalCase.prompt], { cwd: workdir });
+    const child = spawn(agentBin, [...agentArgs, agentPrompt], { cwd: workdir });
     let out = '', err = '';
     child.stdout.on('data', (d) => (out += d));
     child.stderr.on('data', (d) => (err += d));
@@ -181,6 +209,28 @@ async function runBehavioral(skillName) {
   const [graderBin, ...graderArgs] = graderCmd.split(' ');
   const grading = execFileSync(graderBin, [...graderArgs, gradingPrompt], { encoding: 'utf8' });
   console.log(grading);
+
+  let results;
+  try {
+    const start = grading.indexOf('{');
+    const end = grading.lastIndexOf('}');
+    results = JSON.parse(grading.slice(start, end + 1)).results;
+  } catch {
+    results = null;
+  }
+  if (!Array.isArray(results)) {
+    console.error('grader returned no results array — grade the transcript by hand');
+    process.exitCode = 2;
+    return;
+  }
+  for (const r of results) {
+    console.log(`${r.pass ? 'PASS' : 'FAIL'} ${r.expectation}${r.evidence ? ` — ${r.evidence}` : ''}`);
+  }
+  const failed = results.filter((r) => !r.pass);
+  if (failed.length) {
+    console.error(`${failed.length}/${results.length} expectation(s) failed`);
+    process.exitCode = 1;
+  }
 }
 
 const argv = process.argv.slice(2);

@@ -51,7 +51,10 @@ principle-independent-verdict: only a verdict from a context that did not write
 the code counts, and a verdict covers a patch, not a branch. Before landing any
 PR, confirm the verdict is current:
 
-1. `git patch-id` the change at the verdict's SHA and at the current head.
+1. Compare the patch-id of the PR's *full diff* at the verdict's SHA and at
+   the current head: `git diff <base>...<sha> | git patch-id`. The head
+   commit's patch-id alone misses an earlier commit drifting under an
+   unchanged tip patch.
 2. Identical — the verdict stands. Identical except tests, docs, or lint
    config — it stands if the evidence still describes the code.
 3. Anything else — the old verdict never saw this code. Obtain a fresh one:
@@ -70,10 +73,14 @@ verdict: everything below is the run; that PR is the ceiling.
    repo merge style — squash, rebase, or merge commit.
 2. Read the PR back after every merge command. A queued merge is not a merge;
    a landed PR reads merged with trunk as its base, not its parent's branch.
-3. When a merge lands, retarget the child PR whose base was the merged branch
-   to trunk, rebase its patch onto the merge result, and push with
-   `--force-with-lease`. The verdict covered the patch — apply step 3 to decide
-   whether it survives the move.
+3. When a merge lands, retarget the next verified PR in the run whose base
+   was the merged branch: point it at trunk and replay only its own patch —
+   `git rebase --onto trunk <old parent tip> <branch>` — then push with
+   `--force-with-lease`. A plain rebase replays the parent's commits when the
+   merge was a squash; `--onto` moves just the child's patch. The ceiling is
+   not retargeted — it and everything above it stay exactly as they are. The
+   verdict covered the patch — apply step 3 to decide whether it survives the
+   move.
 4. Leave the rest of the stack alone while it lands. A base moving to trunk
    when its parent merges is expected, not damage to repair.
 5. If a merge stalls, find out why before changing anything — a merge queue, a

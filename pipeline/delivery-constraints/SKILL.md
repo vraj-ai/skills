@@ -1,6 +1,6 @@
 ---
 name: delivery-constraints
-version: 1.0.0
+version: 1.1.0
 description: Deliver a ticket whose delivery path is decided by something other than the code — a token/spend cap, a live data migration, restricted git authority, an unwritable tracker, or a pipeline state that is lying about progress. Use when budget is capped, when a change touches production data or costs money to run, when push/PR authority is restricted, when tracker writes are unavailable and work must hand off through a file, or when the tracker says implementing but nothing landed and retrying produces no new evidence — where the tracker and the repo disagree.
 recommended: false
 ---

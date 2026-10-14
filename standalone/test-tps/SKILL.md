@@ -1,6 +1,6 @@
 ---
 name: test-tps
-version: 1.0.0
+version: 1.1.0
 description: User-invoked benchmark for a selected Pi provider/model — measures how fast the model generates tokens: TTFT, decode TPS, average TPS, latency, token usage, and aggregate percentiles. Use when measuring model speed or throughput before choosing it, or when the user invokes test-tps.
 disable-model-invocation: true
 argument-hint: "[--runs N] [--warmup N] [--output-tokens N] [--provider ID] [--model ID] [--json]"

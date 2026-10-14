@@ -36,12 +36,15 @@ node scripts/run-evals.mjs --behavioral ship --dry-run   # print the plan
 node scripts/run-evals.mjs --behavioral ship             # run + grade
 ```
 
-Tier 3 materializes `evals/behavioral/<skill>.json`: `setup_files` are written
-into a temp workdir, the prompt goes to the agent command
-(`VSKILLS_EVAL_AGENT_CMD`, default `claude -p`), and a grader call
-(`VSKILLS_EVAL_GRADER_CMD`, default same) judges the transcript against each
-expectation and returns JSON. The transcript is kept for review; grade it by
-hand when no grader harness is configured.
+Tier 3 materializes `evals/behavioral/<skill>.json`: the skill's own SKILL.md
+is prepended to the agent prompt (without it the run measures a generic agent,
+not an agent following the skill), `setup_files` are written into a temp
+workdir, the prompt goes to the agent command (`VSKILLS_EVAL_AGENT_CMD`,
+default `claude -p`), and a grader call (`VSKILLS_EVAL_GRADER_CMD`, default
+same) judges the transcript against each expectation and returns JSON. The run
+prints PASS/FAIL per expectation and exits non-zero when any fail. The
+transcript is kept for review; grade it by hand when no grader harness is
+configured.
 
 ## Writing cases
 

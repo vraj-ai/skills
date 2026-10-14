@@ -1,6 +1,6 @@
 ---
 name: ship
-version: 3.0.0
+version: 3.1.0
 description: Find, pick up, implement, or execute a referenced task, ticket, or issue end to end using the project's tracker, source, verification, and delivery rules. Open or update a verified, reviewed PR — or return an evidenced blocker.
 recommended: true
 argument-hint: "[issue-or-task]"
@@ -22,7 +22,7 @@ Honor the outcome, acceptance, and existing authority. Resolve facts through ins
 
 Run the task's Verification-command and appropriate repo checks after the final edit. Verify runtime/UI behavior when acceptance depends on it. Keep missing evidence and pre-existing failures explicit. A model verdict, build pass, or HTTP success does not establish untested behavior.
 
-Get an independent review for a nontrivial change, using the configured reviewer or PR bot where appropriate — principle-independent-verdict: only a verdict from a context that did not write the code counts; self-verification is the author's check, not the verdict. Review intent, affected callers, correctness, and scope. Fix evidenced blocking findings and reverify. Reviews and CI apply to the examined head SHA; recheck after a push, and compare `git patch-id` before trusting a verdict made at an older SHA. Bound repeated repair to three rounds (principle-bounded-repair), then report the blocker instead of weakening acceptance.
+Get an independent review for a nontrivial change, using the configured reviewer or PR bot where appropriate — principle-independent-verdict: only a verdict from a context that did not write the code counts; self-verification is the author's check, not the verdict. Review intent, affected callers, correctness, and scope. Fix evidenced blocking findings and reverify. Reviews and CI apply to the examined head SHA; recheck after a push, and compare the patch-id of the full PR diff before trusting a verdict made at an older SHA. Bound repeated repair to three rounds (principle-bounded-repair), then report the blocker instead of weakening acceptance.
 
 Deliver under repo policy and existing user authority: commit, push a named branch, and open/update a PR when authorized. Implementation does not silently grant deployment, self-merge, or new external messaging authority. Driving the PR to merged — checks, threads, stacks, merge — is `land`'s job, run it separately when the task continues past PR-opened. Return PR/head SHA, behavior evidence, review/check status, and next action. Put intent, changed contracts, verification, and risks in the PR. Update durable docs only when a non-obvious decision or constraint changed. A completed task does not require /snapshot.
 

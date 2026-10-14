@@ -1,6 +1,6 @@
 ---
 name: implementation-tdd
-version: 1.0.0
+version: 1.1.0
 description: Strict one-ticket TDD for implementation work — write the failing test first at the real production seam, lock the Verification-command before editing, drive red-green at the highest meaningful seam production traffic actually uses, and prove the fix and the provider failure modes (duplicate and out-of-order delivery, replay, partial failure, forged payloads, wrong-tenant access) rather than assuming them. Use when implementing a Coding ticket, and whenever the change touches an external provider, a queue, a signed webhook, a billing or provisioning lifecycle, persistence, or auth.
 recommended: false
 ---
