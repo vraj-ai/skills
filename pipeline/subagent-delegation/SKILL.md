@@ -1,7 +1,7 @@
 ---
 name: subagent-delegation
-version: 1.0.0
-description: Fan work out to subagents safely — draw provably disjoint lanes, write the full lane brief, order dependent tickets into waves, and keep the parent as the sole gatekeeper that re-runs every gate and performs every commit and tracker write. Use when parallel or batch work is explicitly authorized, when an authorized ticket range has a dependency graph, when workers share one git checkout, or when any agent or human may be writing the same tree concurrently.
+version: 1.1.0
+description: Fan work out to subagents safely — delegate independent packages to workers without losing ownership: draw provably disjoint lanes, write the full lane brief, order dependent tickets into waves, and keep the parent as the sole owner-gatekeeper that re-runs every gate and performs every commit and tracker write. Use when delegating parallel or batch work is explicitly authorized, when an authorized ticket range has a dependency graph, when workers share one git checkout, or when any agent or human may be writing the same tree concurrently.
 recommended: false
 ---
 

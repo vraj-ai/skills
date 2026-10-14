@@ -1,0 +1,9 @@
+# Devin environment blueprint for vraj-ai/skills.
+# Node lives under nvm but off PATH — sessions need it for `npm test`.
+initialize: |
+  echo "PATH=$HOME/.nvm/versions/node/v24.19.0/bin:$PATH" >> $ENVRC
+
+knowledge:
+  - name: test
+    contents: |
+      npm test   # node scripts/run-tests.mjs — zero-dep, no install needed

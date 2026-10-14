@@ -13,6 +13,9 @@ const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // the rest are independent disciplines. Three former standalone skills
 // (gauntlet-loop, github-workflow, multi-agent-review) were cut here.
 // #78 adds the manual model-throughput benchmark.
+// Later additions: the merge loop (land), read-only and failure work
+// (investigate, debug), session continuity (resume), the intent router
+// (route), and the principles/ bucket the delivery skills compose.
 const EXPECTED_KEPT = new Set([
   'ship',
   'grill',
@@ -29,6 +32,16 @@ const EXPECTED_KEPT = new Set([
   'subagent-delegation',
   'ai-subscription-unit-economics',
   'test-tps',
+  'land',
+  'investigate',
+  'debug',
+  'resume',
+  'route',
+  'principle-real-artifact',
+  'principle-evidence-over-report',
+  'principle-bounded-repair',
+  'principle-named-constraints',
+  'principle-independent-verdict',
 ]);
 
 const CORE = new Set([
@@ -38,42 +51,11 @@ const CORE = new Set([
   'snapshot',
 ]);
 
-// Every skill this repo has ever shipped under another name. A tracked file
-// that still invokes one by /name or `name` advertises an `add <name>` that
-// now fails. Plain historical prose (VENDORED.md's satellite sentence) is
-// allowed; invocations are not.
-const RETIRED = [
-  'loop-engineer',
-  'browser-control',
-  'hands-free',
-  'pi-setup-maintenance',
-  'pi-usage-maintenance',
-  'ponytail-audit',
-  'ponytail-debt',
-  'ponytail-gain',
-  'ponytail-help',
-  'ponytail-review',
-  'legacy-planner',
-  'legacy-coder',
-  'legacy-debugger',
-  'legacy-reviewer',
-  'github-projects-pipeline',
-  'profile-gated-delivery',
-  'specialist-profiles',
-  'parallel-subagent-implementation',
-  'subagent-batch-implementation',
-  'shared-worktree-delegation',
-  'shared-worktree-safety',
-  'ticket-implementation-tdd',
-  'provider-integration-tdd',
-  'codebase-audit',
-  'invariant-evidence-review',
-  'controlled-ticket-delivery',
-  'state-driven-pipeline-recovery',
-  'gauntlet-loop',
-  'github-workflow',
-  'multi-agent-review',
-];
+// Every skill this repo has ever shipped under another name lives in
+// evals/retired-names.json — the single source shared with
+// scripts/validate-skills.mjs. A tracked file that still invokes one by /name
+// or `name` advertises an `add <name>` that now fails. Plain historical prose
+// (VENDORED.md's satellite sentence) is allowed; invocations are not.
 
 // git ls-files, not a filesystem walk: CONTEXT/ holds working state and full
 // repo copies (including worktrees of this repo) that must never be scanned,
@@ -87,7 +69,7 @@ function trackedFiles() {
     .filter((line) => line && !line.startsWith('CONTEXT/') && !line.startsWith('third-party/'));
 }
 
-test('the catalogue is exactly the 15 kept skills, with the 4 core skills separate', async () => {
+test('the catalogue is exactly the 25 kept skills, with the 4 core skills separate', async () => {
   const { skills, warnings } = await discoverSkills(repo);
   assert.deepEqual(warnings, []);
   assert.deepEqual(new Set(skills.keys()), EXPECTED_KEPT);
@@ -129,8 +111,9 @@ test("README's catalogue section names every kept skill and only discoverable on
 });
 
 test('no tracked file invokes a retired skill by /name or `name`', async () => {
-  // This file is its own retired-name fixture, so it is excluded from the
-  // scan rather than blessed by an exemption list that could rot.
+  const RETIRED = JSON.parse(await fs.readFile(path.join(repo, 'evals', 'retired-names.json'), 'utf8'));
+  // This file once listed the retired names inline and stays excluded from
+  // the scan rather than blessed by an exemption list that could rot.
   const self = 'test/catalogue.test.js';
   const offences = [];
   for (const file of trackedFiles()) {

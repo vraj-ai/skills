@@ -17,9 +17,11 @@ Start with an outcome or a referenced issue. Use only the stages the task needs.
 
 | Skill | Use it for |
 |---|---|
+| `/route` | Unsure which skill fits — maps intent to an invocation |
 | `/grill` | Consequential product/design choices when intent is unclear |
 | `/issues` | A durable work queue with acceptance, references, and verification |
 | `/ship #123` | Find or execute work, verify behavior, obtain review, and deliver under repo policy |
+| `/land` | Drive open PRs to merged — checks, threads, stacks, verified runs |
 | `/snapshot` | A short resume note for unfinished work |
 
 A clear task goes straight to `/ship`. Snapshot is optional and does not grant
@@ -51,14 +53,19 @@ authorized. Snapshot only checkpoints; it does not grant push authority.
 | Skill | Use when |
 |---|---|
 | `ship` | Thin task navigator and verified delivery |
+| `land` | Drive open PRs to merged — only the contiguous verified run, bottom-up |
 
 **Standalone** (`standalone/`)
 
 | Skill | Use when |
 |---|---|
+| `route` | Map intent to the right skill and hand back an invocation |
 | `grill` | Clarify consequential intent and preserve missing durable decisions |
 | `issues` | Publish proportionate tracker work with acceptance and verification |
+| `investigate` | Read-only answers about the codebase, with evidence and confidence |
+| `debug` | Root-cause a defect from a reproduction, fix at the cause |
 | `snapshot` | Optional short checkpoint for unfinished work |
+| `resume` | Pick up work a prior session left, from the proven position |
 | `push-handoff` | Commit and push under explicit authority, proven by remote SHA |
 | `setup-obsidian` | Turn a docs folder into a retrieval graph |
 | `setup-vskills` | Set this repo up on a new machine |
@@ -70,8 +77,16 @@ v4.9.0; see VENDORED.md for provenance).
 `pipeline/` holds reusable disciplines you can pull in on their own: `audit`,
 `delivery-constraints`, `implementation-tdd`, `subagent-delegation`, and
 `ai-subscription-unit-economics`.
+`principles/` holds the composable disciplines the delivery skills invoke:
+`principle-real-artifact`, `principle-evidence-over-report`,
+`principle-bounded-repair`, `principle-named-constraints`, and
+`principle-independent-verdict`.
 
 Install one skill and its dependencies with `npx @vskills/cli add <skill>`.
+
+Skill quality is enforced by the repo's own evals (`evals/`): structural
+validation and prompt-to-skill routing checks run in CI; behavioral evals run
+on demand. See `evals/README.md`.
 
 ## Skills from elsewhere
 
