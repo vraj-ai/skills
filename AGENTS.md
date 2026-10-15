@@ -1,23 +1,27 @@
-# Agent Instructions
+# skills
 
-Read `CONTEXT/glossary.md` for language.
-Read `CONTEXT/architecture.md` before changing project structure or durable decisions.
-Read `CONTEXT/progress.md` for the current verified milestone pointer.
+vskills catalogue and installer for `vraj-ai/skills`. Node >= 18. `npm test` runs the suite. `node scripts/validate-skills.mjs` lints skill frontmatter and cross-references.
 
-Keep durable decisions in `CONTEXT/architecture.md`, keep progress bounded, and
-use the project's tests, builds, git history, and goal artifacts as evidence.
-Do not turn `CONTEXT/progress.md` into a session diary.
+## Which skill
 
-## Agent skills
+pstack `/poteto-mode` is the inner loop: understand, design, build, verify, interrogate, ship. Install pstack beside this catalogue. Do not copy it into the repo. These skills own the queue and delivery.
 
-### Issue tracker
+- Unclear product intent: `/grill`. An architecture fork goes to pstack `/how` and `/architect`. A contested design can hand off to `/interrogate`.
+- Agreed work into the tracker: `/issues`. When a repo has a `verify-<app>` skill, name that feature in Verification.
+- Build and open a PR: `/ship`. Multi-module work, a design fork, or an unknown cause during the build runs `/poteto-mode`'s Feature or Bug-fix playbook inside `/ship`. A one-file change stays plain `/ship`.
+- Unfinished work for a later session: `/snapshot` (branch, head SHA, next action). An in-chat catch-up maps to pstack `/ketchup`.
+- Merge is `/land`, and only with explicit authority. Self-merge is off (fleet ADR 0003).
 
-GitHub Issues via `gh`. See `docs/agents/issue-tracker.md`.
+`/route` maps an intent to one of these. It must not send the same request to both `/ship` and `/poteto-mode`.
 
-### Triage labels
+## Verify
 
-Default role strings. See `docs/agents/triage-labels.md`.
+Before claiming this repo works, run `.cursor/skills/verify-skills`: `node scripts/validate-skills.mjs`, then `npm test`. Paste both summaries. A model verdict is not a pass.
 
-### Domain docs
+## Tracker and context
 
-`CONTEXT/glossary.md`, `CONTEXT/architecture.md`, `CONTEXT/adr/`. See `docs/agents/domain.md`.
+GitHub Issues on `vraj-ai/skills` via `gh`. This repo does not commit `docs/` or `CONTEXT/` (see `setup-vskills`). Consumer projects keep durable decisions in their own `CONTEXT/architecture.md`.
+
+## Authority
+
+Do not merge, force-push `main`, or commit secrets. Opening a PR is the delivery.

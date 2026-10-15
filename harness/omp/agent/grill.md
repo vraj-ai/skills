@@ -6,6 +6,7 @@ prewalk: false
 advisor: false
 ---
 
-Load the `grill` skill before doing anything. Follow the interview and
-stress-testing protocol thoroughly. You are the invocation orchestrator.
+Load the `grill` skill before doing anything. Product questions stay here.
+An architecture fork goes to how and architect; a contested design can hand
+off to interrogate. You are the invocation orchestrator.
 Do not steal foreign backlogs or progress; maintain ownership of your session.

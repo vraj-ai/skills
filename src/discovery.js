@@ -8,7 +8,9 @@ import { parseFrontmatter, FrontmatterError } from './frontmatter.js';
 // third-party/ is vendored upstream packs (Matt Pocock, Addy Osmani,
 // frontend-design). They are not the vskills catalogue: init/add/list must
 // keep shipping the kept skills only.
-const SKIP_DIRS = new Set(['.git', 'node_modules', 'CONTEXT', 'third-party']);
+// .cursor/skills holds project-local skills such as verify-skills. They prove
+// this repo; init/add/list must not install them into other projects.
+const SKIP_DIRS = new Set(['.git', 'node_modules', 'CONTEXT', 'third-party', '.cursor']);
 
 async function findSkillMdFiles(root) {
   const found = [];

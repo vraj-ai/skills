@@ -48,6 +48,10 @@
     { "prompt": "the author verified its own diff, is that enough", "expect": "principle-independent-verdict" },
     { "prompt": "write a haiku about recursion", "expect": "investigate", "kind": "negative" },
     { "prompt": "merge main into my feature branch", "expect": "ship", "kind": "negative" },
-    { "prompt": "explain what OAuth is", "expect": "debug", "kind": "negative" }
+    { "prompt": "explain what OAuth is", "expect": "debug", "kind": "negative" },
+    { "prompt": "pick up the multi-module issue and execute it end to end, then open a verified PR", "expect": "ship", "note": "poteto-mode runs inside ship; it is not a second route" },
+    { "prompt": "execute the referenced design-fork issue end to end and open a verified PR", "expect": "ship", "note": "a design fork during delivery still routes to ship" },
+    { "prompt": "use poteto-mode: pick up the ticket and execute it end to end to a verified PR", "expect": "ship", "note": "the same request must not also route to poteto-mode" },
+    { "prompt": "catch me up on what changed in this chat since I last wrote", "expect": "snapshot", "kind": "negative", "note": "in-chat catch-up is pstack ketchup, not snapshot" }
   ]
 }

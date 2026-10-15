@@ -29,6 +29,21 @@ push authority. Issues/PRs hold intent and shared status; source/checks establis
 behavior; small decision docs preserve rationale. Inside T3, ship uses native
 child tasks, PR links/watches, and browser evidence.
 
+pstack is the inner engineering loop, installed beside this catalogue, not
+copied into it: understand, design, build, verify, interrogate, then ship.
+
+- A one-file change is plain `/ship`.
+- Work that crosses modules, has a design fork, or still has an unknown cause
+  runs `/poteto-mode`'s Feature or Bug-fix playbook inside `/ship`.
+- `/grill` keeps product questions. An architecture fork goes to `/how` and
+  `/architect`. A contested design can hand off to `/interrogate`.
+- `/snapshot` maps to `/ketchup` for an in-chat catch-up. The resume note
+  (branch, head SHA, next action) stays `/snapshot`.
+- Merging is `/land`, and only with explicit authority. Self-merge is off.
+
+Prove a change to this repo with `.cursor/skills/verify-skills` before calling
+it done: `node scripts/validate-skills.mjs`, then `npm test`.
+
 ## Agents
 
 The author runs this workflow in omp. The skills themselves stay harness-agnostic:
@@ -100,7 +115,8 @@ and commits are in VENDORED.md.
 | Addy Osmani | `third-party/addyosmani/skills` | [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) |
 | Frontend design | `third-party/frontend-design` | [anthropics/skills](https://github.com/anthropics/skills) `frontend-design` |
 
-This repo's own loop stays grill, issues, ship, and snapshot.
+This repo's own loop stays grill, issues, ship, and snapshot. pstack runs
+inside that loop, as the workflow section describes. It is not a catalogue skill.
 
 ## Plugins
 
@@ -209,12 +225,17 @@ bin/              the vskills CLI entrypoint
 src/              vskills implementation
 test/             vskills test suite (node --test)
 
-delivery/         ship
-standalone/       grill, issues, snapshot, push-handoff,
-                  setup-obsidian, setup-vskills, pr-review, ponytail
+delivery/         ship, land
+standalone/       route, grill, issues, investigate, debug, snapshot,
+                  resume, push-handoff, setup-obsidian, setup-vskills,
+                  pr-review, ponytail, test-tps
 pipeline/         audit, delivery-constraints, implementation-tdd,
                   subagent-delegation, ai-subscription-unit-economics
+principles/       principle-real-artifact, principle-evidence-over-report,
+                  principle-bounded-repair, principle-named-constraints,
+                  principle-independent-verdict
 harness/          per-client Role and profile templates (omp, opencode, ...)
+.cursor/skills/   project-local verify-skills (not installed by vskills)
 ```
 
 `/setup-vskills` copies `harness/<name>/` after it researches the named harness.
@@ -232,7 +253,7 @@ OpenCode profiles live under `harness/opencode/` and install to
   authoring local manual-only workflows. No external source text is a
   dependency of any kept skill; see VENDORED.md for provenance.
 - [mattpocock/skills](https://github.com/mattpocock/skills) by Matt Pocock: `/grill-with-docs`, `/to-spec`, `/handoff`, `/to-tickets`, and the shape of the workflow. `/grill`, `/issues`, and `/snapshot` are this repo's versions, writing `CONTEXT/` and combining setup, spec, tickets, and closeout.
-- [pstack](https://github.com/backnotprop/pstack) by poteto (MIT): exhaust the design space, prove safety by running code, expand-contract for wide blast radius, and settle caller usage before module shape.
+- [pstack](https://github.com/cursor/plugins/tree/main/pstack) by poteto (MIT): exhaust the design space, prove safety by running code, expand-contract for wide blast radius, and settle caller usage before module shape. This catalogue does not vendor those skills. `ship` runs `poteto-mode` inside itself; `grill` can hand off to `interrogate`; `snapshot` maps to `ketchup`.
 
 The review rubric's three lenses came from reading these anti-slop skills:
 

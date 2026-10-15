@@ -1,6 +1,6 @@
 ---
 name: push-handoff
-version: 2.3.0
+version: 2.3.1
 description: Commit and push a verified handoff plus its artifacts, only under explicit authority, and prove the push happened by reading the remote SHA back. Use as the final delivery step after artifacts are ready, when the user asks to push work, or when a handoff needs to reach the remote. Refuses to claim success without remote proof and never force-pushes or commits secrets.
 ---
 
@@ -84,7 +84,7 @@ type(scope): subject
 Refs: #123
 ```
 
-`type` âˆˆ `feat` `fix` `test` `refactor` `docs` `chore`.
+`type` ∈ `feat` `fix` `test` `refactor` `docs` `chore`.
 
 The `Refs:` trailer links the commit to the GitHub issue in the Project. Use
 `Refs: #123` in the same repository or `Refs: owner/repo#123` across repositories.
@@ -107,8 +107,8 @@ A successful-looking `git push` that raced with someone else, hit a protected br
 ```
 Commit: <sha>
 Branch: <name>
-Remote: <origin/branch> @ <sha>   â† fetched readback
-Gate: `<command>` â†’ pass
+Remote: <origin/branch> @ <sha>   ← fetched readback
+Gate: `<command>` → pass
 Files: <list>
 ```
 

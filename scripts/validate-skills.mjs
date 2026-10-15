@@ -9,7 +9,11 @@
 //     (version is not required on vendored skills — frontmatter `source:`
 //     marks upstream content, which must not gain a synthetic version)
 //   - every declared dependency resolves to another discovered skill
+//   - every relative markdown link inside a skill directory resolves
+//   - every skill named in route's intent table is a catalogue skill
 //   - the body invokes no retired skill name by /name or `name`
+//   - .cursor/skills/*/SKILL.md (project-local, not catalogue) passes the
+//     same frontmatter and relative-link checks
 //
 // Imported by test/evals-structure.test.js for CI, and runnable standalone:
 //
@@ -17,7 +21,7 @@
 //   node scripts/validate-skills.mjs --json   # machine-readable report
 
 import path from 'node:path';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { discoverSkills } from '../src/discovery.js';
 import { parseFrontmatter } from '../src/frontmatter.js';
@@ -31,6 +35,68 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const SEMVER = /^\d+\.\d+\.\d+$/;
 const MIN_DESCRIPTION = 40;
 const MAX_DESCRIPTION = 1024;
+const LINK = /\[[^\]]*\]\(([^)\s]+)\)/g;
+
+function stripFences(text) {
+  return text.replace(/```[\s\S]*?```/g, '');
+}
+
+async function markdownFiles(dir) {
+  const out = [];
+  const entries = await readdir(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...await markdownFiles(full));
+    else if (entry.isFile() && entry.name.endsWith('.md')) out.push(full);
+  }
+  return out;
+}
+
+// Relative links only. Absolute URLs and same-page anchors are not files
+// this repo is claiming to contain.
+async function relativeLinkViolations(root, file, text) {
+  const violations = [];
+  for (const match of stripFences(text).matchAll(LINK)) {
+    const raw = match[1].trim();
+    if (!raw || raw.startsWith('#') || /^[a-z][a-z0-9+.-]*:/i.test(raw)) continue;
+    const target = raw.split('#')[0];
+    if (!target) continue;
+    const resolved = path.resolve(path.dirname(file), target);
+    try {
+      await stat(resolved);
+    } catch {
+      violations.push({
+        file: path.relative(root, file),
+        rule: 'cross-reference',
+        detail: `relative link "${raw}" does not resolve`,
+      });
+    }
+  }
+  return violations;
+}
+
+// The intent table's skill column is a cross-reference into the catalogue.
+// pstack names belong in the prose under the table, not in this column.
+function routeTableTargets(body) {
+  const targets = [];
+  let inTable = false;
+  for (const line of body.split('\n')) {
+    if (/^\|\s*Intent\s*\|\s*Skill\s*\|/.test(line)) {
+      inTable = true;
+      continue;
+    }
+    if (!inTable) continue;
+    if (!line.trim().startsWith('|')) {
+      inTable = false;
+      continue;
+    }
+    if (/^\|\s*:?-{3,}/.test(line)) continue;
+    const skillCell = line.split('|')[2] ?? '';
+    for (const match of skillCell.matchAll(/`([a-z0-9-]+)`/g)) targets.push(match[1]);
+  }
+  return targets;
+}
 
 export async function validateSkills(root = repoRoot) {
   const { skills, warnings } = await discoverSkills(root);
@@ -85,9 +151,99 @@ export async function validateSkills(root = repoRoot) {
         violations.push({ file, rule: 'retired-name', detail: `line ${i + 1}: invokes a retired skill` });
       }
     });
+
+    const skillMd = path.join(skill.dir, 'SKILL.md');
+    for (const md of await markdownFiles(skill.dir)) {
+      const text = md === skillMd ? body : await readFile(md, 'utf8');
+      violations.push(...await relativeLinkViolations(root, md, text));
+    }
+
+    if (name === 'route') {
+      for (const target of routeTableTargets(body)) {
+        if (!skills.has(target)) {
+          violations.push({
+            file, rule: 'cross-reference',
+            detail: `route table names "${target}", which is not a catalogue skill`,
+          });
+        }
+      }
+    }
   }
 
+  await lintProjectLocalSkills(root, violations, invocation);
+
   return { violations, skillCount: skills.size };
+}
+
+async function lintProjectLocalSkills(root, violations, invocation) {
+  const cursorSkills = path.join(root, '.cursor', 'skills');
+  let entries;
+  try {
+    entries = await readdir(cursorSkills, { withFileTypes: true });
+  } catch (err) {
+    if (err.code === 'ENOENT') return;
+    throw err;
+  }
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const dir = path.join(cursorSkills, entry.name);
+    const skillMd = path.join(dir, 'SKILL.md');
+    let content;
+    try {
+      content = await readFile(skillMd, 'utf8');
+    } catch (err) {
+      if (err.code === 'ENOENT') {
+        violations.push({
+          file: path.relative(root, dir),
+          rule: 'frontmatter',
+          detail: 'project-local skill directory has no SKILL.md',
+        });
+        continue;
+      }
+      throw err;
+    }
+
+    let parsed;
+    try {
+      parsed = parseFrontmatter(content);
+    } catch (err) {
+      violations.push({
+        file: path.relative(root, skillMd),
+        rule: 'frontmatter',
+        detail: err.message,
+      });
+      continue;
+    }
+
+    const { data, body } = parsed;
+    const file = path.relative(root, skillMd);
+    if (typeof data.name !== 'string' || data.name !== entry.name) {
+      violations.push({
+        file, rule: 'name-matches-dir',
+        detail: `frontmatter name "${data.name ?? ''}" != directory "${entry.name}"`,
+      });
+    }
+    const description = typeof data.description === 'string' ? data.description : '';
+    if (description.length < MIN_DESCRIPTION || description.length > MAX_DESCRIPTION) {
+      violations.push({
+        file, rule: 'description',
+        detail: `description length ${description.length} is outside ${MIN_DESCRIPTION}-${MAX_DESCRIPTION}`,
+      });
+    }
+    if (data.version !== undefined && data.version !== '' && !SEMVER.test(String(data.version))) {
+      violations.push({ file, rule: 'version', detail: `version "${data.version}" is not semver` });
+    }
+    body.split('\n').forEach((line, i) => {
+      if (invocation.test(line)) {
+        violations.push({ file, rule: 'retired-name', detail: `line ${i + 1}: invokes a retired skill` });
+      }
+    });
+    for (const md of await markdownFiles(dir)) {
+      const text = md === skillMd ? body : await readFile(md, 'utf8');
+      violations.push(...await relativeLinkViolations(root, md, text));
+    }
+  }
 }
 
 async function main() {
