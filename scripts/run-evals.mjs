@@ -26,6 +26,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { discoverSkills } from '../src/discovery.js';
+import { invocationAction } from './run-tests.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -235,7 +236,17 @@ async function runBehavioral(skillName) {
 
 // Importing this module (the routing test does) must not run the CLI. An
 // unguarded call process.exit's the test runner as soon as tier 2 finishes.
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+// invocationAction treats symlink and drive-letter aliases as a run, and
+// fails loud when only the basename matches a different file. A raw
+// path.resolve comparison exits 0 having run nothing.
+const evalAction = invocationAction(process.argv[1], fileURLToPath(import.meta.url));
+if (evalAction === 'fail') {
+  console.error(
+    `run-evals: invoked as ${process.argv[1]} but that path is not this file. Refusing to exit 0 with no evals.`,
+  );
+  process.exit(1);
+}
+if (evalAction === 'run') {
   const argv = process.argv.slice(2);
   const bIdx = argv.indexOf('--behavioral');
   if (bIdx !== -1) {

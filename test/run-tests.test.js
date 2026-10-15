@@ -1,9 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+const execFileAsync = promisify(execFile);
 
 import { collectTestFiles, invocationAction } from '../scripts/run-tests.mjs';
 
@@ -62,6 +66,18 @@ test('a path mismatch that still names this script is a loud failure, not a sile
       'fail',
       'same basename, different file must not exit 0 having run nothing',
     );
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('run-evals invoked through a symlink still runs tier 2', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'vskills-evals-link-'));
+  try {
+    const link = path.join(dir, 'run-evals.mjs');
+    await fs.symlink(path.join(repo, 'scripts', 'run-evals.mjs'), link);
+    const { stdout } = await execFileAsync(process.execPath, [link, '--min-rank1', '0'], { cwd: repo });
+    assert.match(stdout, /routing evals:/);
   } finally {
     await fs.rm(dir, { recursive: true, force: true });
   }

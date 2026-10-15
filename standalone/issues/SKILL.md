@@ -1,8 +1,7 @@
 ---
 name: issues
-version: 2.1.0
+version: 2.1.1
 description: Turn an agreed outcome into tracker issues with acceptance, dependencies, references, and verification. Keep planning proportional to the work.
-disable-model-invocation: true
 argument-hint: "[task-or-spec-reference]"
 recommended: true
 ---

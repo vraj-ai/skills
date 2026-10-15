@@ -1,8 +1,7 @@
 ---
 name: verify-skills
 description: Prove the vskills repository by linting every skill's frontmatter and relative cross-references, then running the test suite. Use before claiming this repo works, after a skill edit, or when a pull request needs verification evidence.
-version: 1.0.0
-disable-model-invocation: true
+version: 1.0.1
 ---
 
 # Verify skills

@@ -1,9 +1,8 @@
 ---
 name: snapshot
-version: 2.2.0
+version: 2.2.1
 description: Checkpoint unfinished or half-done work — save a concise resume note so a fresh session or task can pick it up. Preserve missing state and the next action without repeating delivery or rebuilding project context.
 dependencies: [push-handoff]
-disable-model-invocation: true
 argument-hint: "[next session focus]"
 recommended: true
 ---
