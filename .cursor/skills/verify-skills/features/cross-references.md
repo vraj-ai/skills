@@ -23,4 +23,4 @@ npm test
 
 ## Gotchas
 
-pstack names (`poteto-mode`, `interrogate`, `how`, `architect`, `ketchup`) are real skills in another package. A relative link to them, or a route-table cell that names one, is a failure. Mention them in prose beside the catalogue skill that owns the hand-off.
+pstack names (`poteto-mode`, `interrogate`, `how`, `why`, `recall`, `teach`, `tdd`, `architect`, `ketchup`, `setup-pstack`, `create-verification-skill`, `maintain-verification-skill`) are real skills in another package. A relative link to them, or a route-table cell that names one, is a failure. Mention them in prose beside the catalogue skill that owns the hand-off.
