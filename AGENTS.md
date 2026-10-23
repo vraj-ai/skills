@@ -6,10 +6,9 @@ vskills catalogue and installer for `vraj-ai/skills`. Node >= 18. `npm test` run
 
 pstack `/poteto-mode` is the inner loop: understand, design, build, verify, interrogate, ship. Install pstack beside this catalogue. Do not copy it into the repo. These skills own the queue and delivery.
 
-- Unclear product intent: `/grill`. An architecture fork goes to pstack `/how` and `/architect`. A contested design can hand off to `/interrogate`.
-- Agreed work into the tracker: `/issues`. When a repo has a `verify-<app>` skill, name that feature in Verification.
-- Build and open a PR: `/ship`. Multi-module work, a design fork, or an unknown cause during the build runs `/poteto-mode`'s Feature or Bug-fix playbook inside `/ship`. A one-file change stays plain `/ship`.
-- Unfinished work for a later session: `/snapshot` (branch, head SHA, next action). An in-chat catch-up maps to pstack `/ketchup`.
+- Any task: `/ship`. A feature runs `/recall`, `/how` and `/why`, `/teach`, `/architect`, `/grill` for product questions, and `/issues` inside `/ship`, builds with `/poteto-mode`'s Feature or Bug-fix playbook, proves the change with the repo's `verify-<app>` skill, and hands off to `/land`. A small change goes straight to the build.
+- Product questions only: `/grill`. Agreed work to queue without building: `/issues`. When a repo has a `verify-<app>` skill, name that feature in Verification.
+- Stopping before done: `/snapshot` completes the ship record (`.git/vskills/ship/<slug>.md`, never committed). `/resume-work` continues at its phase. An in-chat catch-up maps to pstack `/ketchup`.
 - Merge is `/land`, and only with explicit authority. Self-merge is off (fleet ADR 0003).
 
 `/route` maps an intent to one of these. It must not send the same request to both `/ship` and `/poteto-mode`.

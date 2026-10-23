@@ -113,8 +113,11 @@ test('shipped skills never invoke a skill this repo does not ship', async () => 
   // are Claude Code built-ins; `/code-review` and `/wayfinder` live in other
   // agent skill sets, as does `/create-verification-skill` (pstack, invoked by
   // setup-vskills Step 1.4). `/poteto-mode`, `/how`, `/architect`,
-  // `/interrogate`, and `/ketchup` are pstack skills installed beside this
-  // catalogue: ship, grill, and snapshot name them and do not ship them.
+  // `/interrogate`, `/ketchup`, `/recall`, `/why`, `/teach`, `/tdd`,
+  // `/setup-pstack`, and `/maintain-verification-skill` are pstack skills
+  // installed beside this catalogue by setup-vskills' install-packs.mjs: ship,
+  // grill, snapshot, resume-work, and setup-vskills name them and do not ship
+  // them. `/pstack` is the `/pstack:<name>` prefix of pstack's Claude Code plugin.
   // The point of the allowlist is the ratchet: a NEW unshipped reference
   // fails this gate, which is how `/handoff` reached the published package
   // unnoticed (#31).
@@ -132,6 +135,13 @@ test('shipped skills never invoke a skill this repo does not ship', async () => 
     'architect',
     'interrogate',
     'ketchup',
+    'recall',
+    'why',
+    'teach',
+    'tdd',
+    'setup-pstack',
+    'maintain-verification-skill',
+    'pstack',
   ]);
 
   const offenders = [];

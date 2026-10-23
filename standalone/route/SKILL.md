@@ -1,6 +1,6 @@
 ---
 name: route
-version: 1.1.0
+version: 1.2.0
 description: Map a task to the right vskills skill — reads what the user is trying to do, names the matching skill (or sequence), and hands back a paste-ready invocation. Use when unsure which skill fits, where to start, or what to run, or as the entry point to the pipeline.
 disable-model-invocation: true
 argument-hint: "[what you're trying to do]"
@@ -17,12 +17,12 @@ not doing the work.
 |---|---|
 | Unclear or consequential product/design choice | `grill` |
 | Turn an agreed outcome into tracker work | `issues` |
-| Execute a referenced task end to end, verified PR or evidenced blocker | `ship` |
+| Build a feature, fix, or referenced issue end to end, from context through design, issues, build, and land | `ship` |
 | Drive open PRs to merged: checks, threads, stacks, overnight runs | `land` |
 | Understand a subsystem, a call chain, or a blast radius — no changes | `investigate` |
 | A bug or regression whose cause isn't known | `debug` |
 | Checkpoint unfinished work for a later session | `snapshot` |
-| Pick up work a prior session or agent left | `resume` |
+| Continue stopped work at the phase it stopped | `resume-work` |
 | Commit and push under explicit authority, proven by remote SHA | `push-handoff` |
 | Install the GitHub-Actions review bot into a repo | `pr-review` |
 | Audit a whole codebase into a ranked ticket backlog | `audit` |
@@ -42,10 +42,12 @@ run.
 
 ## The usual sequences
 
-- Clear task → `ship`. Nothing else needed; it reads the tracker itself.
-- Unclear task → `grill` → `issues` → `ship` per issue → `land` to merge.
+- Any task → `ship`. It runs the context, design, grill, and issues steps a
+  feature needs and hands off to `land`. A small task goes straight to its build.
+- Product questions only, nothing to build yet → `grill`. Agreed work to queue
+  without building → `issues`.
 - "Is it broken?" → `investigate`; "fix it" → `debug` → `ship` → `land`.
-- Away and back → `snapshot` out, `resume` in.
+- Away and back, or a usage limit → `snapshot` out, `resume-work` in.
 - Crosses modules, a design fork, or the cause is still unknown during the build → `ship` only. `/poteto-mode` runs inside `ship`. Do not route that request to `/poteto-mode` as well.
 - Catch me up on this chat → pstack `/ketchup`, not `snapshot`. A later session still needs `snapshot`.
 

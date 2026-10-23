@@ -1,0 +1,54 @@
+---
+name: resume-work
+version: 2.0.0
+description: Pick up exactly where a stopped or paused task stopped, at the same phase. Reads the ship record or snapshot note, verifies which claims of the previous session or agent still hold against the repo, reloads only the context the next step needs, and keeps going with ship or land. In the same chat after a usage limit it re-reads nothing. In a fresh chat the record carries the context. Use to resume after a limit resets, or to take over a task another agent claims it finished.
+dependencies: [ship, snapshot, principle-evidence-over-report]
+argument-hint: "[record slug, issue, or task]"
+recommended: true
+---
+
+# Resume work
+
+`ship` and `snapshot` leave a ship record (format in ship's references/record.md). This skill continues from it. The record is a pointer, and the repo is the truth: re-prove the position before building on it.
+
+## 1. Same chat or fresh chat
+
+**Same chat.** The session stopped on a usage limit or a pause, and this conversation still holds the work. Do not re-read the record's context or re-run any context skill. Run step 2's live checks, then continue at the last next action.
+
+**Fresh chat.** Find the record:
+
+1. The argument: a slug, an issue, or a path.
+2. Otherwise the open records in `$(git rev-parse --git-common-dir)/vskills/ship/`, meaning any phase but done. One record means use it. Several means list each one's objective, phase, and Updated line, then ask which.
+3. No record: a snapshot note or handoff the user points to. Failing that, run pstack `/recall` on the topic and rebuild the position from the tracker and branches. pstack skills turn off model invocation, so when the Skill tool refuses `/recall`, read its `SKILL.md` from this skill's sibling directory.
+
+Load the record's Context and Design as your working context. They replace `recall`, `how`, `why`, and `teach`. Run those again only where step 2 shows the code under them changed. Then read only the files the next action touches.
+
+## 2. Re-prove the position
+
+Check each claim against the repo, in order:
+
+1. `git status -sb` and `git log`. Does the branch still hold the recorded head? Did anything land since?
+2. The tracker. The current state of each recorded issue and PR, and any comment newer than the record's Updated time.
+3. The verification. Does the gate still pass at the current head?
+4. The context. Have the files anchored in Context changed since the recorded head (`git diff <recorded head> -- <files>`)? If so, run `/how` on just those files and correct the Context section.
+
+Where the record and the repo disagree, the repo is right. Say so and continue from the proven position. Authority the prior session held (push, merge, comment) expired with it. Only currently granted authority applies.
+
+## 3. Continue at the phase
+
+| Phase | Continue with |
+|---|---|
+| context | ship's Context, from the first step the record lacks |
+| design | ship's Design. Open grill questions go to the user first. |
+| issues | `/issues` for the units not filed yet |
+| build | ship's Build, on the first unfinished issue, at its next step |
+| review | ship's Review, at the current head SHA |
+| land | `/land` on the recorded PRs |
+| blocked | the blocker. Ask only if it is a product decision. |
+| done | Nothing. Report and stop. |
+
+A stale next action (landed, superseded, blocked elsewhere) gets re-derived from the tracker's real state, with what changed stated. A broken claim, such as a moved branch or a gate that is red at a claimed-green head, is new work. Run `/debug` on the drift before resuming the plan.
+
+From here ship's rules apply, including updating the record at each phase boundary and `/snapshot` on the next stop.
+
+Report which claims held, which did not, and where you resumed.

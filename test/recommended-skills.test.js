@@ -12,11 +12,12 @@ const EXPECTED_RECOMMENDED = new Set([
   'grill',
   'issues',
   'snapshot',
+  'resume-work',
   'setup-vskills',
   'ponytail',
 ]);
 
-test('exactly the six recommended skills are marked recommended: true', async () => {
+test('exactly the seven recommended skills are marked recommended: true', async () => {
   const { skills, warnings } = await discoverSkills(repoRoot);
   assert.equal(warnings.length, 0);
 

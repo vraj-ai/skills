@@ -14,7 +14,7 @@ const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // (gauntlet-loop, github-workflow, multi-agent-review) were cut here.
 // #78 adds the manual model-throughput benchmark.
 // Later additions: the merge loop (land), read-only and failure work
-// (investigate, debug), session continuity (resume), the intent router
+// (investigate, debug), session continuity (resume-work), the intent router
 // (route), and the principles/ bucket the delivery skills compose.
 const EXPECTED_KEPT = new Set([
   'ship',
@@ -35,7 +35,7 @@ const EXPECTED_KEPT = new Set([
   'land',
   'investigate',
   'debug',
-  'resume',
+  'resume-work',
   'route',
   'principle-real-artifact',
   'principle-evidence-over-report',
