@@ -26,7 +26,7 @@ zero-dependency installer that puts them on your machine.
  └─────────┘     └──────────┘     └─────────────┘     └────────────┘
    optional        optional               │              explicit
                                           ▼              authority
-                              /snapshot ─────▶ /resume
+                              /snapshot ─────▶ /resume-work
                               pause here      pick up later
 ```
 
@@ -60,8 +60,8 @@ and hands back the invocation.
 | `/issues` | A durable work queue with acceptance, references, and verification |
 | `/ship #123` | Find or execute work, verify behavior, get it reviewed, open a PR |
 | `/land` | Drive open PRs to merged: checks, threads, stacks, verified runs |
-| `/snapshot` | A short resume note for unfinished work |
-| `/resume` | Pick up where a prior session or agent stopped, from the proven position |
+| `/snapshot` | Checkpoint unfinished work into the ship record |
+| `/resume-work` | Continue at the exact phase the work stopped, in the same chat or a fresh one |
 
 Issues and PRs hold intent and shared status. Source and checks establish
 behavior. Small decision docs preserve rationale.
@@ -78,8 +78,8 @@ and the delivery around it.
   runs `/poteto-mode`'s Feature or Bug-fix playbook inside `/ship`.
 - `/grill` keeps product questions. An architecture fork goes to `/how` and
   `/architect`. A contested design can hand off to `/interrogate`.
-- `/snapshot` maps to `/ketchup` for an in-chat catch-up. The resume note
-  (branch, head SHA, next action) stays `/snapshot`.
+- `/ketchup` is the in-chat catch-up. The ship record (phase, head SHA,
+  next action, context) is `/snapshot`'s.
 - Merging is `/land`, and only with explicit authority. Self-merge is off.
 
 ## Why these exist
@@ -107,7 +107,7 @@ applies to the head SHA it examined, so a push means a recheck.
 
 **The repo beats the report.** When a worker claims success with no commit, or
 a ticket says done while the gate is red, the repo is right and the report is
-narrative. `/resume` verifies every claim a prior session left before building
+narrative. `/resume-work` verifies every claim a prior session left before building
 on it. *(`principle-evidence-over-report`)*
 
 ### It retried the same fix eleven times.
@@ -159,8 +159,8 @@ Install any one with its dependencies: `npx @vskills/cli add <skill>`.
 | [`issues`](standalone/issues/SKILL.md) | An agreed outcome becomes tracker work with acceptance and verification |
 | [`investigate`](standalone/investigate/SKILL.md) | You want a read-only answer about the codebase, with file pointers and confidence |
 | [`debug`](standalone/debug/SKILL.md) | A bug or regression has an unknown cause. Reproduce, isolate, fix at the cause |
-| [`snapshot`](standalone/snapshot/SKILL.md) | Work is unfinished and a later session needs a resume note |
-| [`resume`](standalone/resume/SKILL.md) | A prior session or agent left work in flight |
+| [`snapshot`](standalone/snapshot/SKILL.md) | Work is unfinished and a later session needs the ship record |
+| [`resume-work`](standalone/resume-work/SKILL.md) | Stopped work, a usage-limit reset, or a task another agent left in flight |
 | [`push-handoff`](standalone/push-handoff/SKILL.md) | Commit and push under explicit authority, proven by remote SHA |
 | [`ponytail`](standalone/ponytail/SKILL.md) | You want the laziest solution that actually works |
 | [`setup-vskills`](standalone/setup-vskills/SKILL.md) | Setting this up on a new machine |
@@ -230,17 +230,10 @@ since the skill is already vendored here.
 /plugin install ponytail@ponytail
 ```
 
-## Agents and Roles
+## Agents
 
-The author runs this workflow in omp. The skills stay harness-agnostic: any
-client that can load a `SKILL.md` can run them, with any model.
-
-`/setup-vskills` writes Invocation Roles (`grill`, `issues`, `ship`,
-`snapshot`) and Worker Roles (`researcher`, `builder`, `reviewer`, `adversary`,
-`small-task`) from `harness/` into the harness it researched. Workers never
-spawn. The Invocation Role is the only writer of shared status, locks, and
-push. Role templates leave model and effort unset; assign those in your
-harness. Inside T3 Code, `/ship` uses native child tasks, PR links and
+The skills stay harness-agnostic: any client that can load a `SKILL.md` can
+run them, with any model. Inside T3 Code, `/ship` uses native child tasks, PR links and
 watches, and browser evidence.
 
 ## Installing with `vskills`
@@ -357,7 +350,7 @@ evals/            structural, routing, and behavioral skill evals
 
 delivery/         ship, land
 standalone/       route, grill, issues, investigate, debug, snapshot,
-                  resume, push-handoff, setup-obsidian, setup-vskills,
+                  resume-work, push-handoff, setup-obsidian, setup-vskills,
                   pr-review, ponytail, test-tps
 pipeline/         audit, delivery-constraints, implementation-tdd,
                   subagent-delegation, ai-subscription-unit-economics
@@ -365,7 +358,6 @@ principles/       principle-real-artifact, principle-evidence-over-report,
                   principle-bounded-repair, principle-named-constraints,
                   principle-independent-verdict
 third-party/      pinned Matt Pocock, Addy Osmani, frontend-design packs
-harness/          per-client Role and profile templates (omp, opencode)
 .cursor/skills/   project-local verify-skills (not installed by vskills)
 ```
 
