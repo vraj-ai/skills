@@ -9,7 +9,7 @@ argument-hint: "[feature, issue, or task]"
 
 # Ship
 
-One entry point from an idea or an issue to merged code, where land holds merge authority. Ship gathers context, settles the design, files the work, builds it, proves it, and hands it to `land`. Scale every phase to the task.
+One entry point from an idea or an issue to merged code. Only land merges, and only under an explicit grant. Ship gathers context, settles the design, files the work, builds it, proves it, and hands it to `land`. Scale every phase to the task.
 
 pstack skills (`/recall`, `/how`, `/why`, `/teach`, `/architect`, `/interrogate`, `/poteto-mode`) turn off model invocation. When the Skill tool refuses one, read its `SKILL.md` from the sibling directory next to this skill and follow it. When pstack is not installed, do the step inline and say so.
 
