@@ -1,7 +1,7 @@
 ---
 name: resume-work
-version: 2.0.0
-description: Pick up exactly where a stopped or paused task stopped, at the same phase. Reads the ship record or snapshot note, verifies which claims of the previous session or agent still hold against the repo, reloads only the context the next step needs, and keeps going with ship or land. In the same chat after a usage limit it re-reads nothing. In a fresh chat the record carries the context. Use to resume after a limit resets, or to take over a task another agent claims it finished.
+version: 2.0.1
+description: Pick up exactly where a stopped or paused task stopped, at the same phase. Reads the ship record, verifies which claims of the previous session or agent still hold against the repo, reloads only the context the next step needs, and keeps going with ship or land. In the same chat after a usage limit it re-reads nothing. In a fresh chat the record carries the context. Use to resume after a limit resets, or to take over a task another agent claims it finished.
 dependencies: [ship, snapshot, principle-evidence-over-report]
 argument-hint: "[record slug, issue, or task]"
 recommended: true
@@ -19,7 +19,7 @@ recommended: true
 
 1. The argument: a slug, an issue, or a path.
 2. Otherwise the open records in `$(git rev-parse --git-common-dir)/vskills/ship/`, meaning any phase but done. One record means use it. Several means list each one's objective, phase, and Updated line, then ask which.
-3. No record: a snapshot note or handoff the user points to. Failing that, run pstack `/recall` on the topic and rebuild the position from the tracker and branches. pstack skills turn off model invocation, so when the Skill tool refuses `/recall`, read its `SKILL.md` from this skill's sibling directory.
+3. No record: a handoff the user points to. Failing that, run pstack `/recall` on the topic and rebuild the position from the tracker and branches. pstack skills turn off model invocation, so when the Skill tool refuses `/recall`, read its `SKILL.md` from this skill's sibling directory.
 
 Load the record's Context and Design as your working context. They replace `recall`, `how`, `why`, and `teach`. Run those again only where step 2 shows the code under them changed. Then read only the files the next action touches.
 
@@ -41,8 +41,8 @@ Where the record and the repo disagree, the repo is right. Say so and continue f
 | context | ship's Context, from the first step the record lacks |
 | design | ship's Design. Open grill questions go to the user first. |
 | issues | `/issues` for the units not filed yet |
-| build | ship's Build, on the first unfinished issue, at its next step |
-| review | ship's Review, at the current head SHA |
+| build | ship's Build or Prove, on the first unfinished issue, at its next step |
+| review | ship's Review and deliver, at the current head SHA |
 | land | `/land` on the recorded PRs |
 | blocked | the blocker. Ask only if it is a product decision. |
 | done | Nothing. Report and stop. |

@@ -2,7 +2,7 @@
 
 One markdown file per ship run at `$(git rev-parse --git-common-dir)/vskills/ship/<slug>.md`. It sits inside git's own directory, so it is never committed, never shows in a diff, and every worktree of the repo sees it. `<slug>` is the issue number or a short kebab-case name for the objective.
 
-`ship` writes it, `land` and `snapshot` update it, and `resume-work` reads it. It is the only resume state the pipeline keeps.
+`ship` writes it. `land`, `snapshot`, and `resume-work` update it. It is the only local resume state. Tracker issues remain the durable plan that other machines and people see.
 
 ## Shape
 

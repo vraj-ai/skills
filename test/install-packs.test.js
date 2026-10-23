@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { cleanup, makeTmpDir, skillPath, writeSkill } from './helpers.js';
@@ -46,6 +47,9 @@ test('packs link by priority, never shadow vskills, and only replace under --for
 
     const again = await run();
     assert.equal(again.counts.linked, 0, 'a re-run links nothing new');
+    assert.ok(again.counts['up-to-date'] >= 4, 'a re-run recognises its own links');
+    assert.equal(await fs.lstat(path.join(target, 'grill-me')).catch(() => null), null,
+      'a blocked install root slot is not linked into agent targets');
 
     const forced = await run(true);
     assert.equal(forced.counts.replaced, 1);
@@ -53,6 +57,31 @@ test('packs link by priority, never shadow vskills, and only replace under --for
     const backups = await fs.readdir(path.join(installRoot, '.vskills-backup'));
     assert.equal(backups.length, 1);
     assert.match(backups[0], /^grill-me-/);
+    assert.match(await fs.readFile(path.join(installRoot, '.vskills-backup', backups[0], 'SKILL.md'), 'utf8'),
+      /hand-installed/, 'the backup keeps the replaced content');
+  } finally {
+    await cleanup(tmp);
+  }
+});
+
+test('install-packs runs when invoked through a linked install root', async () => {
+  const tmp = await makeTmpDir('vskills-packs-link-');
+  try {
+    const scripts = path.dirname(skillPath(repo, 'setup-vskills', 'scripts', 'install-packs.mjs'));
+    const linked = path.join(tmp, 'scripts');
+    await fs.symlink(scripts, linked, process.platform === 'win32' ? 'junction' : 'dir');
+    const home = path.join(tmp, 'home');
+    await fs.mkdir(path.join(home, '.agents', 'skills'), { recursive: true });
+    const empty = path.join(tmp, 'empty');
+    await fs.mkdir(empty);
+    const out = execFileSync(process.execPath, [path.join(linked, 'install-packs.mjs')], {
+      encoding: 'utf8',
+      env: {
+        ...process.env, HOME: home, USERPROFILE: home,
+        VSKILLS_PACK_PSTACK: empty, VSKILLS_PACK_ADDYOSMANI: empty, VSKILLS_PACK_MATTPOCOCK: empty,
+      },
+    });
+    assert.match(out, /install-packs: 0 linked/);
   } finally {
     await cleanup(tmp);
   }

@@ -9,7 +9,7 @@
 //
 // VSKILLS_PACK_<ID>=<dir> uses an existing checkout as-is (never pulled).
 import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
 import { lstat, mkdir, readdir, readFile, realpath, rename, symlink, unlink } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -29,7 +29,7 @@ function timestamp() {
 
 function checkout(pack, packsDir, log) {
   const override = process.env[`VSKILLS_PACK_${pack.id.toUpperCase()}`];
-  if (override) return override;
+  if (override) return path.resolve(override);
   const dir = path.join(packsDir, pack.id);
   try {
     if (existsSync(path.join(dir, '.git'))) {
@@ -82,7 +82,10 @@ export async function installPacks({ installRoot, targets, packs = PACKS, packsD
   const backupRoot = path.join(installRoot, '.vskills-backup');
   const manifest = await readFile(path.join(installRoot, '.vskills-manifest.json'), 'utf8')
     .then((raw) => JSON.parse(raw).skills ?? {})
-    .catch(() => ({}));
+    .catch(() => {
+      log.push('no readable .vskills-manifest.json — run vskills init first, or pack skills may claim vskills names');
+      return {};
+    });
   const owner = new Map(Object.keys(manifest).map((name) => [name, 'vskills']));
 
   for (const pack of packs) {
@@ -97,8 +100,12 @@ export async function installPacks({ installRoot, targets, packs = PACKS, packsD
       const installed = path.join(installRoot, name);
       for (const [from, to] of [[dir, installed], ...targets.map((t) => [installed, path.join(t, name)])]) {
         const status = await link(from, to, { force, backupRoot });
-        if (status === 'blocked') log.push(`${to}: something else is there — left untouched (--force replaces it, backing up a real directory)`);
-        else counts[status] += 1;
+        if (status !== 'blocked') {
+          counts[status] += 1;
+          continue;
+        }
+        log.push(`${to}: something else is there — left untouched (--force replaces it, backing up a real directory)`);
+        if (to === installed) break;
       }
     }
   }
@@ -121,7 +128,8 @@ async function main() {
   console.log(`install-packs: ${counts.linked} linked, ${counts.replaced} replaced, ${counts['up-to-date']} up to date`);
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+// realpath: run through a linked install root, argv[1] is the link and import.meta.url the target.
+if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
   main().catch((error) => {
     console.error(error.message);
     process.exit(1);
