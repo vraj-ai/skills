@@ -1,320 +1,85 @@
 ---
 name: setup-vskills
-version: 1.14.0
-description: Sets up this skills repo on a new machine — installs the skills with the vskills CLI, configures pstack model routing for any harness, ensures a verification skill, then regenerates the local-only context docs (CONTEXT.md, docs/) that are deliberately not published in the public repo.
+version: 2.1.0
+description: Set up or update vskills on this machine and in a project. Installs and updates the vskills catalogue plus the pstack, Addy Osmani, and Matt Pocock skill packs, runs setup-pstack, then sets the project up with a first design, a verification skill, and an AGENTS.md, explaining each step to the user as it goes. Re-running it is the update.
 recommended: true
 ---
 
 # Setup vskills
 
-This public repo ships the skills and the `vskills` CLI, but **not** the
-model-context docs. `CONTEXT.md`, `docs/`, `CONTEXT/`, and `CLAUDE.md` are
-gitignored on purpose: they are local working notes for coding agents, and
-they go stale against a fork faster than against the source tree. Your job is
-to install the skills and then rebuild those docs *from this clone*.
+Set up a machine and a project, and keep both current. Re-running this skill is the update path.
 
-## Step 1 — Install the skills
+Tell the user what is happening as you go. Before each step, say in a sentence or two what it does and why it matters for their project. After it, say what changed and where. Ask before any step that writes into the project or the harness config. Every project-shaping step is at the user's discretion: offer it, recommend, and respect a no.
 
-```bash
-node bin/vskills.js init
-```
+## 1. Install and update the skills
 
-- Init classifies every skill as install / up-to-date / adopt / update /
-  conflict. Adopts are silent (byte-identical copies become managed).
-- On conflicts, the CLI prompts. Anything overwritten is backed up to
-  `<install-root>/.vskills-backup/<name>-<timestamp>` — never deleted.
-- Re-running init is a no-op; use it freely to verify.
-
-Confirm with `node bin/vskills.js list` and run the test suite once:
-`node --test 'test/*.test.js'` — everything should pass before you write docs.
-
-## Step 1.1 — Research the current harness and install integration templates
-
-Ask the user which coding agent harness is in use (e.g. omp, OpenCode, Claude Code, Codex, Cursor, etc.). Always research that harness's agent configuration and integration model first — there is no hardcoded allowlist that skips research.
-
-Install the tightest integration for `grill`, `issues`, `ship`/`goals`, and `snapshot`:
+**vskills catalogue.**
 
 ```bash
-# research only — prints the plan, writes nothing
-node standalone/setup-vskills/scripts/install-harness.mjs <harness>
-# only after the user has said yes to installing it
-node standalone/setup-vskills/scripts/install-harness.mjs <harness> --install
+npx @vskills/cli init      # first install
+npx @vskills/cli update    # later runs; skips anything the user edited
 ```
 
-Ask before installing, every time. The installers write into the user's own
-harness config, so a bare run is research: it prints the integration plan and
-exits without touching anything. `--install` is the user's explicit yes, and
-the direct installers (`install-omp.mjs`, `install-opencode.mjs`) refuse to run
-without it.
+From a clone of this repo, `node bin/vskills.js init` does the same with no npm. Init classifies each skill as install, up-to-date, adopt, update, or conflict, and backs up anything it overwrites to `<install-root>/.vskills-backup/`.
 
-Supported harnesses are data, not prose. This table is the whole allowlist;
-every destination is overridable by its environment variable, and a harness not
-listed here is handled by the fallback row rather than by an error.
-
-| harness | template source | install destination (override) | routing file for Step 1.3 (override) | direct installer |
-| --- | --- | --- | --- | --- |
-| `omp` | `harness/omp/agent/` | user agents dir, `~/.omp/agent/agents/` (`$OMP_AGENTS_DIR`) | harness always-applied rules location | `scripts/install-omp.mjs --install` |
-| `opencode` | `harness/opencode/` | user config dir, `~/.config/opencode/` (`$OPENCODE_CONFIG_DIR`) | harness always-applied rules location | `scripts/install-opencode.mjs --install` |
-| `cursor` | — (research) | harness rules dir | `~/.cursor/rules/pstack-models.mdc`, `alwaysApply: true` | — |
-| *anything else* | — (research) | harness-defined | `docs/agents/model-routing.md` in the project | — |
-
-Row detail:
-
-- **omp**: copies the 10 canonical Role templates — invocation templates
-  (`grill`, `issues`, `ship`, `goals`, `snapshot`) and worker templates
-  (`researcher`, `builder`, `reviewer`, `adversary`, `small-task`).
-- **opencode**: copies canonical agent and command files — selectable `goals`
-  and read-only `council` primaries, the contributor, cost-aware
-  Gemini/DeepSeek, council, and adversary subagents, and `/goal`. Goals remains
-  the sole delivery/backlog authority inside a goal run.
-- **Fallback row**: the installer does not research and does not claim it did.
-  It reports that no bundled installer exists and exits successfully — a
-  missing harness is never an error. You then research how that harness defines
-  agent roles, custom commands, prompt templates, and subagents, and write an
-  integration plan mapping `grill`, `issues`, `ship`/`goals`, and `snapshot`
-  onto it. Never fail with an 'unknown harness' error from an allowlist.
-
-When a listed harness is simply not installed on the machine, skip its row and
-say so; do not create its config tree speculatively.
-
-All template installations are atomic and idempotent. Differing existing files are moved to `.vskills-backup/` before replace. It does not modify credentials or core configuration files.
-
-## Step 1.1.1 — Optional: install the PR review bot (Greptile parity)
-
-When setting up a consumer project (not this repo), offer the polished PR review bot:
+**Skill packs.** pstack, Addy Osmani's agent-skills, and Matt Pocock's skills, from their upstream repos:
 
 ```bash
-node standalone/pr-review/scripts/copy.mjs [project-root]
-# or via the setup helper:
-node standalone/setup-vskills/scripts/copy-pr-review.mjs [project-root]
+node <install-root>/setup-vskills/scripts/install-packs.mjs
 ```
 
-Interactive prompt (ask, don't assume):
-- "Install PR review bot? [y/N]" — default no.
-- If yes, ask model wiring: provider `none` (deterministic only) | `openai` | `anthropic` | `compat`, auth `apikey` | `oauth` | `none`, `baseUrl`, `model`, `secretName` (default `OPENROUTER_API_KEY`). Write choice into `.vskills/review.yml` (never store the secret value). Show next step: "Add OPENROUTER_API_KEY as a repo secret, set vars.REVIEW_MODEL / vars.REVIEW_API_BASE, and push a PR to test".
-- Copy is atomic, backs up existing workflows to `.vskills-backup/`, also installs `.vskills/pr-review/` prompts and parsers, is idempotent, and does not overwrite an existing `.vskills/review.yml`.
+It clones each pack into `~/.agents/packs/<pack>` (pulls on later runs) and links every skill into the install root and each agent target. Priority settles name collisions: the vskills catalogue, then pstack, then Addy Osmani, then Matt Pocock. The losing skill is skipped and reported, so pstack's `/teach` and `/tdd` stay pstack's. `VSKILLS_PACK_<ID>=<dir>` uses an existing checkout as it is and never pulls it.
 
-Templates live in `standalone/pr-review/templates/` and carry `<!-- vskills-pr-review -->` for idempotent upserts. Verify with `node --test 'test/pr-review-*.test.js' 'test/setup-pr-review.test.js'`.
+Anything already at a pack skill's path (a hand-installed copy, a link elsewhere) is left alone and reported. Show the user that list. Rerun with `--force` only after they agree. It backs up a real directory before replacing it.
 
-## Step 1.2 — Bootstrap the project agent architecture
+Confirm with `npx @vskills/cli list` and check that `recall`, `how`, `why`, `teach`, `architect`, `grill`, `issues`, `ship`, `land`, `snapshot`, `resume-work`, `poteto-mode`, `create-verification-skill`, and `maintain-verification-skill` resolve in the install root.
 
-Run this from the root of the project being set up:
+In Claude Code, pstack skills use Cursor names. Point the user at `~/.agents/packs/pstack/pstack/docs/harness/claude-code.md`, which maps them (`Task` to `Agent`, model slugs, rules paths). The official alternative is the plugin (`/plugin marketplace add cursor/plugins`, then `/plugin install pstack@cursor-plugins`), which prefixes every command as `/pstack:<name>`. Use one or the other, not both.
 
-```bash
-node "<skills-install-root>/setup-vskills/scripts/init-context.mjs"
-```
+Tell the user to restart the harness. Skills load once per session.
 
-`<skills-install-root>` is wherever `vskills init` placed the skills on this
-machine (`node bin/vskills.js list` prints it); from a clone of this repo,
-`standalone/setup-vskills/scripts/init-context.mjs` works directly. Every path
-the initializer writes is resolved from the invoking repository root, never
-from the home directory.
+## 2. Route models with /setup-pstack
 
-The initializer creates missing files only:
+Run `/setup-pstack`. It detects the models this session can use and writes one always-applied rule with a model per pstack role. Put the rule where the harness loads it every session:
 
-- `AGENTS.md` — the always-loaded project router.
-- `CONTEXT/architecture.md` — human-owned purpose, locked decisions, invariants,
-  non-goals, accepted boundaries, and ownership.
-- `CONTEXT/progress.md` — the bounded derived milestone pointer.
+- Cursor: `~/.cursor/rules/pstack-models.mdc`.
+- Claude Code: `~/.claude/rules/pstack-models.md`, per pstack's Claude Code adapter.
+- Anything else: the harness's always-applied rules location, or `docs/agents/model-routing.md` in the project with a pointer from AGENTS.md.
 
-It also adds only goal runtime paths to `.gitignore`. It never overwrites an
-existing `AGENTS.md`, architecture, progress, or project decision. It does not
-create a goal backlog.
+Never write a model the session cannot use, and never put a secret in the rule. Re-run it whenever entitlements change.
 
-## Step 1.3 — Configure model routing (pstack)
+## 3. Set up the project
 
-pstack skills (`poteto-mode`, `how`, `why`, `arena`, `swarm`, `architect`,
-`interrogate`, `reflect`) split work by role across models. Without routing
-they fall back to inline defaults, which rot as entitlements change. Write the
-override once per machine; re-running updates it.
+Run from the project root. Skip this step when the user is only setting up the machine. If the project is this vskills repo, follow [references/vskills-repo.md](references/vskills-repo.md) instead.
 
-Confirm the pstack skills resolve first (`poteto-mode`, `how`, `why`,
-`arena`, `swarm`, `architect`, `interrogate` in the install root). If any is
-missing, install pstack skills before continuing — routing without runners
-silently does nothing.
+**Scaffold.** `node <install-root>/setup-vskills/scripts/init-context.mjs` creates `AGENTS.md` and `CONTEXT/architecture.md` when missing. It never overwrites either one.
 
-1. Detect available models. Enumerate the model slugs you can pass to a
-   subagent in this session; that is the dependable source. If the harness
-exposes a models API or CLI, prefer it for completeness. If you cannot
-detect any, ask the user to paste the slugs they have access to. Never write
-a real slug you have not confirmed is available. The aliases
-`inherit-parent` and `auto` are always valid (the role runs on the parent
-chat model, which is how Auto users stay on Auto).
-2. Load current state. If a routing file already exists (step 4), treat its
-values as the current choices. Otherwise start from the defaults in step 4.
-3. Map and confirm. Show every role with its current model, marking any real
-slug not in the detected set as needing a choice. Offer the detected models
-plus `inherit-parent`/`auto`. Panel roles (`how critics`, `arena runners`,
-`architect runners`, `interrogate reviewers`) take lists — one subagent runs
-per entry, alias entries included, so list length sets fan-out.
-`arena cross-judge pool` is also a list; Arena picks one value from it whose
-model family differs from the parent's when possible. `swarm workers` is the
-default model for every worker unless a race assigns per-arm models.
-4. Write the routing file, overwriting it whole so re-runs stay idempotent.
-Location comes from the Step 1.1 table's routing column, plus the harness
-research for anything not listed: use its always-applied
-rules/custom-instructions location, and if it has none, write
-`docs/agents/model-routing.md` in the project and point the `## Agent skills`
-block at it, and say so. Never fail with an 'unknown harness' error. Shape
-(defaults — replace slugs with detected ones):
+**First design.** Offer it, and say it takes a while.
 
-```
----
-description: pstack per-role model choices (overrides skill defaults)
-alwaysApply: true
----
-# pstack model configuration. One line per role. Delete a line to fall back to the skill default.
-# `inherit-parent` or `auto` as a value: the role runs on the parent chat model (omit Task `model`). Alias entries in a panel list still count toward its fan-out.
-feature, refactoring: grok-4.6-fast-xhigh
-bug-fix: gpt-5.6-sol-max
-perf-issue: gpt-5.6-sol-max
-hillclimb: gpt-5.6-sol-max
-judgment and prose: claude-fable-5-thinking-max
-hardest tasks: claude-fable-5-thinking-max
-how explorer: grok-4.6-fast-xhigh
-how explainer: claude-fable-5-thinking-max
-how critics: claude-fable-5-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
-why investigators: grok-4.6-fast-xhigh
-why synthesizer: claude-fable-5-thinking-max
-reflect tooling: gpt-5.6-sol-max
-reflect judgment, divergent, synthesizer: claude-fable-5-thinking-max
-arena runners: claude-fable-5-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
-arena cross-judge pool: claude-fable-5-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
-swarm workers: grok-4.6-fast-xhigh
-architect runners: claude-fable-5-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
-interrogate reviewers: claude-fable-5-thinking-max, gpt-5.6-sol-max, grok-4.6-fast-xhigh, claude-opus-5-thinking-xhigh
-```
+- Existing code: run `/how` over the main subsystems and a narrow `/why` (git and the tracker), then `/teach` the user how the project is built and why. Skip this for an empty repo.
+- Ask what they want to build first. `/grill` the product intent, then `/architect` the first design when there is a design to make. Follow `/poteto-mode`'s principles throughout.
+- Draft `CONTEXT/architecture.md`: purpose, locked decisions, invariants, non-goals, boundaries. Show the draft and write it only on a yes. The first build is then `/ship`.
 
-5. Validate. Every real slug written must be in the detected set;
-`inherit-parent` and `auto` always pass. A routing file pointing at a model
-the user cannot use breaks every delegation that reads it. Slugs only —
-never secrets or keys.
+**Verification skill.** Look for a project-local `verify-*` skill, or a harness that drives the app the way a user does. If one exists, note its command. If not, offer `/create-verification-skill` and run it on yes. `/ship` drives it to prove every user-facing change, and `/maintain-verification-skill` keeps its feature map honest.
 
-## Step 1.4 — Ensure a verification skill
+**AGENTS.md.** Draft a real router from what you learned, not a template. Include:
 
-A production project needs a way to drive the real app for proof. Check for a
-project-local `verify-*` skill or an existing harness that drives the app the
-way a user does. If one exists, record its command — `/issues` will lock it
-as the ticket acceptance command and `/snapshot` will use it as its code
-gate. If not, offer once to generate one with `/create-verification-skill`
-(resolves wherever pstack is installed — workspace, user, or plugin). On yes,
-invoke it. On no, move on without pushing, and record the gap as a follow-up
-in the tracker closeout review.
+- Build, test, and lint commands, taken from the repo.
+- The verification skill and how to run it. After a user-facing change, `/ship` runs `/maintain-verification-skill`. Run it directly when the feature map has drifted.
+- The tracker and its pointer file.
+- The workflow. `/ship` takes any task to merged. `/land` merges only with explicit authority. `/snapshot` before a stop. `/resume-work` to continue.
+- Where decisions live (`CONTEXT/architecture.md`).
 
-## Step 2 — Regenerate CONTEXT.md
+Keep human-written content. Show the diff and write it only on a yes.
 
-Write a fresh `CONTEXT.md` at the repo root by reading the actual code, not by
-guessing. It must cover, briefly:
+**PR review bot.** Optional. Offer `node <install-root>/pr-review/scripts/copy.mjs [project-root]` and default to no. On yes, ask for the model wiring (provider, auth, base URL, model, secret name) and write it to `.vskills/review.yml`, never the secret itself. Templates live in the `pr-review` skill.
 
-- What the repo is: a personal skills collection plus the `vskills` installer
-  (`bin/vskills.js`, `src/`).
-- The skill layout: root skill folders and nested category folders,
-  each skill a directory with a `SKILL.md` whose frontmatter has `name`,
-  `version`, `description`, and optional `dependencies`.
-- The install model: skills are copied into an install root, agent targets
-  get symlinks, and `.vskills-manifest.json` records `sourcePath`,
-  `contentHash`, `installedAt` per skill.
-- Drift rules: a copy whose hash doesn't match the manifest is "drifted" and
-  never overwritten without `--force`; forced overwrites of unmanaged content
-  are backed up first.
-- How to run tests and where they live (`test/*.test.js`, node:test, no
-  external dependencies).
+## Reply
 
-Keep it under ~100 lines. If a claim can't be verified in the source, leave
-it out.
-
-## Step 3 — Regenerate docs/
-
-Recreate `docs/` with:
-
-- `docs/invariants.md` — the safety rules the code enforces (atomic replace,
-  backup-before-destroy, symlink-never-clobber, manifest-is-source-of-truth).
-  Derive each one from `src/install.js` and the tests that pin it.
-- `docs/spec-vskills-cli.md` — command-by-command behavior of `init`, `add`,
-  `list`, `update`, taken from `src/commands/`.
-- `docs/adr/` — one short ADR per structural decision you can actually
-  observe (e.g. npm registry distribution as `vskills`, CLI architecture). Number them
-  `0001-...`, `0002-...`.
-
-## Step 4 — Verify nothing leaks
-
-```bash
-git status --short
-git check-ignore CONTEXT.md docs/invariants.md
-```
-
-Both paths must be ignored. If `git status` shows any of the regenerated docs
-as untracked-and-addable, stop and fix `.gitignore` before committing
-anything.
-
-## Tracker closeout review
-
-After setup verification, if `docs/agents/issue-tracker.md` exists, write one review through that tracker using its commands. Read issues, pull requests, and commits this session produced or touched. Post one comment on the parent spec or open PR (GitHub: `gh issue comment` / `gh pr comment`). Cover what was installed, remaining follow-ups, and any contradiction with `CONTEXT/`. Do not create tickets. Do not rotate `goals:*` labels. If the tracker file is missing, skip and say so.
-
-## Session handoff
-
-`setup-vskills` owns installation, the initial project agent architecture, and
-this repository's local regenerated docs. When setup work must continue in
-another session, write a full sectioned handoff to `$TMPDIR` after
-verification, then deliver it with `/push-handoff` if it must reach the remote.
-
-## Durable context contract
-
-This repository keeps its own machine-local working notes — `CONTEXT.md`,
-`docs/`, `CONTEXT/`, and `CLAUDE.md` — local-only under **this repo's own
-`.gitignore`**. They are a property of the public vskills repository, not a
-universal rule about consumer projects: the `vskills` CLI never writes them
-into a consumer repo, there is no `vskills docs-init` command, and the CLI
-never infers a consumer project's context. Each consumer project owns its own
-durable context.
-
-Consumer projects that adopt `goals`/`council` track only these artifacts as
-durable context:
-
-- Uppercase `AGENTS.md` — the always-loaded router (human-owned).
-- `CONTEXT/architecture.md` — durable intent, locked decisions, non-goals, and
-  accepted boundaries (human-owned).
-- Bounded derived `CONTEXT/progress.md` — a small pointer to the current
-  milestone and last verified edit; never a diary, narrative, or resume source
-  of truth (`goals`-owned, event-driven).
-- `CONTEXT/goals/<slug>/handoff.md` and `reviews/M<n>.json`, `reviews/T3.json`
-  — the goal resume and review verdicts (`goals`-owned, event-driven).
-
-Only the runtime paths beneath a consumer `CONTEXT/` are ignored there:
-`CONTEXT/goals/<slug>/backlog.jsonl` (goal resume state owned solely by
-`goals`), `lock.d/`, `CONTEXT/worktrees/<slug>/`, `*.log`, `results.json`,
-and `<id>.digest.json`. The tracked artifacts above are not ignored. Do not
-apply this repo's own `.gitignore` (which hides the whole `CONTEXT/` of the
-vskills repository) to a consumer project — a consumer's tracked
-`CONTEXT/architecture.md`, `CONTEXT/progress.md`, and goal handoff would
-become invisible.
-
-Ownership rules carry across skills:
-
-- **One owner per artifact.** No shared writers.
-- **Event-driven updates only.** Rewrite an artifact when its trigger fires —
-  a locked decision changes, a milestone completes, a T1/T3 verdict lands, or a
-  clean stop checkpoints the handoff. No polling, no autonomous broad rewrites,
-  no speculative refresh of the whole context tree.
-- **Evidence over prose.** Progress and handoff entries point at tests, builds,
-  review verdicts, or commits — never narrative.
-- **Bounded context.** `CONTEXT/progress.md` stays a derived pointer; backlogs
-  and handoffs remain the goal resume.
-- **`goals` is the sole writer of goal state** (backlog, handoff, progress
-  pointer, review verdicts). `council` is read-only and reports documentation
-  impact only; it never edits a context artifact or the backlog.
+What was installed and updated (counts per source), collisions skipped, anything left untouched, each file written and where, and the follow-ups the user declined or that remain.
 
 ## Rules
 
-- Never commit `CONTEXT.md`, `docs/`, `CONTEXT/`, or `CLAUDE.md` to this
-  repo. They are local-only by design.
-- Never edit installed copies under the install root — edit the repo source
-  and re-run `node bin/vskills.js init`.
-- Never edit installed harness agent/role copies directly — edit `harness/<harness>/`
-  and rerun the installer with the user's approval (`install-harness.mjs <harness> --install`,
-  `install-omp.mjs --install`, or `install-opencode.mjs --install`).
-- Bump the `version:` in a skill's frontmatter whenever you change its
-  content; init uses versions to auto-resolve otherwise-ambiguous updates.
-- Quit and restart the harness after installing; config-time files are loaded once.
-- Re-run Step 1.3 whenever model entitlements change; stale slugs break every delegation that reads them.
-- Keep model routing (slugs, roles) and secrets (keys, tokens) in separate files; routing files never carry secret values.
+- Never edit installed copies. Edit the source and re-run the installer.
+- Bump a skill's `version:` whenever its content changes. Init uses it to resolve updates.
+- Model routing and secrets live in separate files.
