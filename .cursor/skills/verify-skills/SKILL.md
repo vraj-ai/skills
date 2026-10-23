@@ -26,7 +26,7 @@ That command lints every catalogue skill and this skill:
 - every skill named in `route`'s intent table is a catalogue skill
 - the body does not invoke a retired skill name
 
-`poteto-mode`, `interrogate`, `how`, `why`, `recall`, `teach`, `architect`, `ketchup`, `setup-pstack`, and `maintain-verification-skill` are pstack skills. They are not catalogue entries, so `route` must not list them as its destination.
+`poteto-mode`, `interrogate`, `how`, `why`, `recall`, `teach`, `tdd`, `architect`, `ketchup`, `setup-pstack`, `create-verification-skill`, and `maintain-verification-skill` are pstack skills. They are not catalogue entries, so `route` must not list them as its destination.
 
 ## Tests
 
