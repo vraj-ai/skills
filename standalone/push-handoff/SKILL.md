@@ -1,6 +1,6 @@
 ---
 name: push-handoff
-version: 2.3.1
+version: 2.3.2
 description: Commit and push a verified handoff plus its artifacts, only under explicit authority, and prove the push happened by reading the remote SHA back. Use as the final delivery step after artifacts are ready, when the user asks to push work, or when a handoff needs to reach the remote. Refuses to claim success without remote proof and never force-pushes or commits secrets.
 ---
 
@@ -10,10 +10,9 @@ The last step of a chain, and the one most likely to produce a **false claim**. 
 
 ## Handoff boundaries
 
-Three related operations have different owners and must not be collapsed:
+Two related operations have different owners and must not be collapsed:
 
 - Context compaction produces a redacted handoff artifact in the OS temporary directory. It does not commit or push.
-- `goals` owns `CONTEXT/goals/<slug>/handoff.md` as the small, durable resume cursor for a goal run.
 - This skill performs authorized delivery of an already-prepared handoff and its artifacts. It verifies, stages, commits, pushes, and proves the remote SHA.
 
 When both context compaction and delivery are needed, produce the handoff artifact first and run `/push-handoff` second. A handoff never implies a push. A pipeline may invoke this skill directly when its handoff and artifacts already exist.

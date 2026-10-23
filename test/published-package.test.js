@@ -109,10 +109,10 @@ test('shipped skills never invoke a skill this repo does not ship', async () => 
   );
 
   // Known references to things outside this package. Each is deliberate:
-  // `/goal` is the goals skill's own invocation alias; `/loop` and `/schedule`
+  // `/loop` and `/schedule`
   // are Claude Code built-ins; `/code-review` and `/wayfinder` live in other
   // agent skill sets, as does `/create-verification-skill` (pstack, invoked by
-  // setup-vskills Step 1.4). `/poteto-mode`, `/how`, `/architect`,
+  // setup-vskills step 3). `/poteto-mode`, `/how`, `/architect`,
   // `/interrogate`, `/ketchup`, `/recall`, `/why`, `/teach`, `/tdd`,
   // `/setup-pstack`, and `/maintain-verification-skill` are pstack skills
   // installed beside this catalogue by setup-vskills' install-packs.mjs: ship,
@@ -122,7 +122,6 @@ test('shipped skills never invoke a skill this repo does not ship', async () => 
   // fails this gate, which is how `/handoff` reached the published package
   // unnoticed (#31).
   const external = new Set([
-    'goal',
     'loop',
     'schedule',
     'code-review',

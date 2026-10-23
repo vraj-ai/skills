@@ -1,7 +1,7 @@
 ---
 name: setup-vskills
-version: 2.0.0
-description: Set up or update vskills on this machine and in a project. Installs and updates the vskills catalogue plus the pstack, Addy Osmani, and Matt Pocock skill packs, wires the harness, runs setup-pstack, then sets the project up with a first design, a verification skill, and an AGENTS.md, explaining each step to the user as it goes. Re-running it is the update.
+version: 2.1.0
+description: Set up or update vskills on this machine and in a project. Installs and updates the vskills catalogue plus the pstack, Addy Osmani, and Matt Pocock skill packs, runs setup-pstack, then sets the project up with a first design, a verification skill, and an AGENTS.md, explaining each step to the user as it goes. Re-running it is the update.
 recommended: true
 ---
 
@@ -38,24 +38,7 @@ In Claude Code, pstack skills use Cursor names. Point the user at `~/.agents/pac
 
 Tell the user to restart the harness. Skills load once per session.
 
-## 2. Wire the harness
-
-Ask which harness is in use and research its agent and command model. There is no allowlist that skips research.
-
-```bash
-node <install-root>/setup-vskills/scripts/install-harness.mjs <harness>            # plan only, writes nothing
-node <install-root>/setup-vskills/scripts/install-harness.mjs <harness> --install  # after the user says yes
-```
-
-| harness | template source | destination (override) |
-| --- | --- | --- |
-| `omp` | `harness/omp/agent/` | `~/.omp/agent/agents/` (`$OMP_AGENTS_DIR`) |
-| `opencode` | `harness/opencode/` | `~/.config/opencode/` (`$OPENCODE_CONFIG_DIR`) |
-| anything else | none | research it, then map `grill`, `issues`, `ship`, and `snapshot` onto its roles and commands |
-
-A harness with no bundled installer is never an error. A listed harness that is not installed is skipped and reported, not created. Installs are atomic and idempotent, and back up differing files to `.vskills-backup/`.
-
-## 3. Route models with /setup-pstack
+## 2. Route models with /setup-pstack
 
 Run `/setup-pstack`. It detects the models this session can use and writes one always-applied rule with a model per pstack role. Put the rule where the harness loads it every session:
 
@@ -65,7 +48,7 @@ Run `/setup-pstack`. It detects the models this session can use and writes one a
 
 Never write a model the session cannot use, and never put a secret in the rule. Re-run it whenever entitlements change.
 
-## 4. Set up the project
+## 3. Set up the project
 
 Run from the project root. Skip this step when the user is only setting up the machine. If the project is this vskills repo, follow [references/vskills-repo.md](references/vskills-repo.md) instead.
 
@@ -98,6 +81,5 @@ What was installed and updated (counts per source), collisions skipped, anything
 ## Rules
 
 - Never edit installed copies. Edit the source and re-run the installer.
-- Change harness roles in `harness/<harness>/`, then reinstall with the user's approval.
 - Bump a skill's `version:` whenever its content changes. Init uses it to resolve updates.
 - Model routing and secrets live in separate files.
