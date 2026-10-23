@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="430" viewBox="0 0 1200 430" role="img" aria-labelledby="t d">
+  <title id="t">vskills</title>
+  <desc id="d">A terminal running /ship on a feature: context, design, issues, build, prove, and review each tick off, then /land merges the verified PRs bottom-up.</desc>
+  <style>
+    .sans { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 17px; white-space: pre; }
+    .fg { fill: #e6edf3; }
+    .dim { fill: #8b949e; }
+    .ok { fill: #3fb950; }
+    .acc { fill: #d2a8ff; }
+    .warn { fill: #f0b72f; }
+    .l { opacity: 0; animation: in .35s ease-out forwards; }
+    .cur { animation: blink 1s steps(1) infinite; }
+    @keyframes in { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+    @keyframes blink { 50% { opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) { .l { opacity: 1; animation: none; } .cur { animation: none; } }
+  </style>
+  <defs>
+    <linearGradient id="glow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d2a8ff" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#3fb950" stop-opacity=".06"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="1" y="1" width="1198" height="428" rx="18" fill="#0d1117" stroke="#30363d" stroke-width="2"/>
+  <rect x="1" y="1" width="1198" height="428" rx="18" fill="url(#glow)"/>
+  <circle cx="34" cy="32" r="7" fill="#ff5f57"/>
+  <circle cx="58" cy="32" r="7" fill="#febc2e"/>
+  <circle cx="82" cy="32" r="7" fill="#28c840"/>
+
+  <!-- left: name and promise -->
+  <text x="60" y="170" class="sans fg" font-size="76" font-weight="800" letter-spacing="-2">vskills</text>
+  <text x="62" y="222" class="sans dim" font-size="24">One skill from idea to merged.</text>
+  <text x="62" y="272" class="mono" font-size="22"><tspan class="ok">/ship</tspan><tspan class="dim">  then  </tspan><tspan class="acc">/land</tspan></text>
+  <text x="62" y="336" class="sans dim" font-size="15">verified · independently reviewed</text>
+  <text x="62" y="360" class="sans dim" font-size="15">resumable · merged only on your say-so</text>
+
+  <line x1="490" y1="70" x2="490" y2="380" stroke="#30363d" stroke-width="2"/>
+
+  <!-- right: a /ship run -->
+  <g class="mono">
+    <text x="525" y="92"  class="l" style="animation-delay:.2s"><tspan class="ok">❯</tspan><tspan class="fg"> /ship add per-key rate limits to the API</tspan></text>
+    <text x="525" y="124" class="l dim" style="animation-delay:.9s">  sized: feature · running every phase</text>
+    <text x="525" y="156" class="l" style="animation-delay:1.5s"><tspan class="ok">  ✓ context </tspan><tspan x="652" class="dim">recall · how + why · teach</tspan></text>
+    <text x="525" y="184" class="l" style="animation-delay:2.0s"><tspan class="ok">  ✓ design  </tspan><tspan x="652" class="dim">data shape · architect · grill ×1</tspan></text>
+    <text x="525" y="212" class="l" style="animation-delay:2.5s"><tspan class="ok">  ✓ issues  </tspan><tspan x="652" class="dim">#141 #142 #143, each with a verify</tspan></text>
+    <text x="525" y="240" class="l" style="animation-delay:3.0s"><tspan class="ok">  ✓ build   </tspan><tspan x="652" class="dim">poteto-mode Feature playbook</tspan></text>
+    <text x="525" y="268" class="l" style="animation-delay:3.5s"><tspan class="ok">  ✓ prove   </tspan><tspan x="652" class="dim">verify-api 3/3 on the real surface</tspan></text>
+    <text x="525" y="296" class="l" style="animation-delay:4.0s"><tspan class="ok">  ✓ review  </tspan><tspan x="652" class="dim">independent verdict @ 9f3c2ab</tspan></text>
+    <text x="525" y="332" class="l" style="animation-delay:4.7s"><tspan class="acc">  → /land   </tspan><tspan x="652" class="fg">merged #141 #142 #143, bottom-up</tspan></text>
+    <text x="525" y="368" class="l" style="animation-delay:5.3s"><tspan class="ok">❯</tspan><tspan class="fg cur"> ▍</tspan></text>
+  </g>
+</svg>

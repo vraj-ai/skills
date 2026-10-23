@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="470" viewBox="0 0 1240 470" role="img" aria-labelledby="t d">
+  <title id="t">How /ship and /land work</title>
+  <desc id="d">An idea or issue enters /ship. A feature runs context, design, issues, build, prove, and review; a small task skips straight to build. /land merges the verified run. Every phase writes the ship record, and /snapshot and /resume-work stop and continue from it.</desc>
+  <style>
+    .sans { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; }
+    .fg { fill: #e6edf3; }
+    .dim { fill: #8b949e; }
+    .ok { fill: #3fb950; }
+    .acc { fill: #d2a8ff; }
+    .box { fill: #161b22; stroke: #30363d; stroke-width: 2; animation: lit 8.4s infinite; }
+    .land { fill: #1c1530; stroke: #8957e5; stroke-width: 2; }
+    @keyframes lit { 0%, 13% { stroke: #3fb950; fill: #12261a; } 14%, 100% { stroke: #30363d; fill: #161b22; } }
+    @media (prefers-reduced-motion: reduce) { .box { animation: none; } }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#8b949e"/>
+    </marker>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#f0b72f"/>
+    </marker>
+  </defs>
+
+  <rect x="1" y="1" width="1238" height="468" rx="18" fill="#0d1117" stroke="#30363d" stroke-width="2"/>
+
+  <!-- brackets -->
+  <path d="M180 62V52H1050V62" fill="none" stroke="#3fb950" stroke-width="2"/>
+  <text x="615" y="40" text-anchor="middle" class="mono ok" font-size="18" font-weight="700">/ship</text>
+  <path d="M1080 62V52H1210V62" fill="none" stroke="#d2a8ff" stroke-width="2"/>
+  <text x="1145" y="40" text-anchor="middle" class="mono acc" font-size="18" font-weight="700">/land</text>
+
+  <!-- input -->
+  <rect x="22" y="100" width="134" height="52" rx="26" fill="#0d1117" stroke="#8b949e" stroke-width="2" stroke-dasharray="5 4"/>
+  <text x="89" y="122" text-anchor="middle" class="sans fg" font-size="14" font-weight="600">idea or</text>
+  <text x="89" y="141" text-anchor="middle" class="mono fg" font-size="14">#issue</text>
+  <line x1="156" y1="126" x2="176" y2="126" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- phases -->
+  <g class="sans" text-anchor="middle">
+    <rect class="box" x="180" y="78" width="130" height="96" rx="12" style="animation-delay:0s"/>
+    <text x="245" y="104" class="dim" font-size="12">1</text>
+    <text x="245" y="126" class="fg" font-size="17" font-weight="700">Context</text>
+    <text x="245" y="148" class="dim" font-size="12">recall · how · why</text>
+    <text x="245" y="164" class="dim" font-size="12">teach</text>
+
+    <rect class="box" x="325" y="78" width="130" height="96" rx="12" style="animation-delay:1.2s"/>
+    <text x="390" y="104" class="dim" font-size="12">2</text>
+    <text x="390" y="126" class="fg" font-size="17" font-weight="700">Design</text>
+    <text x="390" y="148" class="dim" font-size="12">data shape · architect</text>
+    <text x="390" y="164" class="dim" font-size="12">prototype · grill</text>
+
+    <rect class="box" x="470" y="78" width="130" height="96" rx="12" style="animation-delay:2.4s"/>
+    <text x="535" y="104" class="dim" font-size="12">3</text>
+    <text x="535" y="126" class="fg" font-size="17" font-weight="700">Issues</text>
+    <text x="535" y="148" class="dim" font-size="12">one per unit</text>
+    <text x="535" y="164" class="dim" font-size="12">+ Verification</text>
+
+    <rect class="box" x="615" y="78" width="130" height="96" rx="12" style="animation-delay:3.6s"/>
+    <text x="680" y="104" class="dim" font-size="12">4</text>
+    <text x="680" y="126" class="fg" font-size="17" font-weight="700">Build</text>
+    <text x="680" y="148" class="dim" font-size="12">poteto-mode</text>
+    <text x="680" y="164" class="dim" font-size="12">playbook</text>
+
+    <rect class="box" x="760" y="78" width="130" height="96" rx="12" style="animation-delay:4.8s"/>
+    <text x="825" y="104" class="dim" font-size="12">5</text>
+    <text x="825" y="126" class="fg" font-size="17" font-weight="700">Prove</text>
+    <text x="825" y="148" class="dim" font-size="12">verify-&lt;app&gt;</text>
+    <text x="825" y="164" class="dim" font-size="12">on the real surface</text>
+
+    <rect class="box" x="905" y="78" width="145" height="96" rx="12" style="animation-delay:6.0s"/>
+    <text x="977" y="104" class="dim" font-size="12">6</text>
+    <text x="977" y="126" class="fg" font-size="17" font-weight="700">Review</text>
+    <text x="977" y="148" class="dim" font-size="12">independent verdict</text>
+    <text x="977" y="164" class="dim" font-size="12">PR · Closes #N</text>
+
+    <rect class="land" x="1080" y="78" width="130" height="96" rx="12"/>
+    <text x="1145" y="104" class="dim" font-size="12">7</text>
+    <text x="1145" y="126" class="fg" font-size="17" font-weight="700">Land</text>
+    <text x="1145" y="148" class="dim" font-size="12">verified run</text>
+    <text x="1145" y="164" class="dim" font-size="12">bottom-up</text>
+  </g>
+  <g stroke="#8b949e" stroke-width="2" marker-end="url(#a)">
+    <line x1="310" y1="126" x2="321" y2="126"/>
+    <line x1="455" y1="126" x2="466" y2="126"/>
+    <line x1="600" y1="126" x2="611" y2="126"/>
+    <line x1="745" y1="126" x2="756" y2="126"/>
+    <line x1="890" y1="126" x2="901" y2="126"/>
+    <line x1="1050" y1="126" x2="1076" y2="126"/>
+  </g>
+
+  <!-- small-task shortcut -->
+  <path d="M89 152C89 238 680 248 680 180" fill="none" stroke="#f0b72f" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#g)"/>
+  <text x="395" y="256" text-anchor="middle" class="sans" fill="#f0b72f" font-size="14" font-weight="600">small task: straight to build</text>
+
+  <!-- ship record -->
+  <rect x="180" y="270" width="1030" height="46" rx="10" fill="#161b22" stroke="#30363d" stroke-width="2" stroke-dasharray="4 4"/>
+  <text x="200" y="299" class="mono fg" font-size="14">ship record</text>
+  <text x="310" y="299" class="mono dim" font-size="14">.git/vskills/ship/&lt;slug&gt;.md · phase · next action · context · design · branch/PR/SHA</text>
+  <text x="1195" y="299" text-anchor="end" class="sans dim" font-size="12">never committed</text>
+
+  <!-- stop / continue loop -->
+  <rect x="300" y="370" width="230" height="56" rx="28" fill="#161b22" stroke="#f0b72f" stroke-width="2"/>
+  <text x="415" y="395" text-anchor="middle" class="mono" fill="#f0b72f" font-size="17" font-weight="700">/snapshot</text>
+  <text x="415" y="414" text-anchor="middle" class="sans dim" font-size="12">pause · usage limit · context full</text>
+
+  <rect x="710" y="370" width="300" height="56" rx="28" fill="#161b22" stroke="#3fb950" stroke-width="2"/>
+  <text x="860" y="395" text-anchor="middle" class="mono ok" font-size="17" font-weight="700">/resume-work</text>
+  <text x="860" y="414" text-anchor="middle" class="sans dim" font-size="12">re-prove against the repo · continue at the phase</text>
+
+  <line x1="536" y1="388" x2="704" y2="388" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="704" y1="410" x2="536" y2="410" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="415" y1="370" x2="415" y2="322" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="860" y1="322" x2="860" y2="366" stroke="#8b949e" stroke-width="2" marker-end="url(#a)"/>
+  <text x="400" y="348" text-anchor="end" class="sans dim" font-size="12">completes</text>
+  <text x="875" y="348" class="sans dim" font-size="12">reads</text>
+</svg>

@@ -1,143 +1,180 @@
-# vskills
+<p align="center">
+  <img src="assets/hero.svg" alt="vskills: a terminal running /ship on a feature through context, design, issues, build, prove, and review, then /land merging the verified PRs bottom-up" width="100%">
+</p>
 
-**Agent skills that run software work as a pipeline, not a conversation.**
+<p align="center">
+  <a href="https://www.npmjs.com/package/@vskills/cli"><img src="https://img.shields.io/npm/v/@vskills/cli?label=%40vskills%2Fcli&color=8957e5" alt="npm"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/node-%3E%3D18-3fb950" alt="node >= 18">
+  <img src="https://img.shields.io/badge/runtime%20deps-0-3fb950" alt="zero runtime dependencies">
+</p>
 
-[![npm](https://img.shields.io/npm/v/@vskills/cli?label=%40vskills%2Fcli)](https://www.npmjs.com/package/@vskills/cli)
-[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-![node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
-![deps](https://img.shields.io/badge/runtime%20deps-0-brightgreen)
+<h3 align="center">One skill from idea to merged. <code>/ship</code>, then <code>/land</code>.</h3>
 
 Coding agents are fast. They are also confident, forgetful, and happy to grade
-their own homework. These skills put an engineering process around them: settle
-what to build, queue it with a verification command, build it, have a context
-that didn't write the code review it, and merge only with your say-so.
-
-A skill is a `SKILL.md` an agent loads on demand that says how to do one job
-properly. These work in any harness that can load one (Claude Code, omp,
-OpenCode, Pi, Codex, Cursor, T3 Code) with any model. `vskills` is the
-zero-dependency installer that puts them on your machine.
+their own homework. vskills wraps them in the process a senior engineer would
+run anyway, and packs it into one command:
 
 ```
-   /grill          /issues            /ship               /land
- ┌─────────┐     ┌──────────┐     ┌─────────────┐     ┌────────────┐
- │ Settle  │ ──▶ │ Queue it │ ──▶ │ Build, prove│ ──▶ │ Checks,    │
- │ intent  │     │ with a   │     │ review, open│     │ threads,   │
- │         │     │ verify   │     │ a PR        │     │ merge      │
- └─────────┘     └──────────┘     └─────────────┘     └────────────┘
-   optional        optional               │              explicit
-                                          ▼              authority
-                              /snapshot ─────▶ /resume-work
-                              pause here      pick up later
+/ship add per-key rate limits to the public API
 ```
+
+`/ship` works out how big the job is. A small fix goes straight to the build.
+A feature gets the whole treatment: it reads what was tried before, explains
+the plan to you, settles the design, files the issues, builds them, proves them
+on the real surface, and gets a reviewer that didn't write the code to sign
+off. Then it hands the PRs to `/land`, which merges them in order and only when
+you've said it may.
+
+If you hit a usage limit halfway, `/resume-work` continues at the exact phase it
+stopped.
+
+A skill is a `SKILL.md` that an agent loads on demand and that says how to do
+one job properly. These run in any harness that can load one (Claude Code,
+Cursor, Codex, omp, OpenCode, Pi, T3 Code) with any model. `vskills` is the
+zero-dependency installer.
 
 ## Quick start
 
-**1. Install.** Same command on macOS, Linux, and Windows PowerShell:
+**1. Install.** The same command works on macOS, Linux, and Windows PowerShell:
 
 ```
 npx @vskills/cli init
 ```
 
-**2. Set up your machine.** In your agent, run `/setup-vskills` once. It
-installs the skills, wires your harness, and configures pstack's model routing.
+**2. Set up.** In your agent, run `/setup-vskills`. It installs the
+pstack, Addy Osmani, and Matt Pocock skill packs, routes models with
+`/setup-pstack`, and offers to give your project a first design, a
+verification skill, and an `AGENTS.md`. Restart the harness afterwards.
 
-**3. Ship something.**
+**3. Ship.**
 
 ```
 /ship #123
 ```
 
-A clear task goes straight to `/ship`. Use the other stages only when the task
-needs them. Not sure where to start? `/route` reads what you're trying to do
-and hands back the invocation.
+That's the whole loop: `/ship` does the work, `/land` merges it,
+`/snapshot` and `/resume-work` cover the stops in between. Re-run
+`/setup-vskills` any time to update everything.
 
-## The workflow
+## How `/ship` works
+
+<p align="center">
+  <img src="assets/flow.svg" alt="An idea or issue enters /ship. A feature runs context, design, issues, build, prove, and review; a small task skips straight to build. /land merges the verified run. Every phase writes the ship record, which /snapshot completes and /resume-work reads." width="100%">
+</p>
+
+`/ship <idea or #issue>` sizes the task and says which way it went. **Small**
+means one file or an obvious change, with no design fork and no open product
+question, and it goes straight to Build. Everything else is a **feature**, which
+runs every phase inside `/ship`, so you never have to call `/grill` or
+`/issues` yourself.
+
+| # | Phase | What happens |
+|---|---|---|
+| 1 | **Context** | pstack `/recall` digs up prior chats, PRs, reverted fixes, and symptoms users still report. `/how` and `/why` run in parallel over the code being changed. Then `/teach` walks you through the plan: how it works now, what will change, and why. This is your chance to correct it before any design. |
+| 2 | **Design** | Name the data shape first. Anything crossing a module or public contract goes through `/architect`. A fork that running code can settle gets a prototype, not a question. `/grill` asks only the product calls no experiment can settle. A contested design goes through `/interrogate`. |
+| 3 | **Issues** | `/issues` files one issue per verifiable unit, in dependency order, each with a Verification-command and the `verify-<app>` feature that proves it. Issues are the durable plan that other people and machines see. |
+| 4 | **Build** | pstack `/poteto-mode`'s Feature playbook (Bug-fix for a defect) builds against the named data shape in small ordered commits. The PR names each principle that shaped a decision. |
+| 5 | **Prove** | The Verification-command runs after the final edit, then the project's `verify-<app>` skill drives the feature on the real surface. An inconclusive run is not a pass. |
+| 6 | **Review** | A context that didn't write the code gives the verdict: your PR bot, a configured reviewer, or `/interrogate`. The PR says `Closes #N`. If a user-facing feature changed, `/maintain-verification-skill` keeps the verify skill's feature map honest. |
+| 7 | **Land** | `/land` merges only the contiguous verified run, bottom-up, and only under an explicit grant from you or repo policy. Without one it stops at merge-ready and tells you who needs to merge. |
+
+### The ship record
+
+Every phase boundary rewrites one file:
+
+```
+$(git rev-parse --git-common-dir)/vskills/ship/<slug>.md
+```
+
+It lives inside `.git`, so it is never committed, never shows up in a diff,
+and is shared by every worktree of the repo. It holds the phase, the next
+action, the context and design the session learned (with `file:line` anchors,
+rejected alternatives, and your grill answers), and a Work table with each
+issue's branch, PR, head SHA, and verification state. A record is meant to be
+at most one phase stale, so a usage limit costs you minutes, not the
+afternoon.
+
+### Stopping and picking up
+
+| You want to | Run | What it does |
+|---|---|---|
+| Stop before done | `/snapshot` | Completes the record from live git and tracker state, then hands back `/resume-work <slug>` |
+| Continue | `/resume-work` | **Same chat:** re-reads nothing, re-checks git, and continues. **Fresh chat:** the record replaces recall, how, why, and teach. It re-proves every claim against the repo first, then continues at the recorded phase |
+| Catch up in chat | `/ketchup` | pstack's "what changed since my last message". It writes no record |
+
+Where the record and the repo disagree, the repo wins. Authority the old
+session held (push, merge, comment) expired with it.
+
+### Just one part
+
+Everything above runs inside `/ship`, but each piece also stands alone:
 
 | Skill | Use it for |
 |---|---|
-| `/route` | Unsure which skill fits. Maps intent to an invocation |
-| `/grill` | Consequential product or design choices when intent is unclear |
-| `/issues` | A durable work queue with acceptance, references, and verification |
-| `/ship #123` | Find or execute work, verify behavior, get it reviewed, open a PR |
-| `/land` | Drive open PRs to merged: checks, threads, stacks, verified runs |
-| `/snapshot` | Checkpoint unfinished work into the ship record |
-| `/resume-work` | Continue at the exact phase the work stopped, in the same chat or a fresh one |
-
-Issues and PRs hold intent and shared status. Source and checks establish
-behavior. Small decision docs preserve rationale.
-
-### With pstack
-
-[pstack](https://github.com/cursor/plugins/tree/main/pstack) is the inner
-engineering loop: understand, design, build, verify, interrogate. Install it
-beside this catalogue; it is not copied into it. These skills own the queue
-and the delivery around it.
-
-- A one-file change is plain `/ship`.
-- Work that crosses modules, has a design fork, or still has an unknown cause
-  runs `/poteto-mode`'s Feature or Bug-fix playbook inside `/ship`.
-- `/grill` keeps product questions. An architecture fork goes to `/how` and
-  `/architect`. A contested design can hand off to `/interrogate`.
-- `/ketchup` is the in-chat catch-up. The ship record (phase, head SHA,
-  next action, context) is `/snapshot`'s.
-- Merging is `/land`, and only with explicit authority. Self-merge is off.
+| `/grill` | Product questions only. Settle intent without building anything |
+| `/issues` | Queue agreed work without building it |
+| `/land` | Drive existing PRs to merged: checks, threads, stacks, overnight runs |
+| `/investigate` | A read-only answer about the codebase, with file pointers |
+| `/debug` | A bug whose cause is unknown. Reproduce first, fix at the cause |
+| `/route` | Not sure which one fits? It maps your intent to an invocation |
 
 ## Why these exist
 
 Each rule below fixes a failure you hit the moment an agent runs unsupervised.
-Most are small principle skills the delivery skills invoke, so you can pull
-any of them into your own workflow.
+Most are small principle skills that `/ship` and `/land` invoke, so you can
+pull any of them into your own workflow.
 
 ### "Done." It isn't.
 
-**Check the real artifact.** Run the feature, read the actual value, inspect
-the diff. A build pass, an HTTP 200, or a summary that says "all tests pass" is
-a proxy. Every queued task carries a Verification-command, and `/ship` runs it
-after the final edit. *(`principle-real-artifact`)*
+**Check the real artifact.** Run the feature, read the actual value, and
+inspect the diff. A build pass, an HTTP 200, or a summary that says "all tests
+pass" is only a proxy. Every issue carries a Verification-command, and the
+project's `verify-<app>` skill drives the change the way a user would.
+*(`principle-real-artifact`)*
 
 ### The agent reviewed its own code and loved it.
 
 **Only an independent verdict counts.** The author checks what it meant to
-build, not what it built. Review comes from a context that didn't write the
-code: your PR bot, a configured reviewer, or pstack's `/interrogate`. A verdict
-applies to the head SHA it examined, so a push means a recheck.
-*(`principle-independent-verdict`)*
+build, not what it actually built. A verdict covers one patch, so after a push
+`/land` compares the patch-id of the full PR diff before it trusts an old
+review. *(`principle-independent-verdict`)*
 
 ### The tracker says done. Nothing landed.
 
 **The repo beats the report.** When a worker claims success with no commit, or
 a ticket says done while the gate is red, the repo is right and the report is
-narrative. `/resume-work` verifies every claim a prior session left before building
-on it. *(`principle-evidence-over-report`)*
+just a story. `/resume-work` re-proves every claim a prior session left before
+it builds on it. *(`principle-evidence-over-report`)*
 
 ### It retried the same fix eleven times.
 
 **Bound every repair loop.** Retrying an identical failure the same way spends
-budget and learns nothing. Set the budget first, change the hypothesis when a
-retry fails the same way twice, and report a blocker when the budget runs out
-instead of weakening acceptance. *(`principle-bounded-repair`)*
+budget and learns nothing. `/ship` stops repair after three rounds and reports
+the blocker instead of weakening acceptance. *(`principle-bounded-repair`)*
 
 ### It pushed to a branch it wasn't allowed to touch.
 
-**Name every constraint up front.** Budget, spend authority, git authority,
-tracker access, time, and how far the current state can be trusted. An unnamed
-constraint gets violated; a named one picks the path.
+**Name every constraint up front.** That means budget, spend authority, git
+authority, tracker access, time, and how far the current state can be trusted.
+An unnamed constraint gets violated; a named one picks the path.
 *(`principle-named-constraints`)*
 
 ### An 800-line diff for a 20-line problem.
 
 **The ladder.** Stop at the first rung that solves it: does it need to exist,
-is it already in the codebase, stdlib, native platform, an existing dependency,
-one line, then the minimal implementation. Input validation, error handling,
-security, and accessibility are never on the chopping block. *(`ponytail`)*
+is it already in the codebase, the standard library, the native platform, an
+existing dependency, one line, and only then the minimal implementation. Input
+validation, error handling, security, and accessibility are never on the
+chopping block. *(`ponytail`)*
 
 ### "I pushed it." Did you?
 
 **Handoff is not delivery.** `push-handoff` is the explicit delivery step: it
 verifies, commits, pushes, and reads the fetched remote SHA back as proof, and
 only when delivery is authorized. `/snapshot` checkpoints but grants no push
-authority. Opening a PR is `/ship`'s delivery; merging is `/land`'s, and only
-when you say so.
+authority. `/ship` opens the PR and hands it to `/land`, and nothing merges
+without your say-so.
 
 ## The skills
 
@@ -147,26 +184,26 @@ Install any one with its dependencies: `npx @vskills/cli add <skill>`.
 
 | Skill | Use when |
 |---|---|
-| [`ship`](delivery/ship/SKILL.md) | A task, ticket, or issue goes in; a verified, reviewed PR or an evidenced blocker comes out |
-| [`land`](delivery/land/SKILL.md) | Open PRs need driving to merged. Lands only the contiguous verified run, bottom-up |
+| [`ship`](delivery/ship/SKILL.md) | Any task. An idea or issue goes in; it gathers context, designs, files issues, builds, proves, reviews, and hands off to land |
+| [`land`](delivery/land/SKILL.md) | PRs need driving to merged. Merges only the contiguous verified run, bottom-up, under an explicit grant |
 
 **Standalone**
 
 | Skill | Use when |
 |---|---|
+| [`snapshot`](standalone/snapshot/SKILL.md) | You're stopping before done. Completes the ship record so a later session needs no fresh recall |
+| [`resume-work`](standalone/resume-work/SKILL.md) | A usage limit reset, a paused task, or work another agent claims it finished. Re-proves the record, then continues at its phase |
+| [`grill`](standalone/grill/SKILL.md) | You want product questions answered without building yet |
+| [`issues`](standalone/issues/SKILL.md) | You want agreed work queued as issues with verification, without building yet |
 | [`route`](standalone/route/SKILL.md) | You don't know which skill fits; it hands back an invocation |
-| [`grill`](standalone/grill/SKILL.md) | Intent is unclear and the choice is consequential |
-| [`issues`](standalone/issues/SKILL.md) | An agreed outcome becomes tracker work with acceptance and verification |
 | [`investigate`](standalone/investigate/SKILL.md) | You want a read-only answer about the codebase, with file pointers and confidence |
 | [`debug`](standalone/debug/SKILL.md) | A bug or regression has an unknown cause. Reproduce, isolate, fix at the cause |
-| [`snapshot`](standalone/snapshot/SKILL.md) | Work is unfinished and a later session needs the ship record |
-| [`resume-work`](standalone/resume-work/SKILL.md) | Stopped work, a usage-limit reset, or a task another agent left in flight |
-| [`push-handoff`](standalone/push-handoff/SKILL.md) | Commit and push under explicit authority, proven by remote SHA |
+| [`push-handoff`](standalone/push-handoff/SKILL.md) | You need a commit and push under explicit authority, proven by the remote SHA |
 | [`ponytail`](standalone/ponytail/SKILL.md) | You want the laziest solution that actually works |
-| [`setup-vskills`](standalone/setup-vskills/SKILL.md) | Setting this up on a new machine |
+| [`setup-vskills`](standalone/setup-vskills/SKILL.md) | You're installing or updating vskills and the skill packs, routing models, or setting up a project. Re-running it is the update |
 | [`setup-obsidian`](standalone/setup-obsidian/SKILL.md) | A docs folder should become a retrieval graph and Obsidian vault |
 | [`pr-review`](standalone/pr-review/SKILL.md) | You want a GitHub Actions PR review bot: summary, confidence, checks, fix-on-comment |
-| [`test-tps`](standalone/test-tps/SKILL.md) | Benchmarking a Pi model: TTFT, decode and average TPS, usage, cost, percentiles |
+| [`test-tps`](standalone/test-tps/SKILL.md) | You're benchmarking a Pi model: TTFT, decode and average TPS, usage, cost, percentiles |
 
 **Pipeline**: disciplines you can pull in on their own.
 
@@ -174,9 +211,9 @@ Install any one with its dependencies: `npx @vskills/cli add <skill>`.
 |---|---|
 | [`audit`](pipeline/audit/SKILL.md) | A whole codebase, not a diff, needs a ranked backlog of tickets |
 | [`implementation-tdd`](pipeline/implementation-tdd/SKILL.md) | One ticket, test-first, at the seam production actually uses |
-| [`subagent-delegation`](pipeline/subagent-delegation/SKILL.md) | Fanning work out with disjoint lanes and the parent as sole gatekeeper |
+| [`subagent-delegation`](pipeline/subagent-delegation/SKILL.md) | You're fanning work out with disjoint lanes and the parent as sole gatekeeper |
 | [`delivery-constraints`](pipeline/delivery-constraints/SKILL.md) | Budget, live data, git authority, or a lying tracker decides how work ships |
-| [`ai-subscription-unit-economics`](pipeline/ai-subscription-unit-economics/SKILL.md) | Pricing and usage caps for a product whose cost of goods is inference |
+| [`ai-subscription-unit-economics`](pipeline/ai-subscription-unit-economics/SKILL.md) | You're setting prices and usage caps for a product whose cost of goods is inference |
 
 **Principles**: invoked by the delivery skills, not entry points.
 
@@ -194,9 +231,9 @@ See [VENDORED.md](VENDORED.md) for provenance.
 ### Evals
 
 Skill quality is tested, not asserted. [`evals/`](evals/README.md) runs three
-tiers: structural validation and prompt-to-skill routing in CI, plus behavioral
-evals on demand that check an agent following the skill actually does what it
-promises.
+tiers: structural validation and prompt-to-skill routing in CI, plus
+on-demand behavioral evals that check whether an agent following the skill
+actually does what it promises.
 
 ```bash
 node scripts/validate-skills.mjs   # tier 1: frontmatter and cross-references
@@ -205,36 +242,26 @@ node scripts/run-evals.mjs         # tier 2: does the right skill trigger?
 
 ## Skills from elsewhere
 
-Pinned copies live under [`third-party/`](third-party/). They are not part of
-the vskills catalogue: `vskills init` and `vskills add` do not install them.
-Provenance and commits are in [VENDORED.md](VENDORED.md).
+`/setup-vskills` installs three packs from their upstream repos with
+`scripts/install-packs.mjs`. It clones each one into `~/.agents/packs/<pack>`
+and pulls them on later runs:
 
-| Pack | Path | Source |
+| Pack | What `/ship` uses it for | Source |
 |---|---|---|
-| Matt Pocock | `third-party/mattpocock/skills` | [mattpocock/skills](https://github.com/mattpocock/skills) |
-| Addy Osmani | `third-party/addyosmani/skills` | [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) |
-| Frontend design | `third-party/frontend-design` | [anthropics/skills](https://github.com/anthropics/skills) `frontend-design` |
+| pstack | `/recall`, `/how`, `/why`, `/teach`, `/architect`, `/interrogate`, `/poteto-mode`, `/ketchup`, verification skills, `/setup-pstack` | [cursor/plugins](https://github.com/cursor/plugins/tree/main/pstack) |
+| Addy Osmani | Lifecycle skills: spec, TDD, security, performance, and more | [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) |
+| Matt Pocock | Engineering and productivity skills | [mattpocock/skills](https://github.com/mattpocock/skills) |
 
-**Claude Code plugins** install through `/plugin`, not `vskills`. Useful
-companions from the
-[official marketplace](https://github.com/anthropics/claude-plugins-official):
-`superpowers` (brainstorming, TDD, systematic debugging, worktrees),
-`skill-creator`, and `frontend-design`. The
-[ponytail](https://github.com/DietrichGebert/ponytail) plugin is optional,
-since the skill is already vendored here.
+When two skills share a name, the vskills catalogue wins, then pstack, then
+Addy Osmani, then Matt Pocock. The losing skill is skipped and reported, so
+pstack's `/teach` and `/tdd` stay pstack's. Anything already at a pack skill's
+path is left alone and reported; `--force` replaces it, backing up a real
+directory first. In Claude Code you can use the pstack plugin instead
+(`/plugin install pstack@cursor-plugins`), but not both.
 
-```
-/plugin marketplace add anthropics/claude-plugins-official
-/plugin install superpowers@claude-plugins-official
-/plugin marketplace add DietrichGebert/ponytail
-/plugin install ponytail@ponytail
-```
-
-## Agents
-
-The skills stay harness-agnostic: any client that can load a `SKILL.md` can
-run them, with any model. Inside T3 Code, `/ship` uses native child tasks, PR links and
-watches, and browser evidence.
+Separately, pinned reference copies of Matt Pocock, Addy Osmani, and Anthropic's
+`frontend-design` live under [`third-party/`](third-party/). `vskills init` and
+`vskills add` do not install those. Provenance is in [VENDORED.md](VENDORED.md).
 
 ## Installing with `vskills`
 
@@ -244,18 +271,18 @@ Zero runtime dependencies, Node 18 or newer.
 npx @vskills/cli init                    # install the recommended set (default)
 npx @vskills/cli init --recommended      # exactly the recommended set, dropping anything else
 npx @vskills/cli init --all              # install every skill
-npx @vskills/cli init --only ship,grill  # install exactly these skills
+npx @vskills/cli init --only ship,land   # install exactly these skills
 npx @vskills/cli list                    # what is installed, what has drifted
 npx @vskills/cli add <skill>             # one skill plus its dependencies
 npx @vskills/cli update [skill...]       # refresh, skipping your local edits
 ```
 
-The recommended set is `ship`, `grill`, `issues`, `snapshot`,
-`setup-vskills`, and `ponytail`, plus `push-handoff` as a dependency of
-`snapshot`: seven skills, and everything the workflow above needs. On a TTY,
-`init` shows that set and offers to accept it (plain Enter), install
-everything, or pick names. `--yes` and non-TTY runs take the recommended set
-without asking.
+The recommended set is `ship`, `grill`, `issues`, `snapshot`, `resume-work`,
+`setup-vskills`, and `ponytail`. Their dependencies bring in `land`,
+`push-handoff`, and four principles, so a fresh machine lands 13 skills,
+everything the workflow above needs. On a TTY, `init` shows that set and
+offers to accept it (plain Enter), install everything, or pick names. `--yes`
+and non-TTY runs take the recommended set without asking.
 
 **Your edits are safe.** A skill whose content hash no longer matches the
 manifest is marked `drifted` and left alone. Only `--force` overwrites it, and
@@ -327,16 +354,20 @@ If npm 12 blocks a GitHub spec with `EALLOWGIT` or `EALLOWREMOTE`, use
 
 ### Keeping it current
 
+- `/setup-vskills` updates the catalogue and all three packs in one go.
 - `npx @vskills/cli list` shows what is installed and what has drifted.
-- `npx @vskills/cli update` refreshes everything and skips anything you edited.
+- `npx @vskills/cli update` refreshes the catalogue and skips anything you edited.
 - `npx @vskills/cli update <skill> --force` overwrites an edited skill, backing
   up the old copy first.
-- `/plugin` lists installed Claude Code plugins and updates them.
+
+Inside T3 Code, `/ship` uses native child tasks, PR links and watches, and
+browser evidence. Other hosts use their own native capabilities and say so
+when one is missing.
 
 ## Contributing
 
 Prove a change before calling it done. This is what the project-local
-`.cursor/skills/verify-skills` runs, and a model verdict is not a pass:
+`.cursor/skills/verify-skills` skill runs, and a model's verdict is not a pass:
 
 ```bash
 node scripts/validate-skills.mjs && npm test
@@ -347,6 +378,7 @@ bin/              the vskills CLI entrypoint
 src/              vskills implementation
 test/             vskills test suite (node --test)
 evals/            structural, routing, and behavioral skill evals
+assets/           README images
 
 delivery/         ship, land
 standalone/       route, grill, issues, investigate, debug, snapshot,
@@ -364,15 +396,14 @@ third-party/      pinned Matt Pocock, Addy Osmani, frontend-design packs
 ## Credits
 
 - [pstack](https://github.com/cursor/plugins/tree/main/pstack) by poteto (MIT):
-  the inner loop. Exhaust the design space, prove safety by running code,
-  expand-contract for wide blast radius, and settle caller usage before module
-  shape. Not vendored: `ship` runs `poteto-mode` inside itself, `grill` can hand
-  off to `interrogate`, and `snapshot` maps to `ketchup`.
+  the inner loop `/ship` runs on. It contributes recall, how, why, teach,
+  architect, interrogate, poteto-mode, and the verification skills. It is
+  installed beside this catalogue, not vendored into it.
 - [mattpocock/skills](https://github.com/mattpocock/skills) by Matt Pocock:
   `/grill-with-docs`, `/to-spec`, `/handoff`, `/to-tickets`, and the shape of
   the workflow. `/grill`, `/issues`, and `/snapshot` are this repo's versions.
 - [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) by Addy
-  Osmani: vendored under `third-party/`.
+  Osmani: installed as a pack, with a pinned copy under `third-party/`.
 - [ponytail](https://github.com/DietrichGebert/ponytail) by DietrichGebert (MIT,
   v4.9.0, commit `0a4dd63ad4541f4f655c4108a295916f3c1d8fda`): the vendored
   decision ladder and the `delete / stdlib / native / yagni / shrink` rubric.
