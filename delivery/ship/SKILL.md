@@ -1,6 +1,6 @@
 ---
 name: ship
-version: 4.1.0
+version: 4.2.0
 description: Find, pick up, implement, or execute a feature, bug, task, ticket, or ready issue end to end and open a verified, reviewed PR, then hand it to land. A feature first recalls prior chats and PRs, explains the plan, settles the design with architect and grill, and files issues. A small task goes straight to the build. Builds with poteto-mode, proves the change with the project's verification skill, and keeps a ship record so snapshot and resume-work can continue it.
 dependencies: [grill, issues, land, snapshot, principle-independent-verdict, principle-bounded-repair]
 recommended: true
@@ -11,7 +11,7 @@ argument-hint: "[feature, issue, or task]"
 
 One entry point from an idea or an issue to merged code. Only land merges, and only under an explicit grant. Ship gathers context, settles the design, files the work, builds it, proves it, and hands it to `land`. Scale every phase to the task.
 
-pstack skills (`/recall`, `/how`, `/why`, `/teach`, `/architect`, `/interrogate`, `/poteto-mode`) turn off model invocation. When the Skill tool refuses one, read its `SKILL.md` from the sibling directory next to this skill and follow it. When pstack is not installed, do the step inline and say so.
+pstack skills (`/recall`, `/how`, `/why`, `/teach`, `/architect`, `/interrogate`, `/poteto-mode`) are separate installs. Invoke each with the Skill tool, then as `pstack:<name>` when the pstack plugin is installed. If neither resolves, read `~/.agents/packs/pstack/pstack/skills/<name>/SKILL.md` (or `$VSKILLS_PACK_PSTACK/pstack/skills/<name>/SKILL.md`) and follow it. When none of these exists, do the step inline and say so.
 
 ## Start
 
@@ -22,13 +22,14 @@ Look for an open ship record for this work (format in [references/record.md](ref
 Size the task and state the call in one line:
 
 - **Small.** One file or an obvious change, no design fork, no open product question. Go straight to Build.
+- **Medium.** Several files or real logic, but no module boundary or public contract crossed, no open product question, and one verifiable unit. Run the phases marked Medium below and skip the rest.
 - **Feature.** Everything else. Run every phase.
 
-Create the ship record now. A small task's record is a few lines. Set its Phase at every section boundary. Build and Prove share the build phase.
+Create the ship record now. A small task's record is a few lines. Set its Phase at every section boundary, then run `node <install-root>/ship/scripts/ship-record.mjs <slug>`. It must exit 0 and show `head: current`. Build and Prove share the build phase.
 
 ## 1. Context
 
-Feature only. The goal is enough understanding to plan, not a survey.
+Feature. Medium runs only `/how` on the touched code (plus `/recall` for a regression) and states the plan in a few lines in place of `/teach`. The goal is enough understanding to plan, not a survey.
 
 1. `/recall` scoped to this task: prior chats, PRs, reverted fixes, and symptoms users still report. Skip it when the user already gave the branch, PR, and change in hand.
 2. `/how` over the subsystems the change touches and `/why` on the code it changes, in parallel. Keep `/why` narrow (git plus the tracker) unless the reasons are the question. `/why`'s Preserve / Change / Avoid / Risk list becomes the design's constraints.
@@ -38,7 +39,7 @@ Write the record's Context section.
 
 ## 2. Design
 
-Feature only.
+Feature. Medium names the data shape in one line and stops; a fork it turns up makes the task a feature.
 
 - Name the data shape first, per pstack's principle-model-the-domain.
 - A change across a module boundary or a public contract goes through `/architect`. Skipping it is recorded as `architect skipped: <reason>`.
@@ -50,7 +51,7 @@ Write the record's Design section: the chosen design, rejected alternatives, and
 
 ## 3. Issues
 
-Feature only. Run `/issues` on the agreed design: one issue per separately verifiable unit, dependency-ordered, each with a Verification-command and the `verify-<app>` feature that proves it. The user's ship request authorizes filing them, unless repo policy says otherwise. Without tracker access, keep the units in the record's Work table and say so.
+Feature. Medium uses the issue it was given, or files one. Run `/issues` on the agreed design: one issue per separately verifiable unit, dependency-ordered, each with a Verification-command and the `verify-<app>` feature that proves it. The user's ship request authorizes filing them, unless repo policy says otherwise. Without tracker access, keep the units in the record's Work table and say so.
 
 Issues are the durable plan. Another machine or person resumes from them, not from the record.
 
@@ -59,7 +60,7 @@ Issues are the durable plan. Another machine or person resumes from them, not fr
 Work the issues in dependency order. Continue an existing branch or PR for the task rather than opening a competing one. Preserve unrelated edits, and use a separate worktree when another writer is active.
 
 - **Small.** Build it here. Use existing patterns and the smallest complete change. Add a focused check for meaningful logic.
-- **Feature.** Run `/poteto-mode` inside this skill, with its Feature playbook (Bug-fix for a defect): throughput checkpoint, delegated code against the named data shape, your own review of the delegate's diff, small ordered commits. `/poteto-mode` is not a second delivery path and does not merge. `land` still owns merged.
+- **Medium and Feature.** Run `/poteto-mode` inside this skill, with its Feature playbook (Bug-fix for a defect): throughput checkpoint, delegated code against the named data shape, your own review of the delegate's diff, small ordered commits. `/poteto-mode` is not a second delivery path and does not merge. `land` still owns merged.
 
 Apply the poteto-mode principles that fit. Name each one in the PR with the choice it changed. A small task that turns up a design fork stops and goes back to Context.
 
@@ -97,4 +98,4 @@ Inside T3 Code, read [references/t3.md](references/t3.md) before dispatching chi
 
 ## Reply
 
-The PR and head SHA, behavior evidence, review and check status, land outcome, the principles that shaped a decision, and the next action.
+The PR and head SHA, the ship record path, behavior evidence, review and check status, land outcome, the principles that shaped a decision, and the next action.

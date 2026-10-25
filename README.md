@@ -65,9 +65,11 @@ That's the whole loop: `/ship` does the work, `/land` merges it,
 
 `/ship <idea or #issue>` sizes the task and says which way it went. **Small**
 means one file or an obvious change, with no design fork and no open product
-question, and it goes straight to Build. Everything else is a **feature**, which
-runs every phase inside `/ship`, so you never have to call `/grill` or
-`/issues` yourself.
+question, and it goes straight to Build. **Medium** is several files or real
+logic that crosses no module boundary or public contract: it runs `/how` on the
+touched code, names the data shape, works one issue, then builds, proves, and
+gets reviewed like a feature. Everything else is a **feature**, which runs every
+phase inside `/ship`, so you never have to call `/grill` or `/issues` yourself.
 
 | # | Phase | What happens |
 |---|---|---|
@@ -93,7 +95,10 @@ action, the context and design the session learned (with `file:line` anchors,
 rejected alternatives, and your grill answers), and a Work table with each
 issue's branch, PR, head SHA, and verification state. A record is meant to be
 at most one phase stale, so a usage limit costs you minutes, not the
-afternoon.
+afternoon. `node <install-root>/ship/scripts/ship-record.mjs [slug]` checks a
+record's fields and whether its branch still points at the recorded head;
+ship, snapshot, land, and resume-work run it after every write and before
+every resume.
 
 ### Stopping and picking up
 
