@@ -58,6 +58,19 @@ test('ship-record reports open records, head drift, and malformed fields', async
     assert.match(out.stdout, /problem: missing Next/);
 
     assert.equal((await run(repo, 'absent')).code, 1);
+    for (const slug of ['../config', '..', 'sub/x']) assert.equal((await run(repo, slug)).code, 2, slug);
+
+    await fs.rm(path.join(dir, 'broken.md'));
+    for (const updated of [
+      `yesterday, main at ${first}, ${repo}`,
+      `2026-10-25T00:00Z, main at ${first}`,
+      `2026-13-45Tnope, main at ${first}, ${repo}`,
+    ]) {
+      await fs.writeFile(path.join(dir, 'partial.md'), record({ updated }));
+      out = await run(repo, 'partial');
+      assert.equal(out.code, 1, updated);
+      assert.match(out.stdout, /problem: Updated is not/, updated);
+    }
   } finally {
     await cleanup(repo);
   }

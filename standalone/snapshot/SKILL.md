@@ -29,7 +29,7 @@ Then fill the record so it meets its bar: a fresh agent reading only the record 
 
 Link artifacts instead of copying them. Rewrite sections; don't append a diary.
 
-Then run `node <install-root>/ship/scripts/ship-record.mjs <slug>`. It must exit 0 and show `head: current`. Fix the record until it does.
+Then, when ship is installed, run `node <install-root>/ship/scripts/ship-record.mjs <slug>`. It must exit 0 and show `head: current`. Fix the record until it does. Without ship, check the Phase, Size, Updated, and Next lines against the record shape by hand and say the checker was unavailable.
 
 ## Reach and limits
 

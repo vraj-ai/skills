@@ -39,9 +39,12 @@ function parseRecord(text) {
   }
   if (record.phase && !PHASES.includes(record.phase)) problems.push(`unknown phase "${record.phase}"`);
   if (record.size && !SIZES.includes(record.size)) problems.push(`unknown size "${record.size}"`);
-  const at = record.updated?.match(/^(.+?),\s*(\S+) at ([0-9a-f]{7,40})\b/);
-  if (record.updated && !at) problems.push('Updated is not "<ISO time>, <branch> at <head SHA>, <worktree>"');
-  if (at) [, record.time, record.branch, record.head] = at;
+  const at = record.updated?.match(/^(\d{4}-\d{2}-\d{2}T\S+),\s*(\S+) at ([0-9a-f]{7,40}),\s*(\S.*)$/);
+  if (record.updated && (!at || Number.isNaN(Date.parse(at[1])))) {
+    problems.push('Updated is not "<ISO time>, <branch> at <head SHA>, <worktree>"');
+  } else if (at) {
+    [, record.time, record.branch, record.head] = at;
+  }
   return { record, problems };
 }
 
@@ -59,10 +62,14 @@ function main() {
     process.exit(2);
   }
   const dir = path.join(path.resolve(common), 'vskills', 'ship');
-  const slug = process.argv[2];
+  const slug = process.argv[2]?.replace(/\.md$/, '');
+  if (slug !== undefined && (!slug || slug === '..' || path.basename(slug) !== slug)) {
+    console.error(`slug "${process.argv[2]}" must be a record name, not a path`);
+    process.exit(2);
+  }
   let files;
   try {
-    files = slug ? [`${slug.replace(/\.md$/, '')}.md`] : readdirSync(dir).filter((f) => f.endsWith('.md'));
+    files = slug ? [`${slug}.md`] : readdirSync(dir).filter((f) => f.endsWith('.md'));
   } catch {
     files = [];
   }
