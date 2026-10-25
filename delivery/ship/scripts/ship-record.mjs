@@ -7,6 +7,7 @@
 // Prints each record's phase, Updated line, Next, and whether the recorded
 // branch still points at the recorded head. Exit 1 when a record is missing a
 // field or names an unknown phase or size; a moved head is reported, not fatal.
+// Exit 2 when the slug is a path rather than a record name, or outside a repo.
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
