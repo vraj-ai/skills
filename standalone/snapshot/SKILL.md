@@ -1,6 +1,6 @@
 ---
 name: snapshot
-version: 3.0.0
+version: 3.1.0
 description: Save where you are: checkpoint an unfinished or half-done task so a later session picks it up at the exact phase, before a pause, a context reset, or a task switch. Completes the ship record with live state, the next action, and the context and design this session learned, so resume-work needs no fresh recall. Grants no commit, push, or external-write authority.
 dependencies: [push-handoff]
 argument-hint: "[next session focus]"
@@ -11,7 +11,7 @@ recommended: true
 
 Checkpoint unfinished work. `resume-work` is the pickup half: it re-proves these claims against the repo before continuing. A completed task needs only its final report. Snapshot grants no commit, push, merge, or external-write authority.
 
-An in-chat catch-up maps to pstack `/ketchup`: what changed since the user's last message, with no resume file. pstack pause-safely does not replace it either. Neither one records the head SHA and the phase, so the record stays.
+An in-chat catch-up maps to pstack `/ketchup`: what changed since the user's last message, with no resume file. `/ketchup` records neither the head SHA nor the phase, so it does not replace the record.
 
 ## Write the record
 
@@ -28,6 +28,8 @@ Then fill the record so it meets its bar: a fresh agent reading only the record 
 - **Open.** Unresolved decisions, the blocker, and non-obvious assumptions.
 
 Link artifacts instead of copying them. Rewrite sections; don't append a diary.
+
+Then, when ship is installed, run `node <install-root>/ship/scripts/ship-record.mjs <slug>`. It must exit 0 and show `head: current`. Fix the record until it does. Without ship, check the Phase, Size, Updated, and Next lines against the record shape by hand and say the checker was unavailable.
 
 ## Reach and limits
 

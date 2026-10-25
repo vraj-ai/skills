@@ -52,7 +52,22 @@ test('snapshot maps to ketchup and keeps the resume note', async () => {
   const snapshot = await skill('snapshot');
   assert.match(snapshot, /\/ketchup/);
   assert.match(snapshot, /head SHA/);
-  assert.match(snapshot, /pause-safely does not replace it/);
+  assert.match(snapshot, /does not replace the record/);
+  assert.match(snapshot, /ship-record\.mjs/);
+});
+
+// pstack skills are model-invocable and install into ~/.agents/packs/pstack,
+// not beside the catalogue skill that calls them. A fallback that says
+// "sibling directory" points at a path that does not exist in this repo or in
+// a pack install.
+test('ship and resume-work fall back to the pstack pack path, not a sibling directory', async () => {
+  for (const name of ['ship', 'resume-work']) {
+    const text = await skill(name);
+    assert.doesNotMatch(text, /sibling directory|turn off model invocation/, name);
+    assert.match(text, /~\/\.agents\/packs\/pstack\/pstack\/skills\//, name);
+    assert.match(text, /\$VSKILLS_PACK_PSTACK/, name);
+    assert.match(text, /pstack:/, name);
+  }
 });
 
 test('route does not list poteto-mode as a destination', async () => {
