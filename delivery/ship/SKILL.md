@@ -1,6 +1,6 @@
 ---
 name: ship
-version: 4.3.0
+version: 4.4.0
 description: Find, pick up, implement, or execute a feature, bug, task, ticket, or ready issue end to end and open a verified, reviewed PR, then hand it to land. A feature first recalls prior chats and PRs, explains the plan, settles the design with architect and grill, and files issues. A small task goes straight to the build. Builds with poteto-mode, proves the change with the project's verification skill, and keeps a ship record so snapshot and resume-work can continue it.
 dependencies: [grill, issues, land, snapshot, ship-record, principle-independent-verdict, principle-bounded-repair]
 recommended: true
@@ -74,7 +74,7 @@ Update the Work row after each issue.
 
 ## 6. Review and deliver
 
-Get an independent review of a nontrivial change from the configured reviewer or PR bot, otherwise `/interrogate`. Per principle-independent-verdict, only a context that did not write the code can give the verdict. Fix evidenced blocking findings and reverify. A verdict covers one head SHA: after a push, compare the patch-id of the full PR diff before trusting it. Stop repair after three rounds (principle-bounded-repair) and report the blocker rather than weaken acceptance.
+Get an independent review of a nontrivial change from the configured reviewer or PR bot, otherwise `/interrogate`. Per principle-independent-verdict, only a context that did not write the code can give the verdict. Fix evidenced blocking findings and reverify. A verdict covers a patch, not a branch: record it with `node ~/.agents/skills/ship-record/scripts/ship-record.mjs verdict add <slug> --pr <n> --by agent:<reviewer> --at <sha> --base <base>`, and let `verdict check` decide whether a later push kept it. Any changed patch needs a fresh verdict, including a docs-only push. Stop repair after three rounds (principle-bounded-repair) and report the blocker rather than weaken acceptance.
 
 Deliver under repo policy and existing authority: commit, push a named branch, open or update the PR. The PR body holds intent, changed contracts, verification, risks, and `Closes #<issue>`. Implementation never implies deploy, self-merge, or new external messaging authority. Update a decision doc only when a non-obvious decision or constraint changed.
 

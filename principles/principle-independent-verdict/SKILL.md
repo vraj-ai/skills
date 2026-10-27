@@ -1,6 +1,6 @@
 ---
 name: principle-independent-verdict
-version: 1.0.0
+version: 2.0.0
 description: Only a verdict from a context that did not write the code counts — an author checks what it meant to build, not what it built, and an author-verified claim on its own diff is not enough. Apply before trusting any review, CI-green diff, self-certification, or self-verified work on a nontrivial change, including verdicts carried across rebases where the patch may have drifted.
 recommended: false
 ---
@@ -33,10 +33,12 @@ verdict made at an older SHA:
    current head. The head commit's patch-id misses an earlier commit drifting
    under an unchanged tip patch.
 2. Same patch-id — the verdict stands.
-3. Differing only in tests, docs, or lint config — the verdict stands if the
-   evidence it ran builds the same at both SHAs, modulo recorded noise (an
-   embedded commit SHA, nondeterministic output between two builds of the same
-   SHA). Report the noise with its files so a reader can check the call.
-4. Anything else — the old verdict never saw this code. Re-verify.
+3. Anything else: a new commit, a rebase, a retarget, a changed test, a
+   changed document, a changed lint config. The old verdict never saw this
+   code, so re-verify. There is no path-class exception: a file that looks
+   like documentation is executable behaviour wherever an agent reads it,
+   and a test or lint change moves the gate the verdict relied on.
+4. An unresolvable revision, an empty diff, or a failed patch-id
+   computation is unverified. It is never treated as a match.
 
 Reviews and checks apply to the examined head SHA. Recheck after every push.

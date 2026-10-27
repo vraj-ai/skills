@@ -1,6 +1,6 @@
 ---
 name: land
-version: 1.4.0
+version: 1.5.0
 description: Drive open PRs to merged. Re-establish each PR's real state, resolve review threads, conflicts, failing checks, and CI failures under a bounded repair budget, land only the contiguous verified run bottom-up through the project's forge, watch until the checks pass and each merge lands, and stop at the ceiling. Use when a PR or a stack exists and the task is to get it merged, babysit it to merge-ready, or land it overnight or by morning.
 dependencies: [push-handoff, ship-record, principle-evidence-over-report, principle-independent-verdict, principle-bounded-repair, principle-real-artifact]
 argument-hint: "[PR-or-stack]"
@@ -35,9 +35,9 @@ Two identical CI failures in a row mean the loop is not learning. Change the hyp
 
 principle-independent-verdict: only a verdict from a context that did not write the code counts, and a verdict covers a patch, not a branch. Before landing any PR, confirm its verdict is current:
 
-1. Compare the patch-id of the PR's *full diff* at the verdict's SHA and at the current head: `git diff <base>...<sha> | git patch-id`. The head commit's patch-id alone misses an earlier commit drifting under an unchanged tip patch.
-2. Identical: the verdict stands. Identical except tests, docs, or lint config: it stands if the evidence still describes the code.
-3. Anything else: the old verdict never saw this code. Get a fresh one from an independent reviewer agent, the PR review bot, or a human, per project convention.
+1. Record the verdict when it arrives: `node ~/.agents/skills/ship-record/scripts/ship-record.mjs verdict add <slug> --pr <n> --by agent:<reviewer> --at <reviewed sha> --base <base>`. It stores the patch-id of the PR's full diff, so currency is a comparison rather than a recollection.
+2. Check it before every merge: `... verdict check <slug> --pr <n>`. Exit 0 with `verdict=current` is the only result that admits a PR into the run.
+3. Exit 3 means stale, unknown, or uncomputable, and each is a fresh verdict, not a judgement call. There is no tests, docs, or lint exception: a change to a test, a document, or lint config changes the patch, and this repository's documents are executable skill behaviour.
 
 A PR with no verdict is unverified, however green its CI.
 
