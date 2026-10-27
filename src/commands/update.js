@@ -13,12 +13,22 @@ export async function runUpdate({ names, repoRoot, installRoot, targets, force =
   // retired instead of being refreshed forever. Named updates stay explicit,
   // and an install with no stored selection keeps its pre-selection behaviour.
   const stored = names.length > 0 ? null : (await readConfig(installRoot)).selection;
+  // Roots are what the user asked to own. The install set is their dependency
+  // closure, so a dependency added to a skill since the last install is
+  // installed by the same update that refreshes its dependent.
+  let roots;
   let keep = null;
-  if (stored) {
+  if (names.length > 0) {
+    roots = names;
+  } else if (stored) {
     // A selected name that left the repo is the ordinary retirement case, not
     // a broken graph — only what is still discoverable gets resolved.
-    const selected = [...resolveSelection({ skills, selection: null, stored }).names].filter((name) => skills.has(name));
-    const { order, errors } = resolveClosure(skills, selected);
+    roots = [...resolveSelection({ skills, selection: null, stored }).names].filter((name) => skills.has(name));
+  } else {
+    roots = Object.keys(manifest.skills);
+  }
+  const { order, errors } = resolveClosure(skills, roots);
+  if (stored) {
     // Unlike init, this keep-set decides what gets retired on a path that also
     // rewrites the manifest, and a dropped branch silently shrinks it. A broken
     // graph stops the run before anything is installed, retired or written.
@@ -39,21 +49,40 @@ export async function runUpdate({ names, repoRoot, installRoot, targets, force =
     }
     keep = new Set(order);
   }
-  const targetNames = names.length > 0
-    ? names
-    : Object.keys(manifest.skills).filter((name) => !keep || keep.has(name));
+  // A cycle makes the install order unknowable, so the run stops. A missing
+  // dependency only drops its own branch, and the rest of the closure still
+  // installs. That matches init, which keeps the depender and warns.
+  const graphErrors = [...discoveryWarnings];
+  if (errors.some((err) => err.cycle)) {
+    return {
+      ok: false,
+      results: [],
+      messages: [
+        ...discoveryWarnings,
+        ...errors.map((err) => (err.cycle
+          ? `dependency cycle detected: ${err.cycle.join(' -> ')}`
+          : `unknown dependency "${err.missing}" referenced`)),
+        'update stopped before changing anything: the dependency graph is invalid.',
+      ],
+      discoveryWarnings,
+      linkFailures: [],
+    };
+  }
+  graphErrors.push(...errors.map((err) => `unknown dependency "${err.missing}" referenced`));
+  const requested = new Set(roots);
+  const targetNames = order.length > 0 ? order : roots.filter((name) => skills.has(name));
 
   const results = [];
-  const messages = [...discoveryWarnings];
+  const messages = [...graphErrors];
   const linkFailures = [];
 
   for (const name of targetNames) {
-    if (!manifest.skills[name]) {
+    const skill = skills.get(name);
+    if (!skill) continue;
+    if (!manifest.skills[name] && requested.has(name)) {
       messages.push(`${name}: not currently installed — use "vskills add ${name}" instead`);
       continue;
     }
-    const skill = skills.get(name);
-    if (!skill) continue;
     const { status, warnings, linkFailures: failures } = await installOne({
       skill, installRoot, targets, manifest, force,
     });
@@ -70,7 +99,8 @@ export async function runUpdate({ names, repoRoot, installRoot, targets, force =
     installRoot,
     targets,
     manifest,
-    onlyNames: names.length > 0 ? new Set(names) : null,
+    // A named update installs its closure but retires only the names asked for.
+    onlyNames: names.length > 0 ? requested : null,
   });
   results.push(...vanished.results);
   messages.push(...vanished.messages);

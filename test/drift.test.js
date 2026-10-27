@@ -140,6 +140,50 @@ test('update honours the persisted selection: a deselected skill is retired, not
   }
 });
 
+test('update installs a dependency added since the last install', async () => {
+  const repo = await makeTmpDir();
+  const installRoot = await makeTmpDir();
+  const target = await makeTmpDir();
+  try {
+    await writeSkill(repo, 'alpha', { name: 'alpha', body: 'v1' });
+    await runInit({ repoRoot: repo, installRoot, targets: [target] });
+
+    // The repo copy of alpha gains a dependency that this install never saw.
+    await writeSkill(repo, 'helper', { name: 'helper', body: 'helper v1' });
+    await writeSkill(repo, 'alpha', { name: 'alpha', body: 'v2', dependencies: ['helper'] });
+
+    const result = await runUpdate({ names: [], repoRoot: repo, installRoot, targets: [target] });
+    const status = Object.fromEntries(result.results.map((r) => [r.name, r.status]));
+    assert.equal(status.helper, 'installed', 'a new dependency is installed by a whole-install update');
+    assert.equal(status.alpha, 'installed');
+    assert.equal(await fs.readFile(path.join(installRoot, 'helper', 'SKILL.md'), 'utf8').then((s) => s.includes('helper v1')), true);
+  } finally {
+    await cleanup(repo, installRoot, target);
+  }
+});
+
+test('update of a named skill installs its newly added dependency', async () => {
+  const repo = await makeTmpDir();
+  const installRoot = await makeTmpDir();
+  const target = await makeTmpDir();
+  try {
+    await writeSkill(repo, 'alpha', { name: 'alpha', body: 'v1' });
+    await writeSkill(repo, 'beta', { name: 'beta', body: 'v1' });
+    await runInit({ repoRoot: repo, installRoot, targets: [target] });
+
+    await writeSkill(repo, 'helper', { name: 'helper', body: 'helper v1' });
+    await writeSkill(repo, 'alpha', { name: 'alpha', body: 'v2', dependencies: ['helper'] });
+
+    const result = await runUpdate({ names: ['alpha'], repoRoot: repo, installRoot, targets: [target] });
+    const status = Object.fromEntries(result.results.map((r) => [r.name, r.status]));
+    assert.equal(status.helper, 'installed');
+    assert.equal(status.alpha, 'installed');
+    assert.equal(await fs.readFile(path.join(installRoot, 'helper', 'SKILL.md'), 'utf8').then((s) => s.includes('helper v1')), true);
+  } finally {
+    await cleanup(repo, installRoot, target);
+  }
+});
+
 test('update with no stored selection still refreshes everything installed', async () => {
   const repo = await makeTmpDir();
   const installRoot = await makeTmpDir();
