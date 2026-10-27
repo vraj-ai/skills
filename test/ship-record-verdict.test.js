@@ -104,3 +104,31 @@ test('a verdict cannot come from the author, and an empty diff is not verifiable
     await cleanup(repo);
   }
 });
+
+test('a verdict rewrite keeps prose the agent wrote in the Verdicts section', async () => {
+  const { repo, git, dir } = await makeRepo();
+  try {
+    const file = path.join(dir, 'job.md');
+    const reviewed = git('rev-parse', 'HEAD');
+    await fs.writeFile(file, `${RECORD}
+## Verdicts
+
+I re-read the parser by hand before asking for review.
+`);
+    await run(repo, 'verdict', 'add', 'job', '--pr', '7', '--by', 'agent:reviewer', '--at', reviewed, '--base', 'main');
+
+    let text = await fs.readFile(file, 'utf8');
+    assert.match(text, /I re-read the parser by hand before asking for review\./, 'hand-written prose survives');
+    assert.equal((text.match(/^\| 7 \|/gm) ?? []).length, 1);
+
+    // A second verdict for the same PR replaces its row and nothing else.
+    await fs.writeFile(path.join(repo, 'app.js'), 'export const one = 1;\nexport const three = 3;\n');
+    git('commit', '-qam', 'three');
+    await run(repo, 'verdict', 'add', 'job', '--pr', '7', '--by', 'agent:reviewer', '--at', 'HEAD', '--base', 'main');
+    text = await fs.readFile(file, 'utf8');
+    assert.match(text, /hand before asking for review/);
+    assert.equal((text.match(/^\| 7 \|/gm) ?? []).length, 1);
+  } finally {
+    await cleanup(repo);
+  }
+});

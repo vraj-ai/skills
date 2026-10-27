@@ -28,6 +28,11 @@ Grill answers, as the decisions the user made.
 ## Work
 | Issue | Branch | PR | Head | Verification | State |
 
+## Verdicts
+| PR | By | At | Base | Patch-id |
+
+The four header fields and each Verdicts row are tool-managed: `attest` writes `Updated`, and `verdict add` writes one row per PR. Prose anywhere in the record, including under Verdicts, belongs to the agent and is preserved. Raise `Peak` with `Size` when the work turns out larger.
+
 ## Open
 Unresolved decisions, blockers, and assumptions a fresh agent could get wrong.
 ```

@@ -1,6 +1,6 @@
 ---
 name: ship-record
-version: 1.2.0
+version: 1.3.0
 description: Check, attest, and export the ship record every delivery skill shares. Reads the record at $(git rev-parse --git-common-dir)/vskills/ship/<slug>.md, validates its fields, phases, and sizes, reports whether the recorded branch still points at the recorded head, and fails closed on a required-but-stale record. Use from ship, land, snapshot, and resume-work, or directly when a record looks stale.
 dependencies: []
 recommended: false
@@ -37,7 +37,7 @@ Exit status is 0 for a readable record, 1 for an invalid or missing record, and 
 
 `observe` writes `<slug>.observed.json` with the branch, head, worktree, dirty paths, upstream counts, and pushed state. It never edits the record, so the model's attestation and its drift stay visible. Hook setup, including the opt-in Claude Code entries, is in [references/hooks.md](references/hooks.md).
 
-`attest` is the only writer of `Updated`, and it reads the branch, head, and worktree from git. `verdict add` stores the patch-id of a PR's full diff; `verdict check` exits 3 unless the current patch still matches it.
+`attest` is the only writer of `Updated`, and it reads the branch, head, and worktree from git. `verdict add` owns only the row for its own PR: prose an agent writes anywhere in the record, Verdicts included, is preserved. `verdict add` stores the patch-id of a PR's full diff; `verdict check` exits 3 unless the current patch still matches it.
 
 ## Handoff
 
