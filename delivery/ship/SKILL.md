@@ -1,6 +1,6 @@
 ---
 name: ship
-version: 4.4.0
+version: 4.5.0
 description: Find, pick up, implement, or execute a feature, bug, task, ticket, or ready issue end to end and open a verified, reviewed PR, then hand it to land. A feature first recalls prior chats and PRs, explains the plan, settles the design with architect and grill, and files issues. A small task goes straight to the build. Builds with poteto-mode, proves the change with the project's verification skill, and keeps a ship record so snapshot and resume-work can continue it.
 dependencies: [grill, issues, land, snapshot, ship-record, principle-independent-verdict, principle-bounded-repair]
 recommended: true
@@ -21,11 +21,11 @@ Look for an open ship record for this work (format in ship-record's references/r
 
 Size the task and state the call in one line:
 
-- **Small.** One file or an obvious change, no design fork, no open product question. Go straight to Build.
+- **Small.** One file or an obvious change, no design fork, no open product question. Go straight to Build. A risk trigger, such as a public contract, auth, persistence, or a module boundary, makes it larger even when it is one file.
 - **Medium.** Several files or real logic, but no module boundary or public contract crossed, no open product question, and one verifiable unit. Run the phases marked Medium below and skip the rest.
 - **Feature.** Everything else. Run every phase.
 
-Create the ship record now. A small task's record is a few lines. Set its Phase at every section boundary, then run `node ~/.agents/skills/ship-record/scripts/ship-record.mjs <slug>`. It must exit 0 and show `head: current`. Build and Prove share the build phase.
+Create the ship record now. A small task's record is a few lines. Set its Phase at every section boundary, then run `node ~/.agents/skills/ship-record/scripts/ship-record.mjs attest <slug>` and `check <slug> --require head`, which must exit 0. Never type the head SHA by hand: `attest` reads it from git. Build and Prove share the build phase.
 
 ## 1. Context
 
@@ -62,7 +62,7 @@ Work the issues in dependency order. Continue an existing branch or PR for the t
 - **Small.** Build it here. Use existing patterns and the smallest complete change. Add a focused check for meaningful logic.
 - **Medium and Feature.** Run `/poteto-mode` inside this skill, with its Feature playbook (Bug-fix for a defect): throughput checkpoint, delegated code against the named data shape, your own review of the delegate's diff, small ordered commits. `/poteto-mode` is not a second delivery path and does not merge. `land` still owns merged.
 
-Apply the poteto-mode principles that fit. Name each one in the PR with the choice it changed. A small task that turns up a design fork stops and goes back to Context.
+Apply the poteto-mode principles that fit. Name each one in the PR with the choice it changed. A task that turns up a design fork raises `Size` before continuing, and the checker refuses a `Size` below the record's `Peak`.
 
 Update the Work row after each issue.
 

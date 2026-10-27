@@ -7,6 +7,8 @@
 //   node ship-record.mjs <slug>             # one record, whatever its phase
 //   node ship-record.mjs verdict add <slug> --pr N --by <kind:id> --at <rev> [--base <rev>]
 //   node ship-record.mjs verdict check <slug> --pr N
+//   node ship-record.mjs attest <slug>
+//   node ship-record.mjs check <slug> [--require head]
 //
 // Reads print the record's phase, Updated line, Next, and whether the recorded
 // branch still points at the recorded head. Exit 1 when a record is missing a
@@ -40,6 +42,7 @@ function parseRecord(text) {
   const record = {
     phase: field(text, 'Phase'),
     size: field(text, 'Size'),
+    peak: field(text, 'Peak'),
     updated: field(text, 'Updated'),
     next: field(text, 'Next'),
   };
@@ -49,6 +52,19 @@ function parseRecord(text) {
   }
   if (record.phase && !PHASES.includes(record.phase)) problems.push(`unknown phase "${record.phase}"`);
   if (record.size && !SIZES.includes(record.size)) problems.push(`unknown size "${record.size}"`);
+  if (record.peak && !SIZES.includes(record.peak)) problems.push(`unknown peak "${record.peak}"`);
+  // Peak is the high-water mark of Size, so a later edit cannot shed phases the
+  // task already needed by relabelling itself smaller.
+  const rank = (value) => (SIZES.includes(value) ? SIZES.indexOf(value) : -1);
+  if (rank(record.peak) > rank(record.size)) {
+    problems.push(`size ${record.size} is below the recorded peak ${record.peak}`);
+  }
+  // A small task has no design fork and no product question, so it cannot sit
+  // in a phase that only exists to settle one. Finding one is the signal to
+  // raise Size, not to keep the label.
+  if (record.size === 'small' && ['context', 'design', 'issues'].includes(record.phase)) {
+    problems.push(`size small cannot sit in phase ${record.phase}: raise Size first`);
+  }
   const at = record.updated?.match(/^(\d{4}-\d{2}-\d{2}T\S+),\s*(\S+) at ([0-9a-f]{7,40}),\s*(\S.*)$/);
   if (record.updated && (!at || Number.isNaN(Date.parse(at[1])))) {
     problems.push('Updated is not "<ISO time>, <branch> at <head SHA>, <worktree>"');
@@ -130,6 +146,72 @@ function readRecord(dir, slug) {
   }
 }
 
+// The model asserts its prose is true at this head; the tool writes the four
+// header facts so no hand-typed SHA can drift from the repository.
+function attestCommand(argv) {
+  const [rawSlug] = argv;
+  const dir = recordDir();
+  const { slug } = recordPath(dir, rawSlug);
+  if (!slug) throw new VerdictError('a record name is required for attest', 2);
+  const { file, text } = readRecord(dir, slug);
+  const branch = git(['rev-parse', '--abbrev-ref', 'HEAD']);
+  if (!branch || branch === 'HEAD') {
+    throw new VerdictError('attest needs a checked-out branch, not a detached HEAD', 2);
+  }
+  const head = git(['rev-parse', '--verify', 'HEAD^{commit}']);
+  const worktree = git(['rev-parse', '--show-toplevel']);
+  if (!head || !worktree) throw new VerdictError('could not read the current commit', 2);
+
+  const previous = parseRecord(text).record;
+  if (previous.phase === 'done') {
+    throw new VerdictError(`${slug} is done; a finished record needs no attestation`, 1);
+  }
+  // Size may rise as work turns out larger, and Peak keeps the high-water
+  // mark. The checker rejects a Size below that mark.
+  const rank = (value) => (SIZES.includes(value) ? SIZES.indexOf(value) : -1);
+  const recordedPeak = previous.peak;
+  const peak = rank(previous.size) >= rank(recordedPeak) ? previous.size : recordedPeak;
+
+  const updated = `${new Date().toISOString()}, ${branch} at ${head}, ${worktree}`;
+  const lines = text.split(/\r?\n/);
+  const index = lines.findIndex((line) => /^- Updated:/.test(line));
+  if (index === -1) throw new VerdictError('the record has no Updated line to attest', 1);
+  lines[index] = `- Updated: ${updated}`;
+  const peakIndex = lines.findIndex((line) => /^- Peak:/.test(line));
+  if (!recordedPeak && peak) {
+    lines.splice(index, 0, `- Peak: ${peak}`);
+  } else if (peakIndex !== -1 && peak !== recordedPeak) {
+    lines[peakIndex] = `- Peak: ${peak}`;
+  }
+  writeAtomic(file, `${lines.join('\n').replace(/\s*$/, '')}\n`);
+  console.log(`${slug}  phase=${previous.phase}  size=${previous.size}  head: ${headState({ branch, head })}`);
+  console.log(`  updated: ${updated}`);
+  return 0;
+}
+
+function checkCommand(argv) {
+  const rawSlug = argv.find((arg) => !arg.startsWith('--'));
+  const requireIndex = argv.indexOf('--require');
+  const requirement = requireIndex === -1 ? null : argv[requireIndex + 1];
+  if (requireIndex !== -1 && requirement !== 'head') {
+    throw new VerdictError('--require supports only "head"', 2);
+  }
+  const dir = recordDir();
+  const { slug } = recordPath(dir, rawSlug);
+  if (!slug) throw new VerdictError('a record name is required for check', 2);
+  const { text } = readRecord(dir, slug);
+  const { record, problems } = parseRecord(text);
+  const state = headState(record);
+  console.log(`${slug}  phase=${record.phase}  size=${record.size}  head: ${state}`);
+  for (const problem of problems) console.log(`  problem: ${problem}`);
+  if (problems.length) return 1;
+  if (requirement === 'head' && state !== 'current') {
+    console.log(`  unmet: this step needs a record attested at the current head (${state})`);
+    return 3;
+  }
+  return 0;
+}
+
 function verdictCommand(argv) {
   const [action, rawSlug, ...rest] = argv;
   const dir = recordDir();
@@ -207,6 +289,12 @@ function listingCommand(rawSlug) {
 function main(argv) {
   if (argv[0] === 'verdict') {
     return verdictCommand(argv.slice(1));
+  }
+  if (argv[0] === 'attest') {
+    return attestCommand(argv.slice(1));
+  }
+  if (argv[0] === 'check') {
+    return checkCommand(argv.slice(1));
   }
   if (argv.includes('--help') || argv.includes('-h')) {
     console.log('ship-record <slug> | ship-record | ship-record verdict add|check <slug> --pr N ...');

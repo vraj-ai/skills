@@ -1,6 +1,6 @@
 ---
 name: resume-work
-version: 2.2.0
+version: 2.3.0
 description: Pick up exactly where a stopped or paused task stopped, at the same phase. Reads the ship record, verifies which claims of the previous session or agent still hold against the repo, reloads only the context the next step needs, and keeps going with ship or land. In the same chat after a usage limit it re-reads nothing. In a fresh chat the record carries the context. Use to resume after a limit resets, or to take over a task another agent claims it finished.
 dependencies: [ship, snapshot, ship-record, principle-evidence-over-report]
 argument-hint: "[record slug, issue, or task]"
@@ -27,7 +27,7 @@ Load the record's Context and Design as your working context. They replace `reca
 
 Check each claim against the repo, in order:
 
-1. `node ~/.agents/skills/ship-record/scripts/ship-record.mjs <slug>`, then `git status -sb` and `git log`. A malformed record or `head: moved` is a broken claim. Did anything land since?
+1. `node ~/.agents/skills/ship-record/scripts/ship-record.mjs <slug>`, then `git status -sb` and `git log`. A malformed record or `head: moved` is a broken claim: the recorded head is not the current one, so the record is at least one commit stale. Say which, then check `git log <recorded head>..HEAD` before trusting Next. Did anything land since?
 2. The tracker. The current state of each recorded issue and PR, and any comment newer than the record's Updated time.
 3. The verification. Does the gate still pass at the current head?
 4. The context. Have the files anchored in Context changed since the recorded head (`git diff <recorded head> -- <files>`)? If so, run `/how` on just those files and correct the Context section.
