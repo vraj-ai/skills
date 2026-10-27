@@ -1,6 +1,6 @@
 ---
 name: ship-record
-version: 1.0.0
+version: 1.1.0
 description: Check, attest, and export the ship record every delivery skill shares. Reads the record at $(git rev-parse --git-common-dir)/vskills/ship/<slug>.md, validates its fields, phases, and sizes, reports whether the recorded branch still points at the recorded head, and fails closed on a required-but-stale record. Use from ship, land, snapshot, and resume-work, or directly when a record looks stale.
 dependencies: []
 recommended: false
@@ -27,10 +27,17 @@ A record is valid when it carries `Phase`, `Size`, `Updated`, and `Next`, its ph
 ## Reading the result
 
 - `head: current` means the recorded branch still points at the recorded head.
-- `head: moved to <sha>` means the branch advanced after the record was written. The checker reports it and still exits 0, so a listing can show every record. A skill that requires a current record must check both the exit status and the `head:` line, or pass the strict flag once this skill provides one.
-- `branch <name> missing` means the recorded branch does not resolve in this repository, which is normal on a fresh clone before the branch is fetched.
+- `head: moved to <sha>` means the branch advanced after the record was written. A plain listing reports it and exits 0, so every record can be seen. `check --require head` is the strict form: it exits 3, which is the only result that admits work into the next step.
+- `branch <name> missing` means the recorded branch does not resolve in this repository, which is normal on a fresh clone before the branch is fetched. It is also exit 3 under `--require head`.
+- `observed: ... (newer than the record)` means a checkpoint ran after the last attestation. The checkpoint is evidence of where the work is; the record still has to be updated by the agent.
 
 Exit status is 0 for a readable record, 1 for an invalid or missing record, and 2 when the slug is a path rather than a record name, or the command runs outside a repository.
+
+## Checkpoints and verdicts
+
+`observe` writes `<slug>.observed.json` with the branch, head, worktree, dirty paths, upstream counts, and pushed state. It never edits the record, so the model's attestation and its drift stay visible. Hook setup, including the opt-in Claude Code entries, is in [references/hooks.md](references/hooks.md).
+
+`attest` is the only writer of `Updated`, and it reads the branch, head, and worktree from git. `verdict add` stores the patch-id of a PR's full diff; `verdict check` exits 3 unless the current patch still matches it.
 
 ## Rules
 

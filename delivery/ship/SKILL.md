@@ -1,6 +1,6 @@
 ---
 name: ship
-version: 4.5.0
+version: 4.6.0
 description: Find, pick up, implement, or execute a feature, bug, task, ticket, or ready issue end to end and open a verified, reviewed PR, then hand it to land. A feature first recalls prior chats and PRs, explains the plan, settles the design with architect and grill, and files issues. A small task goes straight to the build. Builds with poteto-mode, proves the change with the project's verification skill, and keeps a ship record so snapshot and resume-work can continue it.
 dependencies: [grill, issues, land, snapshot, ship-record, principle-independent-verdict, principle-bounded-repair]
 recommended: true
@@ -25,7 +25,7 @@ Size the task and state the call in one line:
 - **Medium.** Several files or real logic, but no module boundary or public contract crossed, no open product question, and one verifiable unit. Run the phases marked Medium below and skip the rest.
 - **Feature.** Everything else. Run every phase.
 
-Create the ship record now. A small task's record is a few lines. Set its Phase at every section boundary, then run `node ~/.agents/skills/ship-record/scripts/ship-record.mjs attest <slug>` and `check <slug> --require head`, which must exit 0. Never type the head SHA by hand: `attest` reads it from git. Build and Prove share the build phase.
+Create the ship record now. A small task's record is a few lines. Set its Phase at every section boundary, then run `node ~/.agents/skills/ship-record/scripts/ship-record.mjs observe <slug>`, `attest <slug>`, and `check <slug> --require head`, which must exit 0. Never type the head SHA by hand: `attest` reads it from git. Build and Prove share the build phase.
 
 ## 1. Context
 

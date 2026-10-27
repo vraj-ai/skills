@@ -9,6 +9,7 @@
 //   node ship-record.mjs verdict check <slug> --pr N
 //   node ship-record.mjs attest <slug>
 //   node ship-record.mjs check <slug> [--require head]
+//   node ship-record.mjs observe [slug]   # hook-safe mechanical position
 //
 // Reads print the record's phase, Updated line, Next, and whether the recorded
 // branch still points at the recorded head. Exit 1 when a record is missing a
@@ -69,7 +70,7 @@ function parseRecord(text) {
   if (record.updated && (!at || Number.isNaN(Date.parse(at[1])))) {
     problems.push('Updated is not "<ISO time>, <branch> at <head SHA>, <worktree>"');
   } else if (at) {
-    [, record.time, record.branch, record.head] = at;
+    [, record.time, record.branch, record.head, record.worktree] = at;
   }
   return { record, problems };
 }
@@ -203,12 +204,92 @@ function checkCommand(argv) {
   const { record, problems } = parseRecord(text);
   const state = headState(record);
   console.log(`${slug}  phase=${record.phase}  size=${record.size}  head: ${state}`);
+  const observation = readObservation(dir, slug);
+  if (observation) {
+    const fresh = observation.head === record.head ? 'recorded' : 'newer than the record';
+    console.log(`  observed: ${observation.capturedAt} at ${String(observation.head).slice(0, 12)} (${fresh}), dirty=${(observation.dirty?.changed?.length ?? 0) + (observation.dirty?.untracked?.length ?? 0)}, pushed=${observation.pushed}`);
+  }
   for (const problem of problems) console.log(`  problem: ${problem}`);
   if (problems.length) return 1;
   if (requirement === 'head' && state !== 'current') {
     console.log(`  unmet: this step needs a record attested at the current head (${state})`);
     return 3;
   }
+  return 0;
+}
+
+// Mechanical position, captured beside the record. A hook may run this at any
+// time, including during a session that never reaches a phase boundary, so it
+// writes its own file and never the model-authored record.
+function position() {
+  const branch = git(['rev-parse', '--abbrev-ref', 'HEAD']);
+  const head = git(['rev-parse', '--verify', 'HEAD^{commit}']);
+  const worktree = git(['rev-parse', '--show-toplevel']);
+  const status = git(['status', '--porcelain=v1', '--untracked-files=normal']) ?? '';
+  const changed = status.split('\n').filter((line) => /^[ MARC][MDARC]/.test(line)).map((line) => line.slice(3));
+  const untracked = status.split('\n').filter((line) => line.startsWith('?? ')).map((line) => line.slice(3));
+  const upstreamRef = git(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}']);
+  let upstream = null;
+  if (upstreamRef) {
+    const remoteHead = git(['rev-parse', '--verify', '--quiet', `${upstreamRef}^{commit}`]);
+    const counts = git(['rev-list', '--left-right', '--count', `HEAD...${upstreamRef}`]) ?? '';
+    const [ahead, behind] = counts.split(/\s+/).map(Number);
+    upstream = { ref: upstreamRef, head: remoteHead, ahead, behind };
+  }
+  return {
+    version: 1,
+    capturedAt: new Date().toISOString(),
+    branch,
+    head,
+    worktree,
+    dirty: { changed, untracked },
+    upstream,
+    pushed: upstream ? upstream.ahead === 0 : false,
+  };
+}
+
+function samePath(a, b) {
+  if (!a || !b) return false;
+  const one = path.resolve(a);
+  const two = path.resolve(b);
+  return process.platform === 'win32' ? one.toLowerCase() === two.toLowerCase() : one === two;
+}
+
+function observedPath(dir, slug) {
+  return path.join(dir, `${slug}.observed.json`);
+}
+
+function readObservation(dir, slug) {
+  try {
+    return JSON.parse(readFileSync(observedPath(dir, slug), 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+// Without a slug, take the single open record that names this branch and
+// worktree. No match, or an ambiguous one, is a silent no-op: a hook must never
+// fail the host or guess between two live records.
+function observeCommand(argv) {
+  const rawSlug = argv.find((arg) => !arg.startsWith('--'));
+  const dir = recordDir();
+  let slug = rawSlug?.replace(/\.md$/, '');
+  if (slug !== undefined && (!slug || slug === '..' || path.basename(slug) !== slug)) {
+    throw new VerdictError(`slug "${rawSlug}" must be a record name, not a path`, 2);
+  }
+  const here = position();
+  if (!slug) {
+    const open = readdirSync(dir).filter((name) => name.endsWith('.md'));
+    const matches = open.filter((name) => {
+      const text = readFileSync(path.join(dir, name), 'utf8');
+      const record = parseRecord(text).record;
+      return record.branch === here.branch && samePath(record.worktree, here.worktree);
+    });
+    if (matches.length !== 1) return 0;
+    slug = matches[0].replace(/\.md$/, '');
+  }
+  writeAtomic(observedPath(dir, slug), `${JSON.stringify({ slug, ...here }, null, 2)}\n`);
+  console.log(`${slug}  observed  branch=${here.branch}  head=${here.head.slice(0, 12)}  dirty=${here.dirty.changed.length + here.dirty.untracked.length}  pushed=${here.pushed}`);
   return 0;
 }
 
@@ -289,6 +370,15 @@ function listingCommand(rawSlug) {
 function main(argv) {
   if (argv[0] === 'verdict') {
     return verdictCommand(argv.slice(1));
+  }
+  if (argv[0] === 'observe') {
+    try {
+      return observeCommand(argv.slice(1));
+    } catch {
+      // Hook mode: a missing repo, a bad slug, or an unreadable record must
+      // never break the host session.
+      return 0;
+    }
   }
   if (argv[0] === 'attest') {
     return attestCommand(argv.slice(1));

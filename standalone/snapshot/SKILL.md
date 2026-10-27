@@ -1,6 +1,6 @@
 ---
 name: snapshot
-version: 3.3.0
+version: 3.4.0
 description: Save where you are: checkpoint an unfinished or half-done task so a later session picks it up at the exact phase, before a pause, a context reset, or a task switch. Completes the ship record with live state, the next action, and the context and design this session learned, so resume-work needs no fresh recall. Grants no commit, push, or external-write authority.
 dependencies: [push-handoff, ship-record]
 argument-hint: "[next session focus]"
@@ -29,7 +29,7 @@ Then fill the record so it meets its bar: a fresh agent reading only the record 
 
 Link artifacts instead of copying them. Rewrite sections; don't append a diary.
 
-Then run `node ~/.agents/skills/ship-record/scripts/ship-record.mjs attest <slug>`. It writes `Updated` from live git, so the record never carries a hand-typed SHA. Then run `check <slug> --require head`, which must exit 0. Fix the record until it does.
+Then run `node ~/.agents/skills/ship-record/scripts/ship-record.mjs observe <slug>` so the checkpoint records the dirty and pushed state this session leaves behind, and `attest <slug>`. It writes `Updated` from live git, so the record never carries a hand-typed SHA. Then run `check <slug> --require head`, which must exit 0. Fix the record until it does.
 
 ## Reach and limits
 
