@@ -2,6 +2,9 @@
   "comment": "Tier 2 routing evals (evals/README.md). Each case: a natural prompt and the skill that should rank top-1. 'negative' cases must NOT rank the named skill top-1 — they catch over-broad descriptions.",
   "cases": [
     { "prompt": "pick up ticket 42 and implement it end to end", "expect": "ship" },
+    { "prompt": "fix this small typo in the readme and open a PR", "expect": "ship" },
+    { "prompt": "change one file that alters the public API response shape", "expect": "ship" },
+    { "prompt": "make this contained three-file change and open a verified PR", "expect": "ship" },
     { "prompt": "find the next ready issue and implement it end to end", "expect": "ship" },
     { "prompt": "execute issue #123 and open a PR when it verifies", "expect": "ship" },
     { "prompt": "watch PR 88 until the checks pass and merge it", "expect": "land" },

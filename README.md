@@ -66,10 +66,16 @@ That's the whole loop: `/ship` does the work, `/land` merges it,
 `/ship <idea or #issue>` sizes the task and says which way it went. **Small**
 means one file or an obvious change, with no design fork and no open product
 question, and it goes straight to Build. **Medium** is several files or real
-logic that crosses no module boundary or public contract: it runs `/how` on the
-touched code, names the data shape, works one issue, then builds, proves, and
-gets reviewed like a feature. Everything else is a **feature**, which runs every
-phase inside `/ship`, so you never have to call `/grill` or `/issues` yourself.
+logic with no risk trigger: it runs `/how` on the touched code, names the data
+shape, works one issue, then builds inline without delegation, proves, and gets
+reviewed. Everything else is a **feature**, which runs every phase inside
+`/ship`, so you never have to call `/grill` or `/issues` yourself.
+
+Risk beats size. A public contract, a module boundary, auth, persistence or a
+migration, concurrency, an external provider, or a delete or rename makes the
+work at least a feature however small the diff. The record keeps the largest
+size the work ever needed, so a task cannot shrink back past the phases it
+already spent.
 
 | # | Phase | What happens |
 |---|---|---|
