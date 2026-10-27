@@ -37,5 +37,5 @@ Unresolved decisions, blockers, and assumptions a fresh agent could get wrong.
 - **Rewrite sections, don't append.** The record is the current state, not a diary. A finished phase's section shrinks to what later phases still need.
 - **Link, don't copy.** Issue URLs, PR URLs, the architect rationale, verification evidence paths.
 - **Update at every phase boundary.** A usage limit can end the session without warning. The record should be at most one phase stale.
-- **Check it after every write.** `node <install-root>/ship/scripts/ship-record.mjs <slug>` exits 1 on a missing field or an unknown phase or size, and reports whether the recorded branch still points at the recorded head. Fix what it reports before moving on.
+- **Check it after every write.** `node ~/.agents/skills/ship-record/scripts/ship-record.mjs <slug>` exits 1 on a missing field or an unknown phase or size, and reports whether the recorded branch still points at the recorded head. Fix what it reports before moving on.
 - Never put a secret in it.

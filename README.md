@@ -95,7 +95,7 @@ action, the context and design the session learned (with `file:line` anchors,
 rejected alternatives, and your grill answers), and a Work table with each
 issue's branch, PR, head SHA, and verification state. A record is meant to be
 at most one phase stale, so a usage limit costs you minutes, not the
-afternoon. `node <install-root>/ship/scripts/ship-record.mjs [slug]` checks a
+afternoon. `node ~/.agents/skills/ship-record/scripts/ship-record.mjs [slug]` checks a
 record's fields and whether its branch still points at the recorded head;
 ship, snapshot, land, and resume-work run it after every write and before
 every resume.
@@ -120,6 +120,7 @@ Everything above runs inside `/ship`, but each piece also stands alone:
 | `/grill` | Product questions only. Settle intent without building anything |
 | `/issues` | Queue agreed work without building it |
 | `/land` | Drive existing PRs to merged: checks, threads, stacks, overnight runs |
+| `/ship-record` | Read or check the shared ship record, and say whether it still matches the branch |
 | `/investigate` | A read-only answer about the codebase, with file pointers |
 | `/debug` | A bug whose cause is unknown. Reproduce first, fix at the cause |
 | `/route` | Not sure which one fits? It maps your intent to an invocation |
@@ -191,6 +192,7 @@ Install any one with its dependencies: `npx @vskills/cli add <skill>`.
 |---|---|
 | [`ship`](delivery/ship/SKILL.md) | Any task. An idea or issue goes in; it gathers context, designs, files issues, builds, proves, reviews, and hands off to land |
 | [`land`](delivery/land/SKILL.md) | PRs need driving to merged. Merges only the contiguous verified run, bottom-up, under an explicit grant |
+| [`ship-record`](delivery/ship-record/SKILL.md) | You need the shared ship record read or checked: format, fields, and whether it still matches the branch |
 
 **Standalone**
 

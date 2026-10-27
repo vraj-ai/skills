@@ -1,8 +1,8 @@
 ---
 name: snapshot
-version: 3.1.0
+version: 3.2.0
 description: Save where you are: checkpoint an unfinished or half-done task so a later session picks it up at the exact phase, before a pause, a context reset, or a task switch. Completes the ship record with live state, the next action, and the context and design this session learned, so resume-work needs no fresh recall. Grants no commit, push, or external-write authority.
-dependencies: [push-handoff]
+dependencies: [push-handoff, ship-record]
 argument-hint: "[next session focus]"
 recommended: true
 ---
@@ -15,7 +15,7 @@ An in-chat catch-up maps to pstack `/ketchup`: what changed since the user's las
 
 ## Write the record
 
-Write the ship record at `$(git rev-parse --git-common-dir)/vskills/ship/<slug>.md` in the shape ship's references/record.md defines. Update the existing record when ship or land started one. For work that never went through ship, create one anyway, so `resume-work` reads a single format.
+Write the ship record at `$(git rev-parse --git-common-dir)/vskills/ship/<slug>.md` in the shape ship-record's references/record.md defines. Update the existing record when ship or land started one. For work that never went through ship, create one anyway, so `resume-work` reads a single format.
 
 Inspect live state first. Do not copy it from memory: run git status, find the branch, head SHA, and uncommitted work, and check the issue or PR state and the last verification with its limits. Preserve unrelated edits.
 
@@ -29,7 +29,7 @@ Then fill the record so it meets its bar: a fresh agent reading only the record 
 
 Link artifacts instead of copying them. Rewrite sections; don't append a diary.
 
-Then, when ship is installed, run `node <install-root>/ship/scripts/ship-record.mjs <slug>`. It must exit 0 and show `head: current`. Fix the record until it does. Without ship, check the Phase, Size, Updated, and Next lines against the record shape by hand and say the checker was unavailable.
+Then run `node ~/.agents/skills/ship-record/scripts/ship-record.mjs <slug>`. It must exit 0 and show `head: current`. Fix the record until it does.
 
 ## Reach and limits
 

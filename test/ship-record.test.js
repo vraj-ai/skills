@@ -9,7 +9,7 @@ import { cleanup, makeTmpDir, skillPath } from './helpers.js';
 
 const execFileAsync = promisify(execFile);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const checker = skillPath(path.resolve(__dirname, '..'), 'ship', 'scripts', 'ship-record.mjs');
+const checker = skillPath(path.resolve(__dirname, '..'), 'ship-record', 'scripts', 'ship-record.mjs');
 
 function record({ phase = 'build', size = 'feature', updated, next = 'Run the gate.' }) {
   return `# Objective\n\n- Phase: ${phase}\n- Size: ${size}\n- Updated: ${updated}\n- Next: ${next}\n\n## Work\n`;

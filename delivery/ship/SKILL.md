@@ -1,8 +1,8 @@
 ---
 name: ship
-version: 4.2.0
+version: 4.3.0
 description: Find, pick up, implement, or execute a feature, bug, task, ticket, or ready issue end to end and open a verified, reviewed PR, then hand it to land. A feature first recalls prior chats and PRs, explains the plan, settles the design with architect and grill, and files issues. A small task goes straight to the build. Builds with poteto-mode, proves the change with the project's verification skill, and keeps a ship record so snapshot and resume-work can continue it.
-dependencies: [grill, issues, land, snapshot, principle-independent-verdict, principle-bounded-repair]
+dependencies: [grill, issues, land, snapshot, ship-record, principle-independent-verdict, principle-bounded-repair]
 recommended: true
 argument-hint: "[feature, issue, or task]"
 ---
@@ -17,7 +17,7 @@ pstack skills (`/recall`, `/how`, `/why`, `/teach`, `/architect`, `/interrogate`
 
 Read AGENTS.md and the tracker pointer, usually docs/agents/issue-tracker.md. Take the user's reference first. Otherwise pick from the ready queue by priority and dependencies, after checking issue bodies, comments, linked PRs, and active owners. A request to find work returns the queue and stops. If nothing is actionable, say so.
 
-Look for an open ship record for this work (format in [references/record.md](references/record.md)). If one exists, this is a resume: run `/resume-work` instead.
+Look for an open ship record for this work (format in ship-record's references/record.md). If one exists, this is a resume: run `/resume-work` instead.
 
 Size the task and state the call in one line:
 
@@ -25,7 +25,7 @@ Size the task and state the call in one line:
 - **Medium.** Several files or real logic, but no module boundary or public contract crossed, no open product question, and one verifiable unit. Run the phases marked Medium below and skip the rest.
 - **Feature.** Everything else. Run every phase.
 
-Create the ship record now. A small task's record is a few lines. Set its Phase at every section boundary, then run `node <install-root>/ship/scripts/ship-record.mjs <slug>`. It must exit 0 and show `head: current`. Build and Prove share the build phase.
+Create the ship record now. A small task's record is a few lines. Set its Phase at every section boundary, then run `node ~/.agents/skills/ship-record/scripts/ship-record.mjs <slug>`. It must exit 0 and show `head: current`. Build and Prove share the build phase.
 
 ## 1. Context
 

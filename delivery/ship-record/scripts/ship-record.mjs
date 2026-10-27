@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // Checks ship records against the repo (format in ../references/record.md).
+// Called by ship, land, snapshot, and resume-work; see ../SKILL.md.
 //
 //   node ship-record.mjs          # every open record (any phase but done)
 //   node ship-record.mjs <slug>   # one record, whatever its phase

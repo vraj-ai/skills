@@ -1,8 +1,8 @@
 ---
 name: land
-version: 1.3.0
+version: 1.4.0
 description: Drive open PRs to merged. Re-establish each PR's real state, resolve review threads, conflicts, failing checks, and CI failures under a bounded repair budget, land only the contiguous verified run bottom-up through the project's forge, watch until the checks pass and each merge lands, and stop at the ceiling. Use when a PR or a stack exists and the task is to get it merged, babysit it to merge-ready, or land it overnight or by morning.
-dependencies: [push-handoff, principle-evidence-over-report, principle-independent-verdict, principle-bounded-repair, principle-real-artifact]
+dependencies: [push-handoff, ship-record, principle-evidence-over-report, principle-independent-verdict, principle-bounded-repair, principle-real-artifact]
 argument-hint: "[PR-or-stack]"
 recommended: false
 ---
@@ -13,7 +13,7 @@ Ship ends at an open PR and continues here. Land owns the distance from open to 
 
 Invoking this skill never implies merge authority. push-handoff's authority model applies: merge, retarget, and force-push each happen only under an explicit user or repo-policy grant. Without one, land drives to merge-ready, reports, and does not merge.
 
-When a ship record covers these PRs (format in ship's references/record.md, at `$(git rev-parse --git-common-dir)/vskills/ship/`), set its phase to land on entry and update its Work table after every merge, then run `node <install-root>/ship/scripts/ship-record.mjs <slug>`. Set the phase to done only when every recorded PR is merged. Merge-ready without merge authority stays at land, with Next naming who must merge. A ceiling with unverified PRs above it stays at land, with Next naming what the ceiling needs. Stopping mid-run is `/snapshot`. `/resume-work` re-enters at step 1, which re-establishes the real state anyway.
+When a ship record covers these PRs (format in ship-record's references/record.md, at `$(git rev-parse --git-common-dir)/vskills/ship/`), set its phase to land on entry and update its Work table after every merge, then run `node ~/.agents/skills/ship-record/scripts/ship-record.mjs <slug>`. Set the phase to done only when every recorded PR is merged. Merge-ready without merge authority stays at land, with Next naming who must merge. A ceiling with unverified PRs above it stays at land, with Next naming what the ceiling needs. Stopping mid-run is `/snapshot`. `/resume-work` re-enters at step 1, which re-establishes the real state anyway.
 
 ## Step 1. Establish the real state
 
