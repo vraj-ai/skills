@@ -1,8 +1,8 @@
 ---
 name: ship
-version: 4.2.0
-description: Find, pick up, implement, or execute a feature, bug, task, ticket, or ready issue end to end and open a verified, reviewed PR, then hand it to land. A feature first recalls prior chats and PRs, explains the plan, settles the design with architect and grill, and files issues. A small task goes straight to the build. Builds with poteto-mode, proves the change with the project's verification skill, and keeps a ship record so snapshot and resume-work can continue it.
-dependencies: [grill, issues, land, snapshot, principle-independent-verdict, principle-bounded-repair]
+version: 4.7.0
+description: Find, pick up, implement, or execute a feature, bug, task, ticket, or ready issue end to end and open a verified, reviewed PR, then hand it to land. Sizes the work first: a small or contained change goes straight to the build, while a feature runs context, design, issues, build, prove, and review. A feature first recalls prior chats and PRs, explains the plan, settles the design with architect and grill, and files issues. A small task goes straight to the build. Builds with poteto-mode, proves the change with the project's verification skill, and keeps a ship record so snapshot and resume-work can continue it.
+dependencies: [grill, issues, land, snapshot, ship-record, principle-independent-verdict, principle-bounded-repair]
 recommended: true
 argument-hint: "[feature, issue, or task]"
 ---
@@ -17,15 +17,17 @@ pstack skills (`/recall`, `/how`, `/why`, `/teach`, `/architect`, `/interrogate`
 
 Read AGENTS.md and the tracker pointer, usually docs/agents/issue-tracker.md. Take the user's reference first. Otherwise pick from the ready queue by priority and dependencies, after checking issue bodies, comments, linked PRs, and active owners. A request to find work returns the queue and stops. If nothing is actionable, say so.
 
-Look for an open ship record for this work (format in [references/record.md](references/record.md)). If one exists, this is a resume: run `/resume-work` instead.
+Look for an open ship record for this work (format in ship-record's references/record.md). If one exists, this is a resume: run `/resume-work` instead.
 
 Size the task and state the call in one line:
 
-- **Small.** One file or an obvious change, no design fork, no open product question. Go straight to Build.
-- **Medium.** Several files or real logic, but no module boundary or public contract crossed, no open product question, and one verifiable unit. Run the phases marked Medium below and skip the rest.
+- **Small.** One file or an obvious change, no risk trigger below, no design fork, no open product question. Go straight to Build.
+- **Medium.** Several files or real logic, no risk trigger, no open product question, and one verifiable unit. Run the phases marked Medium below. Medium builds inline; it does not run the delegated Feature playbook.
 - **Feature.** Everything else. Run every phase.
 
-Create the ship record now. A small task's record is a few lines. Set its Phase at every section boundary, then run `node <install-root>/ship/scripts/ship-record.mjs <slug>`. It must exit 0 and show `head: current`. Build and Prove share the build phase.
+Risk beats size. Any of these makes the work at least a feature, however small the diff: a public contract or something other code imports, a cross-module boundary, auth or permissions, persistence or a migration, concurrency or retries, an external provider or signed webhook, or deleting or renaming something other code calls. Name the trigger when you size.
+
+Create the ship record now. A small task's record is a few lines. Set its Phase at every section boundary, then run `node ~/.agents/skills/ship-record/scripts/ship-record.mjs observe <slug>`, `attest <slug>`, and `check <slug> --require head`, which must exit 0. Never type the head SHA by hand: `attest` reads it from git. Build and Prove share the build phase.
 
 ## 1. Context
 
@@ -60,9 +62,10 @@ Issues are the durable plan. Another machine or person resumes from them, not fr
 Work the issues in dependency order. Continue an existing branch or PR for the task rather than opening a competing one. Preserve unrelated edits, and use a separate worktree when another writer is active.
 
 - **Small.** Build it here. Use existing patterns and the smallest complete change. Add a focused check for meaningful logic.
-- **Medium and Feature.** Run `/poteto-mode` inside this skill, with its Feature playbook (Bug-fix for a defect): throughput checkpoint, delegated code against the named data shape, your own review of the delegate's diff, small ordered commits. `/poteto-mode` is not a second delivery path and does not merge. `land` still owns merged.
+- **Medium.** Build it here against the one-line data shape, in small ordered commits, with a focused check for the logic that changed. No delegation and no throughput checkpoint.
+- **Feature.** Run `/poteto-mode` inside this skill, with its Feature playbook (Bug-fix for a defect): throughput checkpoint, delegated code against the named data shape, your own review of the delegate's diff, small ordered commits. `/poteto-mode` is not a second delivery path and does not merge. `land` still owns merged.
 
-Apply the poteto-mode principles that fit. Name each one in the PR with the choice it changed. A small task that turns up a design fork stops and goes back to Context.
+Apply the poteto-mode principles that fit. Name each one in the PR with the choice it changed. A task that turns up a design fork raises `Size` before continuing, and the checker refuses a `Size` below the record's `Peak`.
 
 Update the Work row after each issue.
 
@@ -74,7 +77,7 @@ Update the Work row after each issue.
 
 ## 6. Review and deliver
 
-Get an independent review of a nontrivial change from the configured reviewer or PR bot, otherwise `/interrogate`. Per principle-independent-verdict, only a context that did not write the code can give the verdict. Fix evidenced blocking findings and reverify. A verdict covers one head SHA: after a push, compare the patch-id of the full PR diff before trusting it. Stop repair after three rounds (principle-bounded-repair) and report the blocker rather than weaken acceptance.
+Get an independent review of a nontrivial change from the configured reviewer or PR bot, otherwise `/interrogate`. Per principle-independent-verdict, only a context that did not write the code can give the verdict. Fix evidenced blocking findings and reverify. A verdict covers a patch, not a branch: record it with `node ~/.agents/skills/ship-record/scripts/ship-record.mjs verdict add <slug> --pr <n> --by agent:<reviewer> --at <sha> --base <base>`, and let `verdict check` decide whether a later push kept it. Any changed patch needs a fresh verdict, including a docs-only push. Stop repair after three rounds (principle-bounded-repair) and report the blocker rather than weaken acceptance.
 
 Deliver under repo policy and existing authority: commit, push a named branch, open or update the PR. The PR body holds intent, changed contracts, verification, risks, and `Closes #<issue>`. Implementation never implies deploy, self-merge, or new external messaging authority. Update a decision doc only when a non-obvious decision or constraint changed.
 

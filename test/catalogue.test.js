@@ -42,6 +42,7 @@ const EXPECTED_KEPT = new Set([
   'principle-bounded-repair',
   'principle-named-constraints',
   'principle-independent-verdict',
+  'ship-record',
 ]);
 
 const CORE = new Set([

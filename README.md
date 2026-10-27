@@ -66,10 +66,16 @@ That's the whole loop: `/ship` does the work, `/land` merges it,
 `/ship <idea or #issue>` sizes the task and says which way it went. **Small**
 means one file or an obvious change, with no design fork and no open product
 question, and it goes straight to Build. **Medium** is several files or real
-logic that crosses no module boundary or public contract: it runs `/how` on the
-touched code, names the data shape, works one issue, then builds, proves, and
-gets reviewed like a feature. Everything else is a **feature**, which runs every
-phase inside `/ship`, so you never have to call `/grill` or `/issues` yourself.
+logic with no risk trigger: it runs `/how` on the touched code, names the data
+shape, works one issue, then builds inline without delegation, proves, and gets
+reviewed. Everything else is a **feature**, which runs every phase inside
+`/ship`, so you never have to call `/grill` or `/issues` yourself.
+
+Risk beats size. A public contract, a module boundary, auth, persistence or a
+migration, concurrency, an external provider, or a delete or rename makes the
+work at least a feature however small the diff. The record keeps the largest
+size the work ever needed, so a task cannot shrink back past the phases it
+already spent.
 
 | # | Phase | What happens |
 |---|---|---|
@@ -95,7 +101,7 @@ action, the context and design the session learned (with `file:line` anchors,
 rejected alternatives, and your grill answers), and a Work table with each
 issue's branch, PR, head SHA, and verification state. A record is meant to be
 at most one phase stale, so a usage limit costs you minutes, not the
-afternoon. `node <install-root>/ship/scripts/ship-record.mjs [slug]` checks a
+afternoon. `node ~/.agents/skills/ship-record/scripts/ship-record.mjs [slug]` checks a
 record's fields and whether its branch still points at the recorded head;
 ship, snapshot, land, and resume-work run it after every write and before
 every resume.
@@ -120,6 +126,7 @@ Everything above runs inside `/ship`, but each piece also stands alone:
 | `/grill` | Product questions only. Settle intent without building anything |
 | `/issues` | Queue agreed work without building it |
 | `/land` | Drive existing PRs to merged: checks, threads, stacks, overnight runs |
+| `/ship-record` | Read or check the shared ship record, and say whether it still matches the branch |
 | `/investigate` | A read-only answer about the codebase, with file pointers |
 | `/debug` | A bug whose cause is unknown. Reproduce first, fix at the cause |
 | `/route` | Not sure which one fits? It maps your intent to an invocation |
@@ -191,6 +198,7 @@ Install any one with its dependencies: `npx @vskills/cli add <skill>`.
 |---|---|
 | [`ship`](delivery/ship/SKILL.md) | Any task. An idea or issue goes in; it gathers context, designs, files issues, builds, proves, reviews, and hands off to land |
 | [`land`](delivery/land/SKILL.md) | PRs need driving to merged. Merges only the contiguous verified run, bottom-up, under an explicit grant |
+| [`ship-record`](delivery/ship-record/SKILL.md) | You need the shared ship record read or checked: format, fields, and whether it still matches the branch |
 
 **Standalone**
 
