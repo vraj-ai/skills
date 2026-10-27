@@ -25,6 +25,7 @@ import { readdir, readFile, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { discoverSkills } from '../src/discovery.js';
 import { parseFrontmatter } from '../src/frontmatter.js';
+import { invocationAction } from './run-tests.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -259,6 +260,17 @@ async function main() {
   process.exit(violations.length === 0 ? 0 : 1);
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  main();
+// A raw path comparison silently runs nothing when the same script is reached
+// through a symlink or junction, and a gate that exits 0 having checked nothing
+// is worse than one that fails. Reuse the guard the test runner already proves.
+switch (invocationAction(process.argv[1], fileURLToPath(import.meta.url))) {
+  case 'run':
+    main();
+    break;
+  case 'fail':
+    console.error(`validate-skills: ${process.argv[1]} looks like this script but is a different file`);
+    process.exit(2);
+    break;
+  default:
+    break;
 }
