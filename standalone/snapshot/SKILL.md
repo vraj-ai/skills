@@ -1,6 +1,6 @@
 ---
 name: snapshot
-version: 3.4.0
+version: 3.5.0
 description: Save where you are: checkpoint an unfinished or half-done task so a later session picks it up at the exact phase, before a pause, a context reset, or a task switch. Completes the ship record with live state, the next action, and the context and design this session learned, so resume-work needs no fresh recall. Grants no commit, push, or external-write authority.
 dependencies: [push-handoff, ship-record]
 argument-hint: "[next session focus]"
@@ -33,7 +33,7 @@ Then run `node ~/.agents/skills/ship-record/scripts/ship-record.mjs observe <slu
 
 ## Reach and limits
 
-The record is local to this clone. For another machine or person, also post a short pointer (phase, next action, branch, and whether it is pushed) on the issue or PR when tracker authority exists. State whether the branch changes are actually pushed. If delivery is separately requested, follow repo verification and commit or push policy, with push-handoff as the explicit delivery path. Otherwise leave code and service state alone.
+The record is local to this clone. For another machine or person, export a handoff: `node ~/.agents/skills/ship-record/scripts/ship-record.mjs handoff export <slug>` prints the whole record plus captured pushed and dirty state, and refuses a secret or an output path inside the repository. Post it, or reuse the same text as a pointer (phase, next action, branch, pushed), only when tracker authority exists. It carries dirty file names, never their contents, so say that rather than implying the work travels with it. On the far end, `handoff import <slug> --from <file>` restores the record and backs up any previous one; the imported claims stay unproven until `attest` and `check --require head` pass there. If delivery is separately requested, follow repo verification and commit or push policy, with push-handoff as the explicit delivery path. Otherwise leave code and service state alone.
 
 Never write another pipeline's state. Update a tracker item only when its status would otherwise mislead.
 

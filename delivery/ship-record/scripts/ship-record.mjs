@@ -10,6 +10,8 @@
 //   node ship-record.mjs attest <slug>
 //   node ship-record.mjs check <slug> [--require head]
 //   node ship-record.mjs observe [slug]   # hook-safe mechanical position
+//   node ship-record.mjs handoff export <slug> [--out <path>]
+//   node ship-record.mjs handoff import <slug> --from <path>
 //
 // Reads print the record's phase, Updated line, Next, and whether the recorded
 // branch still points at the recorded head. Exit 1 when a record is missing a
@@ -333,6 +335,107 @@ function verdictCommand(argv) {
   throw new VerdictError(`unknown verdict action "${action}" (expected add or check)`, 2);
 }
 
+const SECRET_PATTERNS = [
+  { name: 'private key', pattern: /-----BEGIN [A-Z ]*PRIVATE KEY-----/ },
+  { name: 'GitHub token', pattern: /\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{20,}\b/ },
+  { name: 'GitHub fine-grained token', pattern: /\bgithub_pat_[A-Za-z0-9_]{20,}\b/ },
+  { name: 'provider API key', pattern: /\bsk-[A-Za-z0-9_-]{20,}\b/ },
+  { name: 'AWS access key', pattern: /\bAKIA[0-9A-Z]{16}\b/ },
+  { name: 'Slack token', pattern: /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/ },
+  { name: 'assigned secret', pattern: /^\s*(?:password|passwd|secret|api[_-]?key|access[_-]?token)\s*[:=]\s*\S+/im },
+];
+
+function scanForSecrets(text) {
+  return SECRET_PATTERNS.filter(({ pattern }) => pattern.test(text)).map(({ name }) => name);
+}
+
+// The handoff is a document a person or another machine can read: the record's
+// own prose plus the mechanical position, so pushed and dirty state travel with
+// it instead of being guessed at the far end.
+function handoffDocument(slug, text, here) {
+  const record = text.replace(/\s*$/, '');
+  const lines = [
+    `<!-- vskills-handoff slug="${slug}" version="1" -->`,
+    `# Handoff: ${slug}`,
+    '',
+    '## Position (captured, not asserted)',
+    '',
+    `- Branch: ${here.branch}`,
+    `- Head: ${here.head}`,
+    `- Upstream: ${here.upstream ? `${here.upstream.ref} (ahead ${here.upstream.ahead}, behind ${here.upstream.behind})` : 'none'}`,
+    `- Pushed: ${here.pushed ? 'yes, the head is on the upstream branch' : 'no, the head is not on any upstream branch'}`,
+    `- Dirty: ${here.dirty.changed.length} changed, ${here.dirty.untracked.length} untracked`,
+  ];
+  for (const file of here.dirty.changed) lines.push(`  - changed: ${file}`);
+  for (const file of here.dirty.untracked) lines.push(`  - untracked: ${file}`);
+  lines.push(
+    '',
+    'Dirty file contents are not included. Recover them from the machine, or recommit them.',
+    '',
+    '## Record',
+    '',
+    '```markdown',
+    record,
+    '```',
+    '',
+  );
+  return `${lines.join('\n')}`;
+}
+
+function handoffCommand(argv) {
+  const [action, rawSlug] = argv;
+  const dir = recordDir();
+  const { slug } = recordPath(dir, rawSlug);
+  if (!slug) throw new VerdictError('a record name is required for handoff', 2);
+  const { file, text } = readRecord(dir, slug);
+  const options = parseOptions(argv.slice(2));
+
+  if (action === 'export') {
+    const here = position();
+    const document = handoffDocument(slug, text, here);
+    const secrets = scanForSecrets(document);
+    if (secrets.length > 0) {
+      throw new VerdictError(`refusing to export: the record looks like it contains ${secrets.join(', ')}`, 4);
+    }
+    if (options.out) {
+      const target = path.resolve(options.out);
+      const worktree = git(['rev-parse', '--show-toplevel']);
+      if (worktree && samePath(path.dirname(target), worktree)) {
+        throw new VerdictError('refusing to write the handoff inside the repository; it would be committable', 4);
+      }
+      writeAtomic(target, document);
+      console.log(`${slug}  handoff=written  path=${target}  pushed=${here.pushed}`);
+      return 0;
+    }
+    process.stdout.write(document);
+    return 0;
+  }
+
+  if (action === 'import') {
+    const from = requireOption(options, 'from');
+    const bundle = readFileSync(path.resolve(from), 'utf8');
+    const match = bundle.match(/```markdown\r?\n([\s\S]*?)\r?\n```/);
+    if (!match) throw new VerdictError('the handoff has no fenced record block', 1);
+    const imported = match[1];
+    const { problems } = parseRecord(imported);
+    if (problems.length > 0) {
+      throw new VerdictError(`the handoff record is invalid: ${problems.join('; ')}`, 1);
+    }
+    if (imported.trim() === text.trim()) {
+      console.log(`${slug}  handoff=unchanged`);
+      return 0;
+    }
+    const backup = `${file}.bak-${Date.now()}`;
+    writeAtomic(backup, text);
+    writeAtomic(file, `${imported.replace(/\s*$/, '')}\n`);
+    console.log(`${slug}  handoff=imported  previous=${backup}`);
+    console.log('  next: run `attest` and `check --require head`; imported claims are unproven until the repository agrees');
+    return 0;
+  }
+
+  throw new VerdictError(`unknown handoff action "${action}" (expected export or import)`, 2);
+}
+
 function listingCommand(rawSlug) {
   const dir = recordDir();
   const { slug } = recordPath(dir, rawSlug);
@@ -370,6 +473,9 @@ function listingCommand(rawSlug) {
 function main(argv) {
   if (argv[0] === 'verdict') {
     return verdictCommand(argv.slice(1));
+  }
+  if (argv[0] === 'handoff') {
+    return handoffCommand(argv.slice(1));
   }
   if (argv[0] === 'observe') {
     try {

@@ -1,6 +1,6 @@
 ---
 name: resume-work
-version: 2.3.0
+version: 2.4.0
 description: Pick up exactly where a stopped or paused task stopped, at the same phase. Reads the ship record, verifies which claims of the previous session or agent still hold against the repo, reloads only the context the next step needs, and keeps going with ship or land. In the same chat after a usage limit it re-reads nothing. In a fresh chat the record carries the context. Use to resume after a limit resets, or to take over a task another agent claims it finished.
 dependencies: [ship, snapshot, ship-record, principle-evidence-over-report]
 argument-hint: "[record slug, issue, or task]"
@@ -19,7 +19,7 @@ recommended: true
 
 1. The argument: a slug, an issue, or a path.
 2. Otherwise the open records: `node ~/.agents/skills/ship-record/scripts/ship-record.mjs` lists every record in `$(git rev-parse --git-common-dir)/vskills/ship/` whose phase is not done. One record means use it. Several means show that list, then ask which.
-3. No record: a handoff the user points to. Failing that, run pstack `/recall` on the topic and rebuild the position from the tracker and branches. Invoke it with the Skill tool, then as `pstack:recall`. If neither resolves, read `~/.agents/packs/pstack/pstack/skills/recall/SKILL.md` (or `$VSKILLS_PACK_PSTACK/pstack/skills/recall/SKILL.md`). Without pstack, search the tracker and `git log` yourself and say so.
+3. No record, or a handoff the user points to: import it with `node ~/.agents/skills/ship-record/scripts/ship-record.mjs handoff import <slug> --from <file>`, then attest and re-prove it here. An imported record is a claim until the repository agrees. No handoff either: rebuild from the tracker. Failing that, run pstack `/recall` on the topic and rebuild the position from the tracker and branches. Invoke it with the Skill tool, then as `pstack:recall`. If neither resolves, read `~/.agents/packs/pstack/pstack/skills/recall/SKILL.md` (or `$VSKILLS_PACK_PSTACK/pstack/skills/recall/SKILL.md`). Without pstack, search the tracker and `git log` yourself and say so.
 
 Load the record's Context and Design as your working context. They replace `recall`, `how`, `why`, and `teach`. Run those again only where step 2 shows the code under them changed. Then read only the files the next action touches.
 

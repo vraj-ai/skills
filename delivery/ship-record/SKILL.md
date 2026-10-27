@@ -1,6 +1,6 @@
 ---
 name: ship-record
-version: 1.1.0
+version: 1.2.0
 description: Check, attest, and export the ship record every delivery skill shares. Reads the record at $(git rev-parse --git-common-dir)/vskills/ship/<slug>.md, validates its fields, phases, and sizes, reports whether the recorded branch still points at the recorded head, and fails closed on a required-but-stale record. Use from ship, land, snapshot, and resume-work, or directly when a record looks stale.
 dependencies: []
 recommended: false
@@ -38,6 +38,12 @@ Exit status is 0 for a readable record, 1 for an invalid or missing record, and 
 `observe` writes `<slug>.observed.json` with the branch, head, worktree, dirty paths, upstream counts, and pushed state. It never edits the record, so the model's attestation and its drift stay visible. Hook setup, including the opt-in Claude Code entries, is in [references/hooks.md](references/hooks.md).
 
 `attest` is the only writer of `Updated`, and it reads the branch, head, and worktree from git. `verdict add` stores the patch-id of a PR's full diff; `verdict check` exits 3 unless the current patch still matches it.
+
+## Handoff
+
+`handoff export` writes the record and a captured position: branch, head, upstream with ahead/behind, pushed, and the changed and untracked paths. It refuses to write inside the repository, so the document cannot be committed by accident, and it refuses a record that looks like it holds a credential. Dirty file contents are never included; the text says so.
+
+`handoff import` restores a record from an exported document and backs up the previous file. The imported claims are unproven until the repository agrees: attest, then `check --require head`.
 
 ## Rules
 
