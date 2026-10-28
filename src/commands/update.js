@@ -69,7 +69,11 @@ export async function runUpdate({ names, repoRoot, installRoot, targets, force =
     };
   }
   graphErrors.push(...errors.map((err) => `unknown dependency "${err.missing}" referenced`));
-  const requested = new Set(roots);
+  // Only an explicit `update <name>` of a skill this machine never had is a
+  // mistake worth naming. Under a persisted selection, a closure member the
+  // manifest lacks is a new skill or a new dependency, which is exactly what
+  // this command installs.
+  const explicit = names.length > 0 ? new Set(names) : null;
   const targetNames = order.length > 0 ? order : roots.filter((name) => skills.has(name));
 
   const results = [];
@@ -79,7 +83,7 @@ export async function runUpdate({ names, repoRoot, installRoot, targets, force =
   for (const name of targetNames) {
     const skill = skills.get(name);
     if (!skill) continue;
-    if (!manifest.skills[name] && requested.has(name)) {
+    if (explicit?.has(name) && !manifest.skills[name]) {
       messages.push(`${name}: not currently installed — use "vskills add ${name}" instead`);
       continue;
     }
@@ -100,7 +104,7 @@ export async function runUpdate({ names, repoRoot, installRoot, targets, force =
     targets,
     manifest,
     // A named update installs its closure but retires only the names asked for.
-    onlyNames: names.length > 0 ? requested : null,
+    onlyNames: explicit,
   });
   results.push(...vanished.results);
   messages.push(...vanished.messages);
