@@ -162,6 +162,46 @@ test('update installs a dependency added since the last install', async () => {
   }
 });
 
+test('update installs a brand-new skill under a stored "all" selection', async () => {
+  const repo = await makeTmpDir();
+  const installRoot = await makeTmpDir();
+  const target = await makeTmpDir();
+  try {
+    await writeSkill(repo, 'alpha', { name: 'alpha', body: 'v1' });
+    await runInit({ repoRoot: repo, installRoot, targets: [target] });
+    // The default install persists the "all" sentinel, so every discoverable
+    // skill is a root. A new skill must still be installed, not skipped as
+    // "not currently installed".
+    await writeConfig(installRoot, { selection: 'all' });
+
+    await writeSkill(repo, 'brandnew', { name: 'brandnew', body: 'v1' });
+    const result = await runUpdate({ names: [], repoRoot: repo, installRoot, targets: [target] });
+    const status = Object.fromEntries(result.results.map((r) => [r.name, r.status]));
+    assert.equal(status.brandnew, 'installed');
+    await fs.access(path.join(installRoot, 'brandnew', 'SKILL.md'));
+  } finally {
+    await cleanup(repo, installRoot, target);
+  }
+});
+
+test('an explicit update of a never-installed skill still points at add', async () => {
+  const repo = await makeTmpDir();
+  const installRoot = await makeTmpDir();
+  const target = await makeTmpDir();
+  try {
+    await writeSkill(repo, 'alpha', { name: 'alpha', body: 'v1' });
+    await runInit({ repoRoot: repo, installRoot, targets: [target] });
+    // beta appears in the repo after this machine was installed.
+    await writeSkill(repo, 'beta', { name: 'beta', body: 'v1' });
+
+    const result = await runUpdate({ names: ['beta'], repoRoot: repo, installRoot, targets: [target] });
+    assert.ok(result.messages.some((m) => m.includes('not currently installed')));
+    await assert.rejects(fs.access(path.join(installRoot, 'beta')));
+  } finally {
+    await cleanup(repo, installRoot, target);
+  }
+});
+
 test('update of a named skill installs its newly added dependency', async () => {
   const repo = await makeTmpDir();
   const installRoot = await makeTmpDir();
