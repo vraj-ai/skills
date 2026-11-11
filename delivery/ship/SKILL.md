@@ -31,6 +31,8 @@ Create the ship record now. A small task's record is a few lines. Set its Phase 
 
 ## Untangle gate (entry, every size)
 
+Scoped `/untangle-codebase` runs skip this entry gate: the tangled area is already their assigned work, so they must not spawn another untangle ship. They still run the untangle diff gate in Prove and its independent review.
+
 After `/how` on the code this ticket will touch, look in that area for the four messes from `/untangle-codebase`:
 
 - **Hidden links.** Copy-paste or values that must change together with nothing saying so; implicit call order or convention.
@@ -44,7 +46,7 @@ Small tasks skip the Context phase but not this gate. Before Build they glance a
 
 `/untangle-codebase` is a separate install, not a catalogue skill. Invoke it with the Skill tool; if that does not resolve, read its SKILL.md from the installed skills directory. A missing install never blocks a clean area. For a tangled area, apply the four-messes definition above to file the scoped cleanup as its own ship, and say the skill was missing.
 
-Record the gate in the ship record: `clean`, or `blocked-on-untangle` with the area and the untangle PR or slug.
+Record the gate in the ship record: `clean`, `blocked-on-untangle` with the area and the untangle PR or slug, or `scoped-untangle` with the assigned cleanup scope. Only a run explicitly assigned that cleanup scope may use the exemption.
 
 ## 1. Context
 
