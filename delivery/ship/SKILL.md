@@ -1,6 +1,6 @@
 ---
 name: ship
-version: 4.7.0
+version: 4.8.0
 description: Find, pick up, implement, or execute a feature, bug, task, ticket, or ready issue end to end and open a verified, reviewed PR, then hand it to land. Sizes the work first: a small or contained change goes straight to the build, while a feature runs context, design, issues, build, prove, and review. A feature first recalls prior chats and PRs, explains the plan, settles the design with architect and grill, and files issues. A small task goes straight to the build. Builds with poteto-mode, proves the change with the project's verification skill, and keeps a ship record so snapshot and resume-work can continue it.
 dependencies: [grill, issues, land, snapshot, ship-record, principle-independent-verdict, principle-bounded-repair]
 recommended: true
@@ -28,6 +28,25 @@ Size the task and state the call in one line:
 Risk beats size. Any of these makes the work at least a feature, however small the diff: a public contract or something other code imports, a cross-module boundary, auth or permissions, persistence or a migration, concurrency or retries, an external provider or signed webhook, or deleting or renaming something other code calls. Name the trigger when you size.
 
 Create the ship record now. A small task's record is a few lines. Set its Phase at every section boundary, then run `node ~/.agents/skills/ship-record/scripts/ship-record.mjs observe <slug>`, `attest <slug>`, and `check <slug> --require head`, which must exit 0. Never type the head SHA by hand: `attest` reads it from git. Build and Prove share the build phase.
+
+## Untangle gate (entry, every size)
+
+Scoped `/untangle-codebase` runs skip this entry gate: the tangled area is already their assigned work, so they must not spawn another untangle ship. They still run the untangle diff gate in Prove and its independent review.
+
+After `/how` on the code this ticket will touch, look in that area for the four messes from `/untangle-codebase`:
+
+- **Hidden links.** Copy-paste or values that must change together with nothing saying so; implicit call order or convention.
+- **Needless links.** Callers tied to internals; stable code importing something more volatile; a general function that speaks one workflow's vocabulary; shallow modules.
+- **Surplus.** Pass-through wrappers; extension points or config that never vary; dead code.
+- **Special cases.** An `if` for one value, a parameter for a specific caller, a swallowed exception, a retry or sleep, a disabled test.
+
+If the area is tangled, stop the feature. Run `/untangle-codebase` scoped to that area as its own `/ship` then `/land` (its own draft PR and ship record) before opening the feature branch. Go whole-repo only when the mess crosses subsystems. `/untangle-codebase` still asks the user first about its optional Comments and Tests additions: list them with their exact descriptions and do only what they pick. If the area is clean, skip the untangle and do not rewrite the world to add a one-line fix.
+
+Small tasks skip the Context phase but not this gate. Before Build they glance at the files they will touch (a short `/how`, or an explicit scan for the four messes). A tangled area cannot stay Small: stop and run the scoped untangle first.
+
+`/untangle-codebase` is a separate install, not a catalogue skill. Invoke it with the Skill tool; if that does not resolve, read its SKILL.md from the installed skills directory. A missing install never blocks a clean area. For a tangled area, apply the four-messes definition above to file the scoped cleanup as its own ship, and say the skill was missing.
+
+Record the gate in the ship record: `clean`, `blocked-on-untangle` with the area and the untangle PR or slug, or `scoped-untangle` with the assigned cleanup scope. Only a run explicitly assigned that cleanup scope may use the exemption.
 
 ## 1. Context
 
@@ -73,11 +92,12 @@ Update the Work row after each issue.
 
 - Run the issue's Verification-command and the repo checks after the final edit.
 - When the repo has a `verify-<app>` skill, drive the feature the issue names on the real surface through that skill's launch, doctor, drive, evidence, and cleanup steps. An inconclusive run or a run on the wrong surface is not a pass. A user-facing change with no verification skill gets that gap stated and `/create-verification-skill` offered.
+- Audit the diff only for new tangle (the untangle diff gate): no new copy-paste or hidden links, no new pass-through wrappers or other surplus, no new speculative hooks or config for things that do not vary, no new special cases that should have been a redesign. A re-tangling diff fails like a red verify and is fixed before review. Do not untangle files the ticket did not change.
 - Keep missing evidence and pre-existing failures explicit. A build pass, an HTTP 200, or a model verdict does not prove untested behavior.
 
 ## 6. Review and deliver
 
-Get an independent review of a nontrivial change from the configured reviewer or PR bot, otherwise `/interrogate`. Per principle-independent-verdict, only a context that did not write the code can give the verdict. Fix evidenced blocking findings and reverify. A verdict covers a patch, not a branch: record it with `node ~/.agents/skills/ship-record/scripts/ship-record.mjs verdict add <slug> --pr <n> --by agent:<reviewer> --at <sha> --base <base>`, and let `verdict check` decide whether a later push kept it. Any changed patch needs a fresh verdict, including a docs-only push. Stop repair after three rounds (principle-bounded-repair) and report the blocker rather than weaken acceptance.
+Get an independent review of a nontrivial change from the configured reviewer or PR bot, otherwise `/interrogate`. Ask the reviewer to audit the diff for the untangle diff gate in Prove; a re-tangling finding blocks like any other. Per principle-independent-verdict, only a context that did not write the code can give the verdict. Fix evidenced blocking findings and reverify. A verdict covers a patch, not a branch: record it with `node ~/.agents/skills/ship-record/scripts/ship-record.mjs verdict add <slug> --pr <n> --by agent:<reviewer> --at <sha> --base <base>`, and let `verdict check` decide whether a later push kept it. Any changed patch needs a fresh verdict, including a docs-only push. Stop repair after three rounds (principle-bounded-repair) and report the blocker rather than weaken acceptance.
 
 Deliver under repo policy and existing authority: commit, push a named branch, open or update the PR. The PR body holds intent, changed contracts, verification, risks, and `Closes #<issue>`. Implementation never implies deploy, self-merge, or new external messaging authority. Update a decision doc only when a non-obvious decision or constraint changed.
 

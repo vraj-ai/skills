@@ -1,6 +1,6 @@
 ---
 name: route
-version: 1.2.0
+version: 1.3.0
 description: Map a task to the right vskills skill — reads what the user is trying to do, names the matching skill (or sequence), and hands back a paste-ready invocation. Use when unsure which skill fits, where to start, or what to run, or as the entry point to the pipeline.
 disable-model-invocation: true
 argument-hint: "[what you're trying to do]"
@@ -18,6 +18,7 @@ not doing the work.
 | Unclear or consequential product/design choice | `grill` |
 | Turn an agreed outcome into tracker work | `issues` |
 | Build a feature, fix, or referenced issue end to end, from context through design, issues, build, and land | `ship` |
+| The codebase feels generated or messy before a new feature | `ship` (its untangle gate runs a scoped cleanup first) |
 | Drive open PRs to merged: checks, threads, stacks, overnight runs | `land` |
 | Understand a subsystem, a call chain, or a blast radius — no changes | `investigate` |
 | A bug or regression whose cause isn't known | `debug` |

@@ -117,7 +117,9 @@ test('shipped skills never invoke a skill this repo does not ship', async () => 
   // `/setup-pstack`, and `/maintain-verification-skill` are pstack skills
   // installed beside this catalogue by setup-vskills' install-packs.mjs: ship,
   // grill, snapshot, resume-work, and setup-vskills name them and do not ship
-  // them. `/pstack` is the `/pstack:<name>` prefix of pstack's Claude Code plugin.
+  // them. `/untangle-codebase` is a separate install that ship's untangle gate
+  // invokes and falls back from when missing; it is not a catalogue skill.
+  // `/pstack` is the `/pstack:<name>` prefix of pstack's Claude Code plugin.
   // The point of the allowlist is the ratchet: a NEW unshipped reference
   // fails this gate, which is how `/handoff` reached the published package
   // unnoticed (#31).
@@ -141,6 +143,7 @@ test('shipped skills never invoke a skill this repo does not ship', async () => 
     'setup-pstack',
     'maintain-verification-skill',
     'pstack',
+    'untangle-codebase',
   ]);
 
   const offenders = [];

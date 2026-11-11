@@ -1,6 +1,6 @@
 ---
 name: land
-version: 1.6.0
+version: 1.7.0
 description: Drive open PRs to merged. Re-establish each PR's real state, resolve review threads, conflicts, failing checks, and CI failures under a bounded repair budget, land only the contiguous verified run bottom-up through the project's forge, watch until the checks pass and each merge lands, and stop at the ceiling. Use when a PR or a stack exists and the task is to get it merged, babysit it to merge-ready, or land it overnight or by morning.
 dependencies: [push-handoff, ship-record, principle-evidence-over-report, principle-independent-verdict, principle-bounded-repair, principle-real-artifact]
 argument-hint: "[PR-or-stack]"
@@ -23,11 +23,15 @@ For each PR in scope, read what the forge reports, then check it against the rep
 - `git log` and `git status`: what actually landed locally, against what the tracker or the last report claims.
 - Existing verdicts: who produced them, at which SHA, and whether the head has moved since (step 3).
 
-Each open conflict, failing check, and unresolved review thread gets a named entry in the work list, not a paragraph of narrative.
+Audit the PR diff only for new tangle: new copy-paste or hidden links, pass-through wrappers or other surplus, speculative hooks or config for things that do not vary, and one-off special cases that should have been a redesign. Do not audit files the PR did not change. A failed audit is a named work-list entry.
+
+Each open conflict, failing check, unresolved review thread, and failed untangle audit gets a named entry in the work list, not a paragraph of narrative.
 
 ## Step 2. Clear under a bounded repair budget
 
 Work the list under principle-bounded-repair. Fix conflicts by rebasing onto the real base. Do not merge the target branch backwards unless repo policy says to. Answer each review thread once, with evidence or code, and resolve only the threads the answer actually covers. A CI failure gets a reproduced local failure first where the suite exists. A fix pushed blind costs a round-trip per guess.
+
+A failed untangle audit is fixed like a red check: redesign the diff, then re-verify and take a fresh verdict, since the patch changed.
 
 Two identical CI failures in a row mean the loop is not learning. Change the hypothesis, or stop and report per the budget.
 
@@ -39,11 +43,11 @@ principle-independent-verdict: only a verdict from a context that did not write 
 2. Check it before every merge: `... verdict check <slug> --pr <n>`. Exit 0 with `verdict=current` is the only result that admits a PR into the run.
 3. Exit 3 means stale, unknown, or uncomputable, and each is a fresh verdict, not a judgement call. There is no tests, docs, or lint exception: a change to a test, a document, or lint config changes the patch, and this repository's documents are executable skill behaviour.
 
-A PR with no verdict is unverified, however green its CI.
+A PR with no verdict is unverified, however green its CI. A PR whose diff re-tangles the code is not merge-ready either.
 
 ## Step 4. Land the contiguous verified run, bottom-up
 
-Walk up from the lowest unmerged PR. Stop at the first one without a current verdict. Everything below it is the run, and that PR is the ceiling.
+Walk up from the lowest unmerged PR. Stop at the first one without a current verdict or with an uncleared untangle audit. A tangled patch is never merge-ready and is never landed, even when CI is green and an independent verdict covers other qualities. Everything below it is the run, and that PR is the ceiling.
 
 1. Wait for the lowest PR's required checks to finish: `gh pr checks <pr> --watch`, the forge's equivalent, or the host's PR watcher (inside T3 Code, `watch_pull_request`, then end the turn). A failing check goes back to step 2.
 2. Merge it with the project's forge (`gh pr merge`, the repo's own merge command, or the merge queue), one PR at a time. Respect the repo's merge style: squash, rebase, or merge commit.
